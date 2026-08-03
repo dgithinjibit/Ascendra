@@ -54,6 +54,13 @@ interface EmotionalState {
 interface MwalimuChatProps {
   studentId: string;
   studentName: string;
+  /**
+   * The student's assigned teacher. When provided, it is forwarded to the
+   * backend so this student's AI decisions are attributed to the right
+   * teacher dashboard. If omitted, the backend resolves it from the
+   * teacher_students mapping (server-side fallback).
+   */
+  teacherId?: string;
   subject?: string;
   grade?: string;
   language?: 'english' | 'kiswahili' | 'mixed';
@@ -68,6 +75,7 @@ interface MwalimuChatProps {
 export function MwalimuChat({
   studentId,
   studentName,
+  teacherId,
   subject = 'General',
   grade = 'Grade 5',
   language = 'english',
@@ -257,6 +265,9 @@ export function MwalimuChat({
         body: JSON.stringify({
           message: messageText,
           user_id: studentId,
+          // Forward the assigned teacher when known; the backend falls back to
+          // resolving it from the teacher_students mapping if omitted.
+          ...(teacherId ? { teacher_id: teacherId } : {}),
           session_id: sessionId,
           grade: grade,
           subject: subject,

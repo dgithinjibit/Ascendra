@@ -935,9 +935,23 @@ Please try rephrasing your question, or contact support if the issue persists.
                 "conversation_context": {}
             }
             
-            # Add request metadata to context. user_id doubles as teacher_id
-            # so save/list paths in lesson_architect agree on a single identity
-            # (no auth layer yet — the frontend supplies it).
+            # Add request metadata to context.
+            #
+            # teacher_id resolution:
+            #   - For teacher-authored work (lesson_architect, etc.) the caller
+            #     IS the teacher, so user_id doubles as teacher_id.
+            #   - For student tutoring, request.teacher_id carries the student's
+            #     assigned teacher (resolved upstream in /agents/chat) so the
+            #     logged AI decision reaches that teacher's feedback dashboard.
+            # Prefer an explicit teacher_id; only fall back to user_id when the
+            # request is not from a student (i.e. the caller is the teacher).
+            if request.teacher_id:
+                teacher_id = request.teacher_id
+            elif request.role == "student":
+                teacher_id = None  # unresolved: don't misattribute to the student
+            else:
+                teacher_id = request.user_id
+
             initial_state["context"].update({
                 "grade": request.grade,
                 "subject": request.subject,
@@ -945,7 +959,7 @@ Please try rephrasing your question, or contact support if the issue persists.
                 "type": request.type,
                 "priority": request.priority,
                 "user_id": request.user_id,
-                "teacher_id": request.user_id,
+                "teacher_id": teacher_id,
             })
             
             # Get or create conversation context
