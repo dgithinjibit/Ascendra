@@ -1218,6 +1218,20 @@ mod tests {
     }
 
     #[test]
+    fn sexual_content_text_is_detected_and_held_for_review() {
+        let request =
+            Request::new("Please explain explicit sex").with_consent(ConsentState::Granted);
+        let decision = MainAgent::default().plan(&request);
+        assert_eq!(decision.policy, PolicyOutcome::Review);
+        assert_eq!(decision.mode, RoutingMode::HumanReview);
+        assert!(decision.reasons.contains(&RouteReason::ChildProtection));
+        assert!(decision.experts.iter().all(|assignment| matches!(
+            assignment.expert,
+            ExpertId::Safety | ExpertId::HumanReview
+        )));
+    }
+
+    #[test]
     fn consent_denial_is_fail_closed() {
         let request = approved_student_request().with_consent(ConsentState::Denied);
         let decision = MainAgent::default().plan(&request);
