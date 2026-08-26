@@ -89,6 +89,7 @@ export async function middleware(request: NextRequest) {
   const aiAgentsUrl = process.env.NEXT_PUBLIC_AI_AGENTS_URL?.trim();
   const apiUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
   const isDev = process.env.NODE_ENV !== 'production';
+  const transportDirective = isDev ? '' : 'upgrade-insecure-requests;';
 
   const connectSrc = [
     "'self'",
@@ -116,7 +117,7 @@ export async function middleware(request: NextRequest) {
     base-uri 'self';
     form-action 'self';
     frame-ancestors 'none';
-    upgrade-insecure-requests;
+    ${transportDirective}
   `.replace(/\s{2,}/g, ' ').trim();
 
   response.headers.set('Content-Security-Policy', cspHeader);
