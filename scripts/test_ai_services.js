@@ -57,7 +57,7 @@ async function testAISA() {
 async function testGroq() {
   console.log('🔍 Testing Groq connection...');
   
-  const GROQ_API_KEY = process.env.QROQ_API_KEY; // Note: your env uses QROQ_API_KEY
+  const GROQ_API_KEY = process.env.GROQ_API_KEY;
   
   if (!GROQ_API_KEY) {
     console.log('❌ GROQ_API_KEY not found in .env');
