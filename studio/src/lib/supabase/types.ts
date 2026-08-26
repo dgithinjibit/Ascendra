@@ -13,6 +13,13 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[];
 
+type LegacyTable = {
+  Row: Record<string, any>;
+  Insert: Record<string, any>;
+  Update: Record<string, any>;
+  Relationships: [];
+};
+
 export interface Database {
   public: {
     Tables: {
@@ -92,6 +99,7 @@ export interface Database {
           updated_at?: string;
           last_seen_at?: string;
         };
+        Relationships: [];
       };
       chat_sessions: {
         Row: {
@@ -139,6 +147,7 @@ export interface Database {
           ended_at?: string | null;
           status?: 'active' | 'archived' | 'deleted';
         };
+        Relationships: [];
       };
       chat_messages: {
         Row: {
@@ -186,6 +195,7 @@ export interface Database {
           feedback_comment?: string | null;
           created_at?: string;
         };
+        Relationships: [];
       };
       learning_progress: {
         Row: {
@@ -242,6 +252,7 @@ export interface Database {
           last_practiced_at?: string;
           mastered_at?: string | null;
         };
+        Relationships: [];
       };
       daily_activity: {
         Row: {
@@ -280,6 +291,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       achievements: {
         Row: {
@@ -309,6 +321,7 @@ export interface Database {
           badge_icon?: string | null;
           earned_at?: string;
         };
+        Relationships: [];
       };
       api_usage: {
         Row: {
@@ -350,6 +363,7 @@ export interface Database {
           user_agent?: string | null;
           created_at?: string;
         };
+        Relationships: [];
       };
       daily_quotas: {
         Row: {
@@ -379,6 +393,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       agent_keys: {
         Row: {
@@ -409,8 +424,9 @@ export interface Database {
           public_key?: string | null;
           is_active?: boolean;
           created_at?: string;
-          updated_at?: string;
+          created_at?: string;
         };
+        Relationships: [];
       };
       agent_traces: {
         Row: {
@@ -461,7 +477,26 @@ export interface Database {
           metadata?: Json | null;
           created_at?: string;
         };
+        Relationships: [];
       };
+      activity_submissions: LegacyTable;
+      ai_personalization_queue: LegacyTable;
+      ai_recommendations: LegacyTable;
+      batch_submissions: LegacyTable;
+      camera_frames: LegacyTable;
+      "esp32-uploads": LegacyTable;
+      point_transactions: LegacyTable;
+      referrals: LegacyTable;
+      student_alerts: LegacyTable;
+      teacher_feedback: LegacyTable;
+      teacher_grade_assignments: LegacyTable;
+      teacher_interventions: LegacyTable;
+      teacher_notifications: LegacyTable;
+      teacher_student_assignments: LegacyTable;
+      teacher_students: LegacyTable;
+      teacher_subject_assignments: LegacyTable;
+      voice_conversations: LegacyTable;
+      voice_messages: LegacyTable;
     };
     Views: {
       [_ in never]: never;
@@ -485,6 +520,22 @@ export interface Database {
           competencies_mastered: number;
           achievements_earned: number;
         }[];
+      };
+      get_teacher_students: {
+        Args: { p_teacher_id: string };
+        Returns: Record<string, any>[];
+      };
+      get_teacher_alerts: {
+        Args: { p_teacher_id: string; p_status?: string };
+        Returns: Record<string, any>[];
+      };
+      get_class_summary: {
+        Args: { p_teacher_id: string; p_class_name?: string };
+        Returns: Record<string, any>[];
+      };
+      create_student_alert: {
+        Args: Record<string, any>;
+        Returns: string;
       };
     };
     Enums: {
