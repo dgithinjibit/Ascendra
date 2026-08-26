@@ -655,3 +655,70 @@ mod role_tests {
         assert!(!role_allows(Role::Unknown, WorkflowCapability::Learn));
     }
 }
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MediaKind {
+    Text,
+    Voice,
+    Image,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct TransportPlan {
+    pub accepted: bool,
+    pub max_bytes: usize,
+    pub compression_required: bool,
+    pub fallback_to_text: bool,
+}
+
+/// Selects a predictable transport policy before any media is uploaded.
+/// Budgets are intentionally conservative for metered/offline networks and
+/// keep the mobile client from attempting an unbounded request.
+pub fn plan_transport(
+    connectivity: crate::Connectivity,
+    media: MediaKind,
+    payload_bytes: usize,
+) -> TransportPlan {
+    use crate::Connectivity;
+    let max_bytes = match (connectivity, media) {
+        (Connectivity::Online, MediaKind::Text) => 16 * 1024,
+        (Connectivity::Online, MediaKind::Voice) => 4 * 1024 * 1024,
+        (Connectivity::Online, MediaKind::Image) => 6 * 1024 * 1024,
+        (Connectivity::Metered, MediaKind::Text) => 8 * 1024,
+        (Connectivity::Metered, MediaKind::Voice) => 512 * 1024,
+        (Connectivity::Metered, MediaKind::Image) => 256 * 1024,
+        (Connectivity::Offline, MediaKind::Text) => 16 * 1024,
+        (Connectivity::Offline, MediaKind::Voice | MediaKind::Image) => 0,
+        (Connectivity::Unknown, MediaKind::Text) => 8 * 1024,
+        (Connectivity::Unknown, MediaKind::Voice | MediaKind::Image) => 0,
+    };
+    let accepted = max_bytes > 0 && payload_bytes <= max_bytes;
+    TransportPlan {
+        accepted,
+        max_bytes,
+        compression_required: matches!(connectivity, Connectivity::Metered | Connectivity::Unknown),
+        fallback_to_text: !accepted && !matches!(media, MediaKind::Text),
+    }
+}
+
+#[cfg(test)]
+mod transport_tests {
+    use super::*;
+    use crate::Connectivity;
+
+    #[test]
+    fn offline_multimodal_input_falls_back_without_upload() {
+        let plan = plan_transport(Connectivity::Offline, MediaKind::Voice, 12_000);
+        assert!(!plan.accepted);
+        assert_eq!(plan.max_bytes, 0);
+        assert!(plan.fallback_to_text);
+    }
+
+    #[test]
+    fn metered_image_is_bounded_and_compressed() {
+        let plan = plan_transport(Connectivity::Metered, MediaKind::Image, 100_000);
+        assert!(plan.accepted);
+        assert_eq!(plan.max_bytes, 256 * 1024);
+        assert!(plan.compression_required);
+    }
+}
