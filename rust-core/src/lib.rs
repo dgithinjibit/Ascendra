@@ -9,7 +9,9 @@ pub mod head_progress;
 pub mod intelligence_signals;
 pub mod moe_router;
 pub mod observability;
+pub mod parent_report;
 pub mod specialist_contracts;
+pub mod supabase_notifications;
 pub mod teacher_adaptation;
 pub use agent_runtime::{
     decide_tutoring, grade_assessment, plan_transport, role_allows, select_tutor_route,
@@ -32,7 +34,12 @@ pub use intelligence_signals::{
 };
 pub use moe_router::{plan_specialists, MoePlan, SpecialistContract};
 pub use observability::{ObservabilityError, OperationalEvent, SafeDimension, SafeMetric};
+pub use parent_report::{ParentPerformanceReport, ParentReportBand, ParentReportError};
 pub use specialist_contracts::{SpecialistDomain, SpecialistOutput, SpecialistOutputError};
+pub use supabase_notifications::{
+    publish_head_progress, publish_parent_performance, AdapterError, AuthenticatedRecipient,
+    NotificationKind, NotificationPayload, NotificationReceipt, SupabaseNotificationTransport,
+};
 pub use teacher_adaptation::{
     adapt_next_interaction, InteractionAdjustment, TeacherInteractionPlan,
 };

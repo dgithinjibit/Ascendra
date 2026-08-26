@@ -25,12 +25,22 @@ export async function POST(req: NextRequest) {
   };
   if (user?.id) headers['X-Forwarded-User'] = user.id;
 
-  const res = await fetch(target, {
-    method: 'POST',
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  try {
+    const res = await fetch(target, {
+      method: 'POST',
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+    });
 
-  const text = await res.text();
-  return new Response(text, { status: res.status, headers: { 'Content-Type': res.headers.get('Content-Type') || 'application/json' } });
+    const text = await res.text();
+    return new Response(text, {
+      status: res.status,
+      headers: { 'Content-Type': res.headers.get('Content-Type') || 'application/json' },
+    });
+  } catch {
+    return new Response(
+      JSON.stringify({ error: 'Backend unavailable', detail: 'Lesson-plan service is unavailable.' }),
+      { status: 502, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
 }
