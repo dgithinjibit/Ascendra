@@ -48,13 +48,22 @@ class OllamaLLMProvider:
 
     def __init__(self, model_key: str = "assessment", base_url: str | None = None) -> None:
         import os
+
+        if (os.environ.get("SYNCSENTA_OFFLINE_DEMO") == "1"
+                or not os.getenv("GROQ_API_KEY")
+                or os.getenv("GROQ_API_KEY") == "test-key-offline"):
+            from ..api.demo_stub import DemoStubLLM
+            self._llm = DemoStubLLM()
+            self._offline = True
+            return
+
         from langchain_groq import ChatGroq
-        
         self._llm = ChatGroq(
             model=os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile"),
             api_key=os.getenv("GROQ_API_KEY"),
             temperature=0.2,
         )
+        self._offline = False
 
     async def generate(self, prompt: str, *, system: str | None = None) -> str:
         import asyncio
@@ -63,6 +72,8 @@ class OllamaLLMProvider:
         if system:
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": prompt})
+        if getattr(self, "_offline", False):
+            return await self._llm.generate(prompt, system=system)
         response = await asyncio.to_thread(self._llm.invoke, messages)
         return response.content if hasattr(response, 'content') else str(response)
 

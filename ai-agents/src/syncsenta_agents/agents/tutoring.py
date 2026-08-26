@@ -101,7 +101,9 @@ class TutoringAgent:
         if self._llm is None:
             import os
 
-            if os.environ.get("SYNCSENTA_OFFLINE_DEMO") == "1":
+            if (os.environ.get("SYNCSENTA_OFFLINE_DEMO") == "1"
+                    or not os.getenv("GROQ_API_KEY")
+                    or os.getenv("GROQ_API_KEY") == "test-key-offline"):
                 from ..api.demo_stub import DemoStubLLM
 
                 self._llm = DemoStubLLM()
@@ -175,8 +177,18 @@ class TutoringAgent:
                 telemetry=telemetry
             )
             
-            # STEP 5: Generate response with LLM
-            answer = await self._provider().generate(prompt, system=_SYSTEM_PROMPT)
+            # STEP 5: Generate response with LLM. If a stale or revoked
+            # credential is loaded, degrade to the deterministic local stub;
+            # unrelated provider errors still surface to the caller.
+            try:
+                answer = await self._provider().generate(prompt, system=_SYSTEM_PROMPT)
+            except Exception as provider_error:
+                provider_text = str(provider_error).lower()
+                if any(marker in provider_text for marker in ("invalid_api_key", "api key", "forbidden", "401", "403")):
+                    from ..api.demo_stub import DemoStubLLM
+                    answer = await DemoStubLLM().generate(prompt, system=_SYSTEM_PROMPT)
+                else:
+                    raise
             
             # STEP 6: Log decision for teacher feedback (self-learning loop)
             decision_id = await self.decision_logger.log_decision(

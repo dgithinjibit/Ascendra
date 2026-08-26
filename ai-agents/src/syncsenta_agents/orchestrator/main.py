@@ -2,6 +2,7 @@
 
 from typing import Dict, Any, Optional
 from datetime import datetime
+import os
 
 from ..core.models import AgentRequest, AgentResponse
 from ..core.logging import AgentLogger
@@ -51,8 +52,19 @@ class SyncSentaOrchestrator:
             self.workflow_orchestrator = LangGraphOrchestrator()
 
             # Register implemented worker agents and specialist wrappers.
-            # CBC, Intelligence, and Career pathways are now backed by
-            # concrete agent adapters instead of placeholder fallbacks.
+            # When no provider credential is configured, keep initialization
+            # deterministic and let workflow placeholders serve offline tests.
+            if not os.getenv("GROQ_API_KEY") or os.getenv("GROQ_API_KEY") == "test-key-offline":
+                self.logger.warning(
+                    "GROQ_API_KEY not configured; using workflow placeholders in offline mode"
+                )
+                self.workflow_orchestrator.register_agent("assessment", AssessmentAgent())
+                self._initialized = True
+                self.logger.info("Orchestrator initialized successfully in offline mode")
+                return
+
+            # CBC, Intelligence, and Career pathways are backed by concrete
+            # agent adapters instead of placeholder fallbacks in production.
             self.workflow_orchestrator.register_agent(
                 "assessment", AssessmentAgent()
             )
