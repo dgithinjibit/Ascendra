@@ -527,12 +527,10 @@ export default function StudentDashboardPage() {
               <LeaderboardPanel
                 userId={getStudentId()}
                 scope="class"
-                title="Class Leaderboard"
               />
               <LeaderboardPanel
                 userId={getStudentId()}
                 scope="school"
-                title="School Leaderboard"
               />
             </div>
           </div>

@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/sidebar";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useEffect, useState } from "react";
+import type { UserRole } from "@/lib/types";
 
 // Client-side function to get user role from cookies
 function getClientRole(): UserRole | null {

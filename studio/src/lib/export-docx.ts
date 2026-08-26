@@ -17,20 +17,9 @@ import {
   HeadingLevel,
 } from 'docx';
 import { saveAs } from 'file-saver';
+import type { SchemeRow } from '@/types/curriculum';
 
-// SchemeRow type matching backend
-export interface SchemeRow {
-  week: number;
-  lesson: number;
-  strand: string;
-  subStrand: string;
-  specificLearningOutcome: string;
-  learningExperiences: string;
-  keyInquiryQuestion: string;
-  learningResources: string;
-  assessmentMethods: string;
-  reflection: string;
-}
+export type { SchemeRow };
 
 // Column headers
 const COLUMN_HEADERS_EN = [

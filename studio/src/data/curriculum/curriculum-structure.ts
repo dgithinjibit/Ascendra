@@ -48,9 +48,10 @@ export const curriculumData = new Proxy({} as CurriculumStructure, {
         // Return a proxy for the subject level that loads data on demand
         return new Proxy(gradeData, {
           get(subjectTarget, subject: string) {
+            const subjects = subjectTarget as Record<string, any>
             // Check if already loaded
-            if (subjectTarget[subject]) {
-              return subjectTarget[subject]
+            if (subjects[subject]) {
+              return subjects[subject]
             }
 
             // Load on demand
@@ -71,7 +72,7 @@ export const curriculumData = new Proxy({} as CurriculumStructure, {
               .replace('Social Studies', 'Social Studies')
 
             const data = getHardcodedStrands(gradeKey, subjectKey)
-            subjectTarget[subject] = data
+            subjects[subject] = data
             return data
           }
         })

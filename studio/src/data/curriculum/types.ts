@@ -11,6 +11,7 @@ export interface SubStrandInfo {
 
 export interface StrandInfo {
   name: string;
+  description?: string;
   subStrands: SubStrandInfo[];
 }
 

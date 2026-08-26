@@ -34,6 +34,7 @@ export { grade6Kiswahili } from "./upper-primary/kiswahili-grade6";
 export { grade1IRE, grade2IRE, grade3IRE } from "./lower-primary/ire";
 
 import type { StrandInfo } from "./types";
+import type { GradeLevel } from "../../types/curriculum";
 import { grade1CreativeActivities, grade2CreativeActivities, grade3CreativeActivities } from "./lower-primary/creative-activities";
 import { grade1CRE, grade2CRE, grade3CRE } from "./lower-primary/cre";
 import { grade1HRE, grade2HRE, grade3HRE } from "./lower-primary/hre";
@@ -208,7 +209,7 @@ export function getLessonsPerWeek(grade: string, subject: string): number {
   return map[subject] || 5;
 }
 
-export const grades = [
+export const grades: GradeLevel[] = [
   "Grade 1", "Grade 2", "Grade 3",
   "Grade 4", "Grade 5", "Grade 6",
   "Grade 7", "Grade 8", "Grade 9",
@@ -270,7 +271,7 @@ export function getSubjectsForGrade(grade: string): string[] {
   return upperPrimarySubjects;
 }
 
-export function getAllGrades(): string[] {
+export function getAllGrades(): GradeLevel[] {
   return grades;
 }
 

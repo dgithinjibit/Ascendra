@@ -17,7 +17,8 @@ export async function POST(req: NextRequest) {
 
   // Attach user context if available
   const supabase = getSupabaseServerClient();
-  const { data: { user } = {} as any } = await supabase.auth.getUser().catch(() => ({}));
+  const authResult = await supabase.auth.getUser().catch(() => null);
+  const user = authResult?.data?.user ?? null;
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',

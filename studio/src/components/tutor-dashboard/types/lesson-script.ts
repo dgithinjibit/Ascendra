@@ -184,7 +184,7 @@ export interface InteractionLog {
   timestamp: number;
   nodeId: string;
   nodeType: LessonNodeType;
-  action: 'view' | 'answer' | 'hint' | 'skip';
+  action: 'view' | 'answer' | 'hint' | 'skip' | 'error';
   data?: any; // Action-specific data
   correct?: boolean; // For answers
   timeOnTask?: number; // Milliseconds

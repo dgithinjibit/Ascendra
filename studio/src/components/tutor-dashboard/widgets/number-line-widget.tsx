@@ -27,6 +27,7 @@ export interface NumberLineConfig {
 export interface NumberLineWidgetProps {
   config: NumberLineConfig;
   onAnswer?: (value: number) => void;
+  onSubmit?: (value: number, correct: boolean) => void;
   onInteraction?: (value: number) => void;
   disabled?: boolean;
 }
@@ -34,6 +35,7 @@ export interface NumberLineWidgetProps {
 export function NumberLineWidget({
   config,
   onAnswer,
+  onSubmit,
   onInteraction,
   disabled = false,
 }: NumberLineWidgetProps) {
@@ -44,7 +46,7 @@ export function NumberLineWidget({
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
 
   // Calculate snap positions
-  const snapPositions = [];
+  const snapPositions: number[] = [];
   for (let i = min; i <= max; i += step) {
     snapPositions.push(i);
   }
@@ -81,11 +83,9 @@ export function NumberLineWidget({
     setIsSubmitted(true);
 
     // Check if answer is correct (if targetValue provided)
-    if (targetValue !== undefined) {
-      const correct = Math.abs(selectedValue - targetValue) < step / 2;
-      setIsCorrect(correct);
-    }
-
+    const correct = targetValue === undefined || Math.abs(selectedValue - targetValue) < step / 2;
+    setIsCorrect(correct);
+    onSubmit?.(selectedValue, correct);
     onAnswer?.(selectedValue);
   };
 

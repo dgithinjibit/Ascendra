@@ -76,12 +76,9 @@ export default function ActivityPage() {
   const persistCompletion = async (score: number) => {
     if (user?.id) {
       try {
+        const difficulty = activity?.difficulty ?? 3;
         const difficultyLevel: 'easy' | 'medium' | 'hard' =
-          activity?.difficulty <= 2
-            ? 'easy'
-            : activity?.difficulty <= 4
-            ? 'medium'
-            : 'hard';
+          difficulty <= 2 ? 'easy' : difficulty <= 4 ? 'medium' : 'hard';
 
         await submitActivity({
           student_id: user.id,

@@ -122,7 +122,7 @@ export default function JourneyPage() {
     }
   }, []);
 
-  const coveredGrades = useMemo(() => new Set(getAllGrades()), []);
+  const coveredGrades = useMemo(() => new Set<string>(getAllGrades()), []);
 
   const subjects = useMemo(
     () => (grade && coveredGrades.has(grade) ? getSubjectsForGrade(grade) : []),

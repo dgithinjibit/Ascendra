@@ -4,7 +4,11 @@ import { useEffect, useState } from 'react';
 import { Flame, Zap, Award, Trophy, TrendingUp } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { getStudentStats } from '@/lib/progress-tracking';
-import { getWeeklyPointsBreakdown, getStudentRank } from '@/lib/gamification/points-system';
+import {
+  getWeeklyPointsBreakdown,
+  getStudentRank,
+  type WeeklyPointsBreakdown,
+} from '@/lib/gamification/points-system';
 import { kenyanBadgeCatalog } from '@/lib/gamification/badges';
 
 interface GamificationOverviewProps {
@@ -14,7 +18,7 @@ interface GamificationOverviewProps {
 
 export function GamificationOverview({ userId, userName = 'Student' }: GamificationOverviewProps) {
   const [stats, setStats] = useState<any>(null);
-  const [weeklyPoints, setWeeklyPoints] = useState<any>(null);
+  const [weeklyPoints, setWeeklyPoints] = useState<WeeklyPointsBreakdown | null>(null);
   const [userRank, setUserRank] = useState<number>(0);
   const [loading, setLoading] = useState(true);
 

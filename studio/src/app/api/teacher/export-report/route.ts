@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
     // Calculate summary statistics
     const totalMessages = activity?.reduce((sum, a) => sum + a.messages_sent, 0) || 0;
     const totalTime = activity?.reduce((sum, a) => sum + a.time_spent_minutes, 0) || 0;
-    const currentStreak = activity?.[0]?.current_streak || 0;
+    const currentStreak = activity?.[0]?.daily_streak || 0;
     const competenciesMastered = progress?.filter((p) => p.mastery_level === 'mastered').length || 0;
     const avgMastery = progress?.length
       ? Math.round(
@@ -149,18 +149,18 @@ export async function POST(request: NextRequest) {
         title: s.title,
         messageCount: s.message_count,
         lastMessage: s.last_message_at,
-        createdAt: s.created_at,
+        createdAt: s.started_at,
       })),
       activity: activity?.map((a) => ({
         date: a.activity_date,
         messages: a.messages_sent,
         timeMinutes: a.time_spent_minutes,
-        streak: a.current_streak,
+        streak: a.daily_streak,
       })),
       achievements: achievements?.map((a) => ({
         type: a.achievement_type,
-        title: a.title,
-        description: a.description,
+        title: a.achievement_name,
+        description: a.achievement_description,
         earnedAt: a.earned_at,
       })),
       interventions: interventions?.map((i) => ({
