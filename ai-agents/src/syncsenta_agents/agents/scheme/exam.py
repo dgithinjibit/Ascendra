@@ -261,7 +261,7 @@ def normalize(s: str) -> str:
 _PRACTICAL_RE = re.compile(
     r"\b(draw|sketch|colou?r in|colou?r the|shade|trace|cut out|paste|fold|"
     r"model|sing|recite|act out|role[- ]?play|dance|point at|point to|"
-    r"touch the|match the picture|measure (?:the|your)|observe (?:the )?weather|"
+    r"touch the|match the picture|measure (?!the length\b)(?:the|your)|observe (?:the )?weather|"
     r"use (?:a|your) ruler|use (?:an )?abacus|use counters?|use beads?|"
     r"ask (?:your|a) (?:partner|friend|parent)|interview)\b",
     re.IGNORECASE,
