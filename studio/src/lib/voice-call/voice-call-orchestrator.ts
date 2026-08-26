@@ -75,7 +75,9 @@ export class VoiceCallOrchestrator {
   private tts: StreamingTTSManager;
   private conversation: ConversationManager;
   
-  private config: Required<VoiceCallConfig>;
+  private config: Omit<Required<VoiceCallConfig>, 'conversationId'> & {
+    conversationId?: string;
+  };
   private state: VoiceCallState;
   private eventListeners: Map<VoiceCallEventType, Array<(event: VoiceCallEvent) => void>> = new Map();
   
