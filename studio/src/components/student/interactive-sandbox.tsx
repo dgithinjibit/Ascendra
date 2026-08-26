@@ -36,6 +36,15 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Loader2, RotateCcw, Send, Eraser, Sparkles } from 'lucide-react'
 import { buildApiUrl, API_ENDPOINTS } from '@/lib/api-config'
+import {
+  buildTutorContext,
+  createLearningLoop,
+  enqueueLearningEvent,
+  evaluateAttempt,
+  getNextHint,
+  type LearningEvent,
+  type LearningLoopState,
+} from '@/lib/student-learning-loop'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -224,6 +233,10 @@ export function InteractiveSandbox({
 
   const [variationIndex, setVariationIndex] = useState(0)
   const [correctCount, setCorrectCount] = useState(0)
+  const [learningLoop, setLearningLoop] = useState<LearningLoopState>(() =>
+    createLearningLoop({ lessonId: lessonId ?? 'sandbox-lesson', masteryThreshold: masteryGoal }),
+  )
+  const offlineEvents = useRef<LearningEvent[]>([])
   const attemptsRef = useRef<VariationAttempt[]>([])
   const variationStartRef = useRef<number>(Date.now())
   const lessonStartRef = useRef<number>(Date.now())
@@ -544,6 +557,21 @@ export function InteractiveSandbox({
     })
 
     const correct = Math.abs(studentAnswerValue - activeCorrectAnswerValue) < 1e-3
+    const nextLoop = evaluateAttempt(learningLoop, {
+      correct,
+      answer: studentAnswerLabel,
+    })
+    setLearningLoop(nextLoop)
+    offlineEvents.current = enqueueLearningEvent(offlineEvents.current, {
+      id: `${stableLessonId}-${variationIndex}-${attemptsRef.current.length}`,
+      type: 'attempt',
+      payload: {
+        correct,
+        answer: studentAnswerLabel,
+        competency,
+        hintLevel: nextLoop.hintLevel,
+      },
+    })
 
     setIsSubmitting(true)
     setFeedback(null)
@@ -560,6 +588,13 @@ export function InteractiveSandbox({
           subject,
           events: events.current,
           activity_data: {
+            tutor_context: buildTutorContext({
+              state: nextLoop,
+              grade,
+              subject,
+              competency,
+              question: activeQuestion,
+            }),
             lesson_id: stableLessonId,
             variation_index: variationIndex,
             variation_total: lessonVariations.length,
@@ -618,12 +653,23 @@ export function InteractiveSandbox({
           setTimeout(resetForNextVariation, 600)
         }
       } else {
+        const hint = getNextHint(nextLoop)
         setFeedback(
-          `🤔 You answered ${studentAnswerLabel} (${studentAnswerValue.toFixed(3)}). Try again.`,
+          `🤔 You answered ${studentAnswerLabel} (${studentAnswerValue.toFixed(3)}). ${hint}`,
         )
+        if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+          window.speechSynthesis.cancel()
+          window.speechSynthesis.speak(new SpeechSynthesisUtterance(hint))
+        }
       }
     } catch (err) {
       console.error('Telemetry submit failed:', err)
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(
+          `syncsenta-learning-queue-${resolvedStudentId}`,
+          JSON.stringify(offlineEvents.current),
+        )
+      }
       setFeedback('Could not reach the tutor — your work is saved locally.')
     } finally {
       setIsSubmitting(false)
@@ -662,6 +708,25 @@ export function InteractiveSandbox({
       <CardContent className="space-y-4">
         <div className="rounded-2xl border border-dashed border-border bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
           Drag tokens from the canvas into the answer box on the right. The sandbox checks the sum of tokens inside the drop zone and grades your answer when you submit.
+        </div>
+
+        <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3" aria-live="polite">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs uppercase tracking-[0.12em] text-primary">Tutor guidance</p>
+            <Badge variant="outline">Hint level {learningLoop.hintLevel}</Badge>
+          </div>
+          <p className="mt-2 text-sm text-foreground">{getNextHint(learningLoop)}</p>
+          {typeof window !== 'undefined' && 'speechSynthesis' in window && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="mt-2 px-0"
+              onClick={() => window.speechSynthesis.speak(new SpeechSynthesisUtterance(getNextHint(learningLoop)))}
+            >
+              Read guidance aloud
+            </Button>
+          )}
         </div>
 
         <div className="grid gap-4 xl:grid-cols-[1.7fr_0.9fr]">
