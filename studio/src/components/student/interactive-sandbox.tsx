@@ -36,6 +36,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Loader2, RotateCcw, Send, Eraser, Sparkles } from 'lucide-react'
 import { buildApiUrl, API_ENDPOINTS } from '@/lib/api-config'
+import { getRenderScale, toLogicalPoint, LOGICAL_HEIGHT, LOGICAL_WIDTH } from '@/lib/sandbox-geometry'
 import {
   buildTutorContext,
   createLearningLoop,
@@ -314,18 +315,18 @@ export function InteractiveSandbox({
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    // Resize backing store to match the CSS size each frame so the
-    // sandbox stays sharp through parent layout changes.
+    // Keep a logical 600×300 coordinate system while scaling the backing store
+    // to the CSS size. This keeps touch hit-testing identical on every device.
     const dpr = window.devicePixelRatio || 1
-    if (canvas.width !== canvas.offsetWidth * dpr || canvas.height !== canvas.offsetHeight * dpr) {
-      canvas.width = canvas.offsetWidth * dpr
-      canvas.height = canvas.offsetHeight * dpr
-      ctx.scale(dpr, dpr)
-    }
-
     const w = canvas.offsetWidth
     const h = canvas.offsetHeight
-    ctx.clearRect(0, 0, w, h)
+    if (canvas.width !== w * dpr || canvas.height !== h * dpr) {
+      canvas.width = w * dpr
+      canvas.height = h * dpr
+    }
+    const scale = getRenderScale(w, h)
+    ctx.setTransform(dpr * scale, 0, 0, dpr * scale, 0, 0)
+    ctx.clearRect(0, 0, LOGICAL_WIDTH, LOGICAL_HEIGHT)
 
     // Drop zone (right side).
     ctx.strokeStyle = '#94a3b8'
@@ -383,7 +384,7 @@ export function InteractiveSandbox({
 
   const localCoords = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const r = canvasRef.current!.getBoundingClientRect()
-    return { x: e.clientX - r.left, y: e.clientY - r.top }
+    return toLogicalPoint(e.clientX, e.clientY, r)
   }
 
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -733,7 +734,7 @@ export function InteractiveSandbox({
           <div className="relative">
             <canvas
               ref={canvasRef}
-              className="w-full h-[300px] rounded-2xl border border-border bg-background touch-none"
+              className="w-full aspect-[2/1] h-auto min-h-0 rounded-2xl border border-border bg-background touch-none select-none"
               onPointerDown={onPointerDown}
               onPointerMove={onPointerMove}
               onPointerUp={onPointerUp}
