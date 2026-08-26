@@ -5,10 +5,12 @@ use std::fmt;
 
 pub mod agent_runtime;
 pub mod feedback_review;
+pub mod head_progress;
 pub mod intelligence_signals;
 pub mod moe_router;
 pub mod observability;
 pub mod specialist_contracts;
+pub mod teacher_adaptation;
 pub use agent_runtime::{
     decide_tutoring, grade_assessment, plan_transport, role_allows, select_tutor_route,
     AgentRuntime, AssessmentAnswer, AssessmentQuestion, AssessmentScore, BackendError,
@@ -21,12 +23,19 @@ pub use feedback_review::{
     review_from_signal, FeedbackRating, FeedbackValidationError, HumanReviewRequest,
     ReviewSeverity, ReviewType, TeacherFeedbackInput,
 };
+pub use head_progress::{
+    build_head_progress_notification, HeadProgressError, HeadProgressNotification,
+    HeadProgressRequest, ProgressBand,
+};
 pub use intelligence_signals::{
     classify_intelligence, IntelligenceSignal, SignalTag, SyncsentaAction,
 };
 pub use moe_router::{plan_specialists, MoePlan, SpecialistContract};
 pub use observability::{ObservabilityError, OperationalEvent, SafeDimension, SafeMetric};
 pub use specialist_contracts::{SpecialistDomain, SpecialistOutput, SpecialistOutputError};
+pub use teacher_adaptation::{
+    adapt_next_interaction, InteractionAdjustment, TeacherInteractionPlan,
+};
 
 pub const MAX_MESSAGE_BYTES: usize = 16 * 1024;
 pub const DEFAULT_MAX_EXPERTS: usize = 5;
