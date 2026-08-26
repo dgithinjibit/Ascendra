@@ -61,3 +61,54 @@
 (= (goal-expert digital-skills) real-world-problem-solver)
 (= (goal-expert skills-and-employment) career-pathways)
 (= (goal-expert quality-of-life) socratic-tutor)
+
+
+; M2 — CBC evidence and safeguarding policy extensions.
+; These atoms are declarative inputs for the future MeTTa-native dispatcher;
+; Rust remains the enforcement authority at the runtime boundary.
+(policy-version "cbc-safeguarding-2026-08")
+
+; Every learning record must retain curriculum evidence, not only a score.
+(cbc-evidence-field grade)
+(cbc-evidence-field subject)
+(cbc-evidence-field strand)
+(cbc-evidence-field sub-strand)
+(cbc-evidence-field learning-outcome)
+(cbc-evidence-field competency)
+(cbc-evidence-field value)
+(cbc-evidence-field rubric)
+(cbc-evidence-field provenance)
+
+; Evidence may be captured by the student, teacher, Rust runtime, or offline sync.
+(evidence-source student)
+(evidence-source teacher)
+(evidence-source rust-runtime)
+(evidence-source offline-sync)
+
+; Explicit human-review categories keep safeguarding separate from pedagogy.
+(review-route learning-support)
+(review-route safeguarding)
+(review-route wellbeing)
+(review-route content-correction)
+(review-route privacy)
+
+(= (safeguarding-route clear) Approved)
+(= (safeguarding-route wellbeing) (Review wellbeing))
+(= (safeguarding-route abuse-or-exploitation) (Review safeguarding))
+(= (safeguarding-route self-harm) (Review safeguarding))
+(= (safeguarding-route dangerous-activity) (Review safeguarding))
+(= (safeguarding-route sexual-content) (Review safeguarding))
+(= (safeguarding-route privacy-request) (Review privacy))
+
+; Missing curriculum evidence is held for enrichment before publication.
+(= (cbc-evidence-route complete) Approved)
+(= (cbc-evidence-route incomplete) (Review curriculum-evidence))
+(= (cbc-evidence-route unknown) (Review curriculum-evidence))
+
+; Offline assessment results require later synchronization before finalization.
+(= (assessment-finalization-route offline-pending-sync) (Review offline-assessment))
+(= (assessment-finalization-route synced) Approved)
+
+; Provider calls must not bypass policy or expose raw learner content to experts.
+(= (expert-input raw-learner-content) (Review privacy))
+(= (expert-input policy-summary) Approved)
