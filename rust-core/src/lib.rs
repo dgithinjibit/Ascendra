@@ -4,6 +4,7 @@
 use std::fmt;
 
 pub mod agent_runtime;
+pub mod feedback_review;
 pub mod intelligence_signals;
 pub use agent_runtime::{
     decide_tutoring, grade_assessment, plan_transport, role_allows, select_tutor_route,
@@ -12,6 +13,10 @@ pub use agent_runtime::{
     LearningState, MediaKind, MettaAdapter, MettaEvaluator, OfflineTutorBackend, RuntimeError,
     RuntimeResponse, ScaffoldingLevel, TextBackend, TransportPlan, TutorRoute, TutoringDecision,
     TutoringResponse, WorkflowCapability,
+};
+pub use feedback_review::{
+    review_from_signal, FeedbackRating, FeedbackValidationError, HumanReviewRequest,
+    ReviewSeverity, ReviewType, TeacherFeedbackInput,
 };
 pub use intelligence_signals::{
     classify_intelligence, IntelligenceSignal, SignalTag, SyncsentaAction,
