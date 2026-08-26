@@ -21,6 +21,11 @@ export interface PointsBreakdown {
   totalPoints: number;
 }
 
+export interface WeeklyPointsBreakdown {
+  breakdown: Record<string, number>;
+  totalWeeklyPoints: number;
+}
+
 /**
  * Award points for a correct answer
  */
@@ -245,7 +250,9 @@ export async function getSchoolLeaderboard(
 /**
  * Get student's weekly points breakdown
  */
-export async function getWeeklyPointsBreakdown(userId: string) {
+export async function getWeeklyPointsBreakdown(
+  userId: string
+): Promise<WeeklyPointsBreakdown> {
   try {
     const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 

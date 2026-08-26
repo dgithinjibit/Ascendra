@@ -17,6 +17,7 @@ export interface ActivitySubmission {
   score: number;
   time_spent: number; // seconds
   completed_at?: string;
+  submittedAt?: string;
   answers?: Record<string, any>;
   feedback?: string;
 }
@@ -202,7 +203,10 @@ export async function getStudentSubmissions(
       return [];
     }
 
-    return data || [];
+    return (data || []).map((submission) => ({
+      ...submission,
+      submittedAt: submission.completed_at,
+    })) as ActivitySubmission[];
   } catch (err) {
     console.error('Unexpected error fetching submissions:', err);
     return [];
@@ -244,7 +248,10 @@ export async function getTeacherStudentSubmissions(
       return [];
     }
 
-    return data || [];
+    return (data || []).map((submission) => ({
+      ...submission,
+      submittedAt: submission.completed_at,
+    })) as ActivitySubmission[];
   } catch (err) {
     console.error('Unexpected error fetching teacher submissions:', err);
     return [];
@@ -279,7 +286,13 @@ export async function getAIRecommendations(
       return [];
     }
 
-    return data || [];
+    return (data || []) as Array<{
+      id: string;
+      activity_type: string;
+      difficulty: string;
+      reason: string;
+      confidence: number;
+    }>;
   } catch (err) {
     console.error('Unexpected error fetching recommendations:', err);
     return [];

@@ -27,10 +27,19 @@ interface ActivitySubmission {
   subject: string;
   difficulty: string;
   score: number;
+  maxScore?: number;
   time_spent: number;
+  timeSpent?: number;
+  attempts?: number;
+  hintsUsed?: number;
   completed_at?: string;
+  submittedAt?: string;
   answers?: Record<string, any>;
   feedback?: string;
+  learningOutcomes?: string[];
+  studentName?: string;
+  completed?: boolean;
+  activityTitle?: string;
 }
 
 export default function StudentSubmissionsPage() {
@@ -248,14 +257,14 @@ export default function StudentSubmissionsPage() {
                             <div>
                               <p className="text-muted-foreground">Score</p>
                               <p className="font-semibold">
-                                {submission.score}/{submission.maxScore} 
-                                ({((submission.score / submission.maxScore) * 100).toFixed(0)}%)
+                                {submission.score}/{submission.maxScore ?? 100}
+                                ({((submission.score / (submission.maxScore ?? 100)) * 100).toFixed(0)}%)
                               </p>
                             </div>
                             <div>
                               <p className="text-muted-foreground">Time Spent</p>
                               <p className="font-semibold">
-                                {Math.floor(submission.timeSpent / 60)}m {submission.timeSpent % 60}s
+                                {Math.floor((submission.timeSpent ?? submission.time_spent) / 60)}m {Math.floor((submission.timeSpent ?? submission.time_spent) % 60)}s
                               </p>
                             </div>
                             <div>
@@ -281,8 +290,8 @@ export default function StudentSubmissionsPage() {
                         </div>
 
                         <div className="text-right text-sm text-muted-foreground">
-                          <p>{new Date(submission.submittedAt).toLocaleDateString()}</p>
-                          <p>{new Date(submission.submittedAt).toLocaleTimeString()}</p>
+                          <p>{new Date(submission.submittedAt ?? submission.completed_at ?? 0).toLocaleDateString()}</p>
+                          <p>{new Date(submission.submittedAt ?? submission.completed_at ?? 0).toLocaleTimeString()}</p>
                           <Button variant="ghost" size="sm" className="mt-2">
                             <Eye className="w-4 h-4 mr-1" />
                             View Details

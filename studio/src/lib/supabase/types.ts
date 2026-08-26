@@ -508,6 +508,7 @@ export interface Database {
       teacher_subject_assignments: LegacyTable;
       voice_conversations: LegacyTable;
       voice_messages: LegacyTable;
+      vision_submissions: LegacyTable;
     };
     Views: {
       [_ in never]: never;

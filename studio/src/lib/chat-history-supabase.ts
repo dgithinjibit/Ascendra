@@ -325,7 +325,9 @@ export async function migrateLocalStorageHistory(
         (msg): msg is { role: 'user' | 'assistant'; content: string } =>
           typeof msg === 'object' &&
           msg !== null &&
-          (msg as Record<string, unknown>).role in { user: 1, assistant: 1 } &&
+          ['user', 'assistant'].includes(
+            (msg as Record<string, unknown>).role as string
+          ) &&
           typeof (msg as Record<string, unknown>).content === 'string'
       );
 
