@@ -4,7 +4,10 @@
 use std::fmt;
 
 pub mod agent_runtime;
-pub use agent_runtime::{AgentRuntime, BackendError, RuntimeError, RuntimeResponse, TextBackend};
+pub use agent_runtime::{
+    decide_tutoring, AgentRuntime, BackendError, LearningState, RuntimeError, RuntimeResponse,
+    ScaffoldingLevel, TextBackend, TutoringDecision, TutoringResponse,
+};
 
 pub const MAX_MESSAGE_BYTES: usize = 16 * 1024;
 pub const DEFAULT_MAX_EXPERTS: usize = 5;
