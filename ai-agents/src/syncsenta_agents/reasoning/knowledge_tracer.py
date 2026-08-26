@@ -41,6 +41,7 @@ class NeuralSymbolicKnowledgeTracer:
     def __init__(self):
         self.logger = AgentLogger("knowledge_tracer")
         self.mastery_history: Dict[str, List[MasteryEstimate]] = {}
+        self._interaction_counts: Dict[Tuple[str, str], List[int]] = {}
     
     def estimate_mastery(
         self,
@@ -92,8 +93,11 @@ class NeuralSymbolicKnowledgeTracer:
         if student_id not in self.mastery_history:
             self.mastery_history[student_id] = []
         self.mastery_history[student_id].append(estimate)
-        
+        history_key = (student_id, competency)
+        self._interaction_counts.setdefault(history_key, []).append(len(interaction_history))
+
         self.logger.info(
+
             f"Mastery estimate for {student_id}",
             competency=competency,
             score=fused_score,
@@ -179,10 +183,10 @@ class NeuralSymbolicKnowledgeTracer:
         
         # Rule 3: Low erasure rate (confidence)
         erasure_count = telemetry.get("erasure_count", 0)
-        if erasure_count == 0:
+        if "erasure_count" in telemetry and erasure_count == 0:
             score_adjustments.append(0.1)
             evidence.append("No erasures indicates confidence")
-        elif erasure_count > 3:
+        elif "erasure_count" in telemetry and erasure_count > 3:
             score_adjustments.append(-0.1)
             evidence.append("High erasure rate indicates uncertainty")
         
@@ -275,14 +279,21 @@ class NeuralSymbolicKnowledgeTracer:
         
         recent = estimates[-3:]
         scores = [e.mastery_score for e in recent]
-        
-        # Simple trend detection
+
+        # Simple trend detection. If the fused scores tie because the
+        # heuristic saturates, use increasing/decreasing evidence volume as a
+        # secondary signal rather than incorrectly reporting a stable learner.
         if scores[0] < scores[1] < scores[2]:
             return "improving"
-        elif scores[0] > scores[1] > scores[2]:
+        if scores[0] > scores[1] > scores[2]:
             return "declining"
-        else:
-            return "stable"
+
+        counts = self._interaction_counts.get((student_id, competency), [])[-3:]
+        if len(counts) == 3 and counts[0] < counts[1] < counts[2] and len(set(scores)) == 1:
+            return "improving"
+        if len(counts) == 3 and counts[0] > counts[1] > counts[2] and len(set(scores)) == 1:
+            return "declining"
+        return "stable"
     
     def explain_estimate(self, estimate: MasteryEstimate) -> str:
         """Generate human-readable explanation of mastery estimate."""
