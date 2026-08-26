@@ -1,0 +1,33 @@
+# Only the ai-agents/ backend is copied into the image; everything below is
+# excluded from the build context to keep builds fast and reproducible.
+
+# Node / Next.js frontend (not part of this image)
+studio/node_modules
+studio/.next
+scheme-scribe/node_modules
+**/node_modules
+
+# Python caches & local virtualenvs
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.mypy_cache
+**/.venv
+**/.venv-test
+**/venv
+
+# VCS & editor
+.git
+.github
+.devcontainer
+**/.DS_Store
+
+# Hardware / archives / logos not needed to build or test
+arduino
+_archive
+syncsenta-logo
+
+# Env files must never leak into the image
+**/.env
+**/.env.*
+!**/.env.example
