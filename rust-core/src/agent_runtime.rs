@@ -289,3 +289,96 @@ mod tutoring_tests {
         assert!(!response.runtime.text.is_empty());
     }
 }
+
+/// Evaluates a structured MeTTa query and returns one of the Syncsenta verdict
+/// atoms: `Approved`, `(Review <reason>)`, or `(Rejected <reason>)`.
+///
+/// Python, an embedded Hyperon runtime, or a remote policy service can all
+/// implement this trait. The Rust planner remains the enforcement authority.
+pub trait MettaEvaluator {
+    fn evaluate(&mut self, query: &str) -> Result<String, MettaError>;
+}
+
+pub struct MettaAdapter<E> {
+    planner: MainAgent,
+    evaluator: E,
+}
+
+impl<E> MettaAdapter<E>
+where
+    E: MettaEvaluator,
+{
+    pub fn new(policy: AgentPolicy, evaluator: E) -> Self {
+        Self {
+            planner: MainAgent::new(policy),
+            evaluator,
+        }
+    }
+
+    pub fn evaluate(&mut self, request: &Request) -> Result<Decision, RuntimeError> {
+        let query = self.planner.plan(request).metta_query;
+        let verdict = self.evaluator.evaluate(&query)?;
+        Ok(self.planner.plan_with_metta_result(request, &verdict)?)
+    }
+}
+
+/// Compatibility evaluator used by parity tests and the Python fallback
+/// bridge. It deliberately does not claim to execute MeTTa; it verifies that
+/// the Rust adapter accepts the same verdict contract as the future Hyperon
+/// implementation.
+pub struct ContractVerdictEvaluator {
+    verdict: String,
+}
+
+impl ContractVerdictEvaluator {
+    pub fn new(verdict: impl Into<String>) -> Self {
+        Self {
+            verdict: verdict.into(),
+        }
+    }
+}
+
+impl MettaEvaluator for ContractVerdictEvaluator {
+    fn evaluate(&mut self, _query: &str) -> Result<String, MettaError> {
+        Ok(self.verdict.clone())
+    }
+}
+
+#[cfg(test)]
+mod metta_adapter_tests {
+    use super::*;
+    use crate::{AgeBand, Connectivity, ConsentState, MettaVerdict, Role, SafetySignals};
+
+    fn request() -> Request {
+        Request::new("Explain fractions")
+            .with_request_id("metta-adapter-test")
+            .with_role(Role::Student)
+            .with_age_band(AgeBand::Primary)
+            .with_connectivity(Connectivity::Online)
+            .with_consent(ConsentState::Granted)
+            .with_safety(SafetySignals::default())
+    }
+
+    #[test]
+    fn adapter_accepts_contract_verdict_and_keeps_query_structured() {
+        let mut adapter = MettaAdapter::new(
+            AgentPolicy::default(),
+            ContractVerdictEvaluator::new("Approved"),
+        );
+        let decision = adapter.evaluate(&request()).unwrap();
+        assert!(decision.is_actionable());
+        assert!(decision.metta_query.starts_with("!(syncsenta-policy"));
+        assert!(!decision.metta_query.contains("Explain fractions"));
+    }
+
+    #[test]
+    fn adapter_fails_closed_for_review_verdict() {
+        let mut adapter = MettaAdapter::new(
+            AgentPolicy::default(),
+            ContractVerdictEvaluator::new("(Review consent)"),
+        );
+        let decision = adapter.evaluate(&request()).unwrap();
+        assert!(!decision.is_actionable());
+        assert!(matches!(decision.metta_verdict, MettaVerdict::Review(_)));
+    }
+}
