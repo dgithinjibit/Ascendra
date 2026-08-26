@@ -5,10 +5,11 @@ use std::fmt;
 
 pub mod agent_runtime;
 pub use agent_runtime::{
-    decide_tutoring, grade_assessment, AgentRuntime, AssessmentAnswer, AssessmentQuestion,
-    AssessmentScore, BackendError, CachedBackend, ContractVerdictEvaluator, LearningState,
-    MettaAdapter, MettaEvaluator, OfflineTutorBackend, RuntimeError, RuntimeResponse,
-    ScaffoldingLevel, TextBackend, TutoringDecision, TutoringResponse,
+    decide_tutoring, grade_assessment, role_allows, AgentRuntime, AssessmentAnswer,
+    AssessmentQuestion, AssessmentScore, BackendError, CachedBackend, ContractVerdictEvaluator,
+    LearningState, MettaAdapter, MettaEvaluator, OfflineTutorBackend, RuntimeError,
+    RuntimeResponse, ScaffoldingLevel, TextBackend, TutoringDecision, TutoringResponse,
+    WorkflowCapability,
 };
 
 pub const MAX_MESSAGE_BYTES: usize = 16 * 1024;

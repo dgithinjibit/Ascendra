@@ -590,3 +590,68 @@ mod assessment_tests {
         assert_eq!(score.performance_band, "below");
     }
 }
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum WorkflowCapability {
+    Learn,
+    SubmitAssessment,
+    GradeAssessment,
+    ReviewLearnerProgress,
+    ManageConsent,
+    ManageSchool,
+}
+
+/// Role authorization belongs in the Rust boundary so UI routing cannot grant
+/// a capability that the backend policy did not authorize.
+pub fn role_allows(role: crate::Role, capability: WorkflowCapability) -> bool {
+    use crate::Role;
+    match (role, capability) {
+        (Role::Student, WorkflowCapability::Learn | WorkflowCapability::SubmitAssessment) => true,
+        (
+            Role::Teacher,
+            WorkflowCapability::Learn
+            | WorkflowCapability::SubmitAssessment
+            | WorkflowCapability::GradeAssessment
+            | WorkflowCapability::ReviewLearnerProgress,
+        ) => true,
+        (
+            Role::Guardian,
+            WorkflowCapability::ReviewLearnerProgress | WorkflowCapability::ManageConsent,
+        ) => true,
+        (
+            Role::Administrator,
+            WorkflowCapability::ManageSchool
+            | WorkflowCapability::ReviewLearnerProgress
+            | WorkflowCapability::ManageConsent,
+        ) => true,
+        _ => false,
+    }
+}
+
+#[cfg(test)]
+mod role_tests {
+    use super::*;
+    use crate::Role;
+
+    #[test]
+    fn role_workflow_matrix_is_fail_closed() {
+        assert!(role_allows(Role::Student, WorkflowCapability::Learn));
+        assert!(role_allows(
+            Role::Teacher,
+            WorkflowCapability::GradeAssessment
+        ));
+        assert!(role_allows(
+            Role::Guardian,
+            WorkflowCapability::ManageConsent
+        ));
+        assert!(role_allows(
+            Role::Administrator,
+            WorkflowCapability::ManageSchool
+        ));
+        assert!(!role_allows(
+            Role::Student,
+            WorkflowCapability::ManageSchool
+        ));
+        assert!(!role_allows(Role::Unknown, WorkflowCapability::Learn));
+    }
+}
