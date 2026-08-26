@@ -23,10 +23,10 @@ function loadEnv() {
     
     return env;
   } catch (error) {
-    console.log('⚠️  .env file not found, using .env.example values');
+    console.log('⚠️  .env file not found; external AISA test is disabled');
     return {
-      AISA_API_KEY: 'sk-JqYlOYRR9B6vFByGqAXsF5Z9sjo8y8shDfYwN1Bmkf4E0In9',
-      AISA_BASE_URL: 'https://api.aisa.one/v1'
+      AISA_API_KEY: process.env.AISA_API_KEY || '',
+      AISA_BASE_URL: process.env.AISA_BASE_URL || 'https://api.aisa.one/v1'
     };
   }
 }
@@ -39,7 +39,7 @@ async function testAISA() {
   const AISA_API_KEY = env.AISA_API_KEY;
   const AISA_BASE_URL = env.AISA_BASE_URL || 'https://api.aisa.one/v1';
   
-  console.log('🔑 API Key:', AISA_API_KEY ? `${AISA_API_KEY.substring(0, 10)}...` : 'Not found');
+  console.log('🔑 API Key configured:', Boolean(AISA_API_KEY));
   console.log('🌐 Base URL:', AISA_BASE_URL);
   
   if (!AISA_API_KEY) {

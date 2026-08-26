@@ -58,7 +58,7 @@ In your Render service dashboard, go to **Environment** tab and add:
 
 ```bash
 # Required
-GROQ_API_KEY=gsk_your_groq_api_key_here
+GROQ_API_KEY=configure-this-in-the-secret-manager
 SUPABASE_URL=https://khsemyqovhqwrjzlzwo.supabase.co
 SUPABASE_SERVICE_KEY=your_supabase_service_role_key_here
 
