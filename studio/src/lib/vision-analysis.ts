@@ -8,7 +8,8 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 // Initialize Gemini AI
-const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY || '');
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+const VISION_MODEL = process.env.GEMINI_VISION_MODEL || process.env.GEMINI_MODEL || 'gemini-3.6-flash';
 
 export interface VisionAnalysisRequest {
   imageData: string; // Base64 encoded image
@@ -42,7 +43,7 @@ export interface VisionAnalysisResult {
 export async function analyzeHandwriting(
   request: VisionAnalysisRequest
 ): Promise<VisionAnalysisResult> {
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+  const model = genAI.getGenerativeModel({ model: VISION_MODEL });
 
   const prompt = `You are an expert Grade ${request.grade} teacher analyzing a student's handwriting.
 
@@ -109,7 +110,7 @@ Be encouraging and age-appropriate. Focus on what the student did well before me
 export async function analyzeFractionShading(
   request: VisionAnalysisRequest
 ): Promise<VisionAnalysisResult> {
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+  const model = genAI.getGenerativeModel({ model: VISION_MODEL });
 
   const prompt = `You are an expert Grade ${request.grade} mathematics teacher analyzing fraction work.
 
@@ -173,7 +174,7 @@ Use simple language. If incorrect, explain clearly what the correct answer shoul
 export async function analyzeNumberWriting(
   request: VisionAnalysisRequest
 ): Promise<VisionAnalysisResult> {
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+  const model = genAI.getGenerativeModel({ model: VISION_MODEL });
 
   const prompt = `You are an expert Grade ${request.grade} mathematics teacher analyzing number writing.
 
@@ -238,7 +239,7 @@ Be encouraging. Focus on correct elements before mentioning errors.`;
 export async function analyzeDrawing(
   request: VisionAnalysisRequest
 ): Promise<VisionAnalysisResult> {
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+  const model = genAI.getGenerativeModel({ model: VISION_MODEL });
 
   const prompt = `You are an expert Grade ${request.grade} teacher analyzing a student's drawing.
 

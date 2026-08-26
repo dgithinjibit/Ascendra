@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseKey = process.env.SUPABASE_SERVICE_KEY!;
@@ -71,8 +72,24 @@ async function generateAIResponse(
   context: string,
   history: string
 ): Promise<string> {
-  // Check if Groq API key is available
+  const provider = (process.env.LLM_PROVIDER || 'groq').trim().toLowerCase();
+  const geminiApiKey = process.env.GEMINI_API_KEY;
   const groqApiKey = process.env.GROQ_API_KEY;
+
+  if (provider === 'gemini' && geminiApiKey) {
+    try {
+      const gemini = new GoogleGenerativeAI(geminiApiKey);
+      const model = gemini.getGenerativeModel({
+        model: process.env.GEMINI_MODEL || 'gemini-3.6-flash',
+        systemInstruction: `You are Mwalimu AI, an intelligent and friendly educational tutor. Help students learn through concise, natural conversation.\n\nContext:\n${context}\n\nRecent conversation:\n${history}\n\nKeep responses to 2-3 short sentences, use age-appropriate language, encourage the learner, and ask one follow-up question when useful.`,
+      });
+      const result = await model.generateContent(message);
+      return result.response.text().trim() || 'Could you try that again?';
+    } catch (error) {
+      console.error('Gemini voice response error:', error);
+      return 'I had trouble processing that. Could you try again?';
+    }
+  }
   
   if (!groqApiKey) {
     // Fallback to simple response
@@ -80,7 +97,7 @@ async function generateAIResponse(
   }
 
   try {
-    // Use Groq for fast inference (ideal for voice conversations)
+    // Use Groq for fast inference when Gemini is not selected.
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -120,14 +137,14 @@ Guidelines:
     });
 
     if (!response.ok) {
-      throw new Error(`Groq API error: ${response.statusText}`);
+      throw new Error(`${provider} API error: ${response.statusText}`);
     }
 
     const data = await response.json();
     return data.choices[0]?.message?.content || 'I apologize, I had trouble understanding. Could you rephrase that?';
 
   } catch (error) {
-    console.error('AI generation error:', error);
+    console.error(`${provider} generation error:`, error);
     return 'I apologize, I had trouble processing that. Could you try again?';
   }
 }
