@@ -34,6 +34,9 @@ export interface Database {
           grade: string | null;
           school_name: string | null;
           student_id: string | null;
+          school_id: string | null;
+          classroom_id: string | null;
+          total_points: number;
           date_of_birth: string | null;
           subjects: string[] | null;
           classes: string[] | null;
@@ -59,6 +62,9 @@ export interface Database {
           grade?: string | null;
           school_name?: string | null;
           student_id?: string | null;
+          school_id?: string | null;
+          classroom_id?: string | null;
+          total_points?: number;
           date_of_birth?: string | null;
           subjects?: string[] | null;
           classes?: string[] | null;
@@ -84,6 +90,9 @@ export interface Database {
           grade?: string | null;
           school_name?: string | null;
           student_id?: string | null;
+          school_id?: string | null;
+          classroom_id?: string | null;
+          total_points?: number;
           date_of_birth?: string | null;
           subjects?: string[] | null;
           classes?: string[] | null;
@@ -423,7 +432,6 @@ export interface Database {
           secret_key?: string;
           public_key?: string | null;
           is_active?: boolean;
-          created_at?: string;
           created_at?: string;
         };
         Relationships: [];
