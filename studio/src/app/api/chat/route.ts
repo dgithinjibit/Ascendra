@@ -14,6 +14,7 @@
 
 import { NextRequest } from 'next/server';
 import Groq from 'groq-sdk';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { z } from 'zod';
 import {
   buildSocraticSystemPrompt,
@@ -31,7 +32,7 @@ export const dynamic = 'force-dynamic';
 // Tunables
 // ──────────────────────────────────────────────────────────────────────────
 
-const GROQ_TIMEOUT_MS = 30_000;
+const MODEL_TIMEOUT_MS = 30_000;
 const MAX_HISTORY_TURNS = 40;
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -148,17 +149,24 @@ export async function POST(req: NextRequest) {
   }
 
   // ---- Env ------------------------------------------------------------------
-  const apiKey = process.env.GROQ_API_KEY;
+  // Only model inference is provider-switchable. Auth, Supabase, Redis, and
+  // persistence APIs must remain on their existing services.
+  const provider = (process.env.LLM_PROVIDER || 'groq').trim().toLowerCase();
+  const isGemini = provider === 'gemini';
+  const apiKey = isGemini ? process.env.GEMINI_API_KEY : process.env.GROQ_API_KEY;
+  const requiredKeyName = isGemini ? 'GEMINI_API_KEY' : 'GROQ_API_KEY';
   if (!apiKey) {
     return Response.json(
       {
-        error: 'Server is missing GROQ_API_KEY',
-        detail: 'Set GROQ_API_KEY in your environment.',
+        error: `Server is missing ${requiredKeyName}`,
+        detail: `Set ${requiredKeyName} in your server environment.`,
       },
       { status: 500 }
     );
   }
-  const model = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
+  const model = isGemini
+    ? process.env.GEMINI_MODEL || 'gemini-3.6-flash'
+    : process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
 
   // ---- Create or get session ------------------------------------------------
   let sessionId = body.sessionId;
@@ -210,28 +218,55 @@ export async function POST(req: NextRequest) {
     { role: 'user', content: body.message },
   ];
 
-  // ---- Call Groq (streaming, with timeout) ----------------------------------
-  const groq = new Groq({ apiKey });
-  const timeoutSignal = AbortSignal.timeout(GROQ_TIMEOUT_MS);
-
-  let groqStream: Awaited<ReturnType<typeof groq.chat.completions.create>>;
+  // ---- Call selected model provider (streaming, with timeout) ----------------
+  const timeoutSignal = AbortSignal.timeout(MODEL_TIMEOUT_MS);
+  let modelStream: AsyncIterable<string>;
   try {
-    groqStream = await groq.chat.completions.create(
-      {
+    if (isGemini) {
+      const gemini = new GoogleGenerativeAI(apiKey);
+      const geminiModel = gemini.getGenerativeModel({
         model,
-        messages,
-        temperature: 0.7,
-        max_tokens: 600,
-        top_p: 1,
-        stream: true,
-      },
-      { signal: timeoutSignal }
-    );
+        systemInstruction: systemPrompt,
+      });
+      const geminiHistory = trimmedHistory.map((entry) => ({
+        role: entry.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: entry.content }],
+      }));
+      const geminiResult = await geminiModel.generateContentStream({
+        contents: [...geminiHistory, { role: 'user', parts: [{ text: body.message }] }],
+        generationConfig: { temperature: 0.7, maxOutputTokens: 600, topP: 1 },
+      });
+      modelStream = (async function* () {
+        for await (const chunk of geminiResult.stream) {
+          const text = chunk.text();
+          if (text) yield text;
+        }
+      })();
+    } else {
+      const groq = new Groq({ apiKey });
+      const groqStream = await groq.chat.completions.create(
+        {
+          model,
+          messages,
+          temperature: 0.7,
+          max_tokens: 600,
+          top_p: 1,
+          stream: true,
+        },
+        { signal: timeoutSignal }
+      );
+      modelStream = (async function* () {
+        for await (const chunk of groqStream) {
+          const text = chunk?.choices?.[0]?.delta?.content;
+          if (text) yield text;
+        }
+      })();
+    }
   } catch (err) {
     const aborted =
       err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError');
-    const detail = err instanceof Error ? err.message : 'Unknown Groq error';
-    console.error('[/api/chat] Groq request failed:', detail);
+    const detail = err instanceof Error ? err.message : `Unknown ${provider} error`;
+    console.error(`[/api/chat] ${provider} request failed:`, detail);
 
     // Log API usage (failed)
     await supabase.from('api_usage').insert({
@@ -259,10 +294,7 @@ export async function POST(req: NextRequest) {
   const sse = new ReadableStream<Uint8Array>({
     async start(controller) {
       try {
-        for await (const chunk of groqStream as AsyncIterable<{
-          choices?: { delta?: { content?: string | null } }[];
-          usage?: { total_tokens?: number };
-        }>) {
+        for await (const delta of modelStream) {
           if (timeoutSignal.aborted) {
             controller.enqueue(
               encoder.encode(sseError('stream_timeout', 'Upstream timed out mid-stream.'))
@@ -271,16 +303,8 @@ export async function POST(req: NextRequest) {
             return;
           }
 
-          const delta = chunk?.choices?.[0]?.delta?.content;
-          if (delta) {
-            fullResponse += delta;
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ delta })}\n\n`));
-          }
-
-          // Capture token usage if available
-          if (chunk.usage?.total_tokens) {
-            tokensUsed = chunk.usage.total_tokens;
-          }
+          fullResponse += delta;
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ delta })}\n\n`));
         }
 
         controller.enqueue(encoder.encode('data: [DONE]\n\n'));

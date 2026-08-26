@@ -30,6 +30,7 @@ class ProviderType(str, Enum):
     NVIDIA = "nvidia"
     OPENAI = "openai"
     GROQ = "groq"
+    GEMINI = "gemini"
 
 
 @dataclass
@@ -104,6 +105,21 @@ class MultiProviderClient:
                 rate_limit_retry_delay=60,
                 top_p=self._optional_float("OPENAI_TOP_P", 0.95),
                 request_timeout_seconds=self._positive_int("OPENAI_TIMEOUT_SECONDS", 120),
+            ))
+
+        # Gemini is an opt-in local/provider fallback. The key remains server-only.
+        gemini_key = os.getenv("GEMINI_API_KEY")
+        if gemini_key:
+            providers.append(ProviderConfig(
+                name=ProviderType.GEMINI,
+                api_key=gemini_key,
+                base_url=os.getenv(
+                    "GEMINI_BASE_URL",
+                    "https://generativelanguage.googleapis.com/v1beta",
+                ).rstrip("/"),
+                models=[os.getenv("GEMINI_MODEL", "gemini-3.6-flash")],
+                rate_limit_retry_delay=60,
+                request_timeout_seconds=self._positive_int("GEMINI_TIMEOUT_SECONDS", 120),
             ))
 
         # Groq remains a fallback for resilience and existing deployments.
@@ -288,6 +304,10 @@ class MultiProviderClient:
             return await self._generate_groq(
                 provider, prompt, system, max_tokens, temperature
             )
+        if provider.name == ProviderType.GEMINI:
+            return await self._generate_gemini(
+                provider, prompt, system, max_tokens, temperature
+            )
         else:
             raise ValueError(f"Unsupported provider: {provider.name}")
 
@@ -354,6 +374,51 @@ class MultiProviderClient:
         
         response = await asyncio.to_thread(llm.invoke, messages)
         return response.content if hasattr(response, 'content') else str(response)
+
+    async def _generate_gemini(
+        self,
+        provider: ProviderConfig,
+        prompt: str,
+        system: Optional[str],
+        max_tokens: int,
+        temperature: float,
+    ) -> str:
+        """Generate through Gemini's REST generateContent endpoint."""
+        contents = []
+        if system:
+            contents.append({"role": "user", "parts": [{"text": system}]})
+            contents.append({"role": "model", "parts": [{"text": "Understood."}]})
+        contents.append({"role": "user", "parts": [{"text": prompt}]})
+        payload = {
+            "contents": contents,
+            "generationConfig": {
+                "temperature": temperature,
+                "maxOutputTokens": max_tokens,
+            },
+        }
+        try:
+            async with httpx.AsyncClient(timeout=provider.request_timeout_seconds) as client:
+                response = await client.post(
+                    f"{provider.base_url}/models/{provider.models[0]}:generateContent",
+                    params={"key": provider.api_key},
+                    headers={"Content-Type": "application/json"},
+                    json=payload,
+                )
+        except httpx.HTTPError as exc:
+            raise RuntimeError(f"Gemini request failed: {exc}") from exc
+        if response.is_error:
+            raise RuntimeError(
+                f"Gemini returned HTTP {response.status_code}: "
+                f"{response.text[:800].strip() or 'no error detail'}"
+            )
+        try:
+            candidates = response.json()["candidates"]
+            content = candidates[0]["content"]["parts"][0].get("text")
+        except (KeyError, IndexError, TypeError, ValueError) as exc:
+            raise RuntimeError("Gemini returned an invalid generateContent response") from exc
+        if not isinstance(content, str) or not content.strip():
+            raise RuntimeError("Gemini returned an empty completion")
+        return content.strip()
 
     async def _generate_nvidia(
         self,
