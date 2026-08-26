@@ -172,18 +172,24 @@ export class ConversationManager {
     reason: TopicTransition['reason'] = 'natural_flow',
     seamless: boolean = true
   ): void {
+    const previousTopic = this.state.context.currentTopic;
+    if (!previousTopic) {
+      this.state.context.currentTopic = newTopic;
+      this.contextUpdateCallbacks.forEach(cb => cb(this.state.context));
+      this.saveState();
+      return;
+    }
+
     const transition: TopicTransition = {
-      from: this.state.context.currentTopic,
+      from: previousTopic,
       to: newTopic,
       reason,
       timestamp: Date.now(),
       seamless,
     };
 
-    // Update context
-    if (this.state.context.currentTopic) {
-      this.state.context.previousTopics.push(this.state.context.currentTopic);
-    }
+    // Update context only after a real topic change.
+    this.state.context.previousTopics.push(previousTopic);
     this.state.context.currentTopic = newTopic;
     this.state.transitions.push(transition);
 
@@ -204,7 +210,7 @@ export class ConversationManager {
     // Educational topics
     const topicKeywords: Record<string, string[]> = {
       'mathematics': ['math', 'algebra', 'geometry', 'calculus', 'equation', 'number', 'fraction', 'decimal', 'addition', 'subtraction'],
-      'science': ['science', 'physics', 'chemistry', 'biology', 'experiment', 'plant', 'animal', 'water', 'energy'],
+      'science': ['science', 'physics', 'chemistry', 'biology', 'experiment', 'plant', 'photosynthesis', 'animal', 'water', 'energy'],
       'english': ['english', 'grammar', 'writing', 'reading', 'literature', 'story', 'essay', 'sentence', 'paragraph'],
       'history': ['history', 'historical', 'past', 'ancient', 'civilization', 'independence', 'kenya', 'africa'],
       'geography': ['geography', 'map', 'country', 'continent', 'location', 'river', 'mountain', 'climate'],
@@ -262,8 +268,8 @@ export class ConversationManager {
   getContextForPrompt(): string {
     const { context } = this.state;
     
-    let prompt = '';
-
+    let prompt = 'Learning context initialized. Use the learner\'s current message to guide the next step.\n';
+    
     if (context.currentTopic) {
       prompt += `Current Topic: ${context.currentTopic}\n`;
     }
@@ -328,7 +334,7 @@ export class ConversationManager {
     interruptionCount: number;
     averageResponseTime: number;
   } {
-    const duration = Date.now() - this.state.startTime;
+    const duration = Math.max(1, Date.now() - this.state.startTime);
     const userMessages = this.state.messages.filter(m => m.role === 'user');
     const assistantMessages = this.state.messages.filter(m => m.role === 'assistant');
 

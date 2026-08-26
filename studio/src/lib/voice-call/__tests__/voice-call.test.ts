@@ -21,18 +21,41 @@ const mockSpeechSynthesis = {
 
 beforeEach(() => {
   // Setup browser API mocks
-  global.navigator = {
-    ...global.navigator,
-    mediaDevices: {
-      getUserMedia: mockGetUserMedia,
+  class TestStorage {
+    private values = new Map<string, string>();
+    getItem(key: string) { return this.values.get(key) ?? null; }
+    setItem(key: string, value: string) { this.values.set(key, value); }
+    removeItem(key: string) { this.values.delete(key); }
+    clear() { this.values.clear(); }
+  }
+  Object.defineProperty(globalThis, 'Storage', { configurable: true, value: TestStorage });
+  Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: new TestStorage() });
+  Object.defineProperty(globalThis, 'navigator', {
+    configurable: true,
+    value: {
+      ...globalThis.navigator,
+      mediaDevices: {
+        getUserMedia: mockGetUserMedia,
+      },
     },
-  } as any;
+  });
 
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    value: {
+      ...globalThis.window,
+      AudioContext: mockAudioContext,
+      speechSynthesis: mockSpeechSynthesis,
+    },
+  });
+
+  /*
   global.window = {
     ...global.window,
     AudioContext: mockAudioContext,
     speechSynthesis: mockSpeechSynthesis,
   } as any;
+  */
 });
 
 afterEach(() => {
