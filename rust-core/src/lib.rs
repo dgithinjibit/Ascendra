@@ -1350,6 +1350,22 @@ mod tests {
     }
 
     #[test]
+    fn privacy_request_is_held_without_content_fan_out() {
+        let request = approved_student_request().with_safety(SafetySignals {
+            privacy_request: true,
+            ..SafetySignals::default()
+        });
+        let decision = MainAgent::default().plan(&request);
+        assert_eq!(decision.policy, PolicyOutcome::Review);
+        assert_eq!(decision.mode, RoutingMode::HumanReview);
+        assert!(decision.reasons.contains(&RouteReason::PrivacyBoundary));
+        assert!(decision.experts.iter().all(|assignment| matches!(
+            assignment.expert,
+            ExpertId::Safety | ExpertId::HumanReview
+        )));
+    }
+
+    #[test]
     fn message_limit_is_enforced() {
         let request = Request::new("x".repeat(MAX_MESSAGE_BYTES + 1));
         let decision = MainAgent::default().plan(&request);
