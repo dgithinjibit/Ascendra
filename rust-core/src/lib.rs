@@ -1202,6 +1202,22 @@ mod tests {
     }
 
     #[test]
+    fn sexual_content_signal_is_fail_closed() {
+        let request = approved_student_request().with_safety(SafetySignals {
+            sexual_content: true,
+            ..SafetySignals::default()
+        });
+        let decision = MainAgent::default().plan(&request);
+        assert_eq!(decision.policy, PolicyOutcome::Review);
+        assert_eq!(decision.mode, RoutingMode::HumanReview);
+        assert!(decision.reasons.contains(&RouteReason::ChildProtection));
+        assert!(decision.experts.iter().all(|assignment| matches!(
+            assignment.expert,
+            ExpertId::Safety | ExpertId::HumanReview
+        )));
+    }
+
+    #[test]
     fn consent_denial_is_fail_closed() {
         let request = approved_student_request().with_consent(ConsentState::Denied);
         let decision = MainAgent::default().plan(&request);
