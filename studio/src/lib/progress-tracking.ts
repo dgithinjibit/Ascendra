@@ -23,6 +23,8 @@ export interface CompetencyProgress {
   progressPercentage: number;
   questionsAsked: number;
   questionsAnswered: number;
+  /** Derived until topic-level telemetry is persisted separately. */
+  questionsAnsweredOnTopic: number;
   correctAnswers: number;
   timeSpentMinutes: number;
   lastPracticedAt: string;
@@ -179,6 +181,7 @@ export async function getLearningProgress(
     progressPercentage: item.progress_percentage,
     questionsAsked: item.questions_asked,
     questionsAnswered: item.questions_answered,
+    questionsAnsweredOnTopic: item.questions_answered,
     correctAnswers: item.correct_answers,
     timeSpentMinutes: item.time_spent_minutes,
     lastPracticedAt: item.last_practiced_at,
