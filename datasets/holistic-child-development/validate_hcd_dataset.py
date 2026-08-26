@@ -21,6 +21,12 @@ REQUIRED = {
     "safety_flags",
     "evidence_type",
     "pii_present",
+    "source_principles",
+    "learning_objective",
+    "localization_notes",
+    "accessibility_notes",
+    "adult_support_route",
+    "license",
 }
 
 
