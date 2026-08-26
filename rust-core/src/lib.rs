@@ -6,6 +6,7 @@ use std::fmt;
 pub mod agent_runtime;
 pub mod feedback_review;
 pub mod intelligence_signals;
+pub mod moe_router;
 pub use agent_runtime::{
     decide_tutoring, grade_assessment, plan_transport, role_allows, select_tutor_route,
     AgentRuntime, AssessmentAnswer, AssessmentQuestion, AssessmentScore, BackendError,
@@ -21,6 +22,7 @@ pub use feedback_review::{
 pub use intelligence_signals::{
     classify_intelligence, IntelligenceSignal, SignalTag, SyncsentaAction,
 };
+pub use moe_router::{plan_specialists, MoePlan, SpecialistContract};
 
 pub const MAX_MESSAGE_BYTES: usize = 16 * 1024;
 pub const DEFAULT_MAX_EXPERTS: usize = 5;
