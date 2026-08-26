@@ -52,7 +52,7 @@ export async function submitActivity(
     const supabase = getSupabaseClient();
     
     const { data, error } = await supabase
-      .from('activity_submissions' as any)
+      .from('activity_submissions')
       .insert({
         student_id: submission.student_id,
         activity_type: submission.activity_type,
@@ -90,7 +90,7 @@ export async function submitBatch(
     const supabase = getSupabaseClient();
     
     const { data, error } = await supabase
-      .from('batch_submissions' as any)
+      .from('batch_submissions')
       .insert({
         student_id: batch.student_id,
         grade: batch.grade,
@@ -126,7 +126,7 @@ export async function queueForAI(
     const supabase = getSupabaseClient();
     
     const { error } = await supabase
-      .from('ai_personalization_queue' as any)
+      .from('ai_personalization_queue')
       .insert({
         student_id: studentId,
         submission_id: submissionId,
@@ -159,7 +159,7 @@ export async function notifyTeacher(
     const supabase = getSupabaseClient();
     
     const { error } = await supabase
-      .from('teacher_notifications' as any)
+      .from('teacher_notifications')
       .insert({
         teacher_id: teacherId,
         student_id: studentId,
@@ -191,7 +191,7 @@ export async function getStudentSubmissions(
     const supabase = getSupabaseClient();
     
     const { data, error } = await supabase
-      .from('activity_submissions' as any)
+      .from('activity_submissions')
       .select('*')
       .eq('student_id', studentId)
       .order('completed_at', { ascending: false })
@@ -221,7 +221,7 @@ export async function getTeacherStudentSubmissions(
     
     // First get the teacher's assigned student IDs
     const { data: assignments, error: assignError } = await supabase
-      .from('teacher_student_assignments' as any)
+      .from('teacher_student_assignments')
       .select('student_id')
       .eq('teacher_id', teacherId);
 
@@ -233,7 +233,7 @@ export async function getTeacherStudentSubmissions(
 
     // Then fetch submissions for those students
     const { data, error } = await supabase
-      .from('activity_submissions' as any)
+      .from('activity_submissions')
       .select('*')
       .in('student_id', studentIds)
       .order('completed_at', { ascending: false })
@@ -267,7 +267,7 @@ export async function getAIRecommendations(
     const supabase = getSupabaseClient();
     
     const { data, error } = await supabase
-      .from('ai_recommendations' as any)
+      .from('ai_recommendations')
       .select('*')
       .eq('student_id', studentId)
       .gt('expires_at', new Date().toISOString())
