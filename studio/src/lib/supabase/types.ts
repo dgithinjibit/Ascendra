@@ -219,6 +219,7 @@ export interface Database {
           progress_percentage: number;
           questions_asked: number;
           questions_answered: number;
+          practice_count: number;
           correct_answers: number;
           time_spent_minutes: number;
           first_attempted_at: string;
@@ -237,6 +238,7 @@ export interface Database {
           progress_percentage?: number;
           questions_asked?: number;
           questions_answered?: number;
+          practice_count?: number;
           correct_answers?: number;
           time_spent_minutes?: number;
           first_attempted_at?: string;
@@ -255,6 +257,7 @@ export interface Database {
           progress_percentage?: number;
           questions_asked?: number;
           questions_answered?: number;
+          practice_count?: number;
           correct_answers?: number;
           time_spent_minutes?: number;
           first_attempted_at?: string;

@@ -8,7 +8,7 @@ import { supabase } from './supabase/client';
 import { getSupabaseServerClient } from './supabase/server';
 import type { Database } from './supabase/types';
 
-type TeacherStudent = {
+export type TeacherStudent = {
   student_id: string;
   student_name: string;
   student_email: string;
@@ -22,7 +22,7 @@ type TeacherStudent = {
   average_mastery_percentage: number;
 };
 
-type StudentAlert = {
+export type StudentAlert = {
   alert_id: string;
   student_id: string;
   student_name: string;
@@ -35,7 +35,7 @@ type StudentAlert = {
   created_at: string;
 };
 
-type ClassSummary = {
+export type ClassSummary = {
   total_students: number;
   active_today: number;
   active_this_week: number;

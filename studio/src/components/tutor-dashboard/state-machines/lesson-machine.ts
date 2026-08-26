@@ -5,7 +5,7 @@
  * Inspired by Synthesis Tutor's state machine approach.
  */
 
-import { setup, assign, fromPromise, spawn, ActorRefFrom } from 'xstate';
+import { setup, assign, fromPromise, ActorRefFrom } from 'xstate';
 import type { LessonScript, LessonNode, LessonState, InteractionLog } from '../types/lesson-script';
 import { widgetAgentMachine, type WidgetAgentActor } from './widget-agent';
 
