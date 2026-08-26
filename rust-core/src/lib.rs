@@ -3,6 +3,9 @@
 
 use std::fmt;
 
+pub mod agent_runtime;
+pub use agent_runtime::{AgentRuntime, BackendError, RuntimeError, RuntimeResponse, TextBackend};
+
 pub const MAX_MESSAGE_BYTES: usize = 16 * 1024;
 pub const DEFAULT_MAX_EXPERTS: usize = 5;
 pub const MAX_ALLOWED_EXPERTS: usize = 12;
