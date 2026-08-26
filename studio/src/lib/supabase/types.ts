@@ -530,16 +530,48 @@ export interface Database {
         }[];
       };
       get_teacher_students: {
-        Args: { p_teacher_id: string };
-        Returns: Record<string, any>[];
+        Args: { p_teacher_id: string; p_class_name?: string | null };
+        Returns: {
+          student_id: string;
+          student_name: string;
+          student_email: string;
+          grade: string;
+          class_name: string;
+          last_active: string;
+          total_sessions: number;
+          total_messages: number;
+          current_streak: number;
+          competencies_mastered: number;
+          average_mastery_percentage: number;
+        }[];
       };
       get_teacher_alerts: {
-        Args: { p_teacher_id: string; p_status?: string };
-        Returns: Record<string, any>[];
+        Args: { p_teacher_id: string; p_severity?: string | null };
+        Returns: {
+          alert_id: string;
+          student_id: string;
+          student_name: string;
+          alert_type: 'stuck' | 'frustrated' | 'off_topic' | 'struggling' | 'inactive' | 'breakthrough' | 'mastery';
+          severity: 'low' | 'medium' | 'high' | 'critical';
+          title: string;
+          description: string | null;
+          session_id: string | null;
+          competency_code: string | null;
+          created_at: string;
+        }[];
       };
       get_class_summary: {
-        Args: { p_teacher_id: string; p_class_name?: string };
-        Returns: Record<string, any>[];
+        Args: { p_teacher_id: string; p_class_name?: string | null };
+        Returns: {
+          total_students: number;
+          active_today: number;
+          active_this_week: number;
+          average_mastery_percentage: number;
+          total_sessions_today: number;
+          total_messages_today: number;
+          struggling_students: number;
+          excelling_students: number;
+        }[];
       };
       create_student_alert: {
         Args: Record<string, any>;
