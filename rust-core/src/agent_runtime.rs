@@ -722,3 +722,133 @@ mod transport_tests {
         assert!(plan.compression_required);
     }
 }
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ChatRequest {
+    pub request_id: String,
+    pub message: String,
+    pub user_id: String,
+    pub role: crate::Role,
+    pub age_band: crate::AgeBand,
+    pub grade: Option<String>,
+    pub subject: Option<String>,
+    pub language: String,
+    pub connectivity: crate::Connectivity,
+    pub consent: crate::ConsentState,
+    pub vision_goal: crate::Vision2030Goal,
+    pub accessibility: crate::AccessibilityNeeds,
+    pub safety: crate::SafetySignals,
+    pub intent: crate::Intent,
+}
+
+impl ChatRequest {
+    pub fn policy_request(&self) -> Request {
+        Request {
+            request_id: self.request_id.clone(),
+            message: self.message.clone(),
+            role: self.role,
+            age_band: self.age_band,
+            grade: self.grade.clone(),
+            subject: self.subject.clone(),
+            language: self.language.clone(),
+            connectivity: self.connectivity,
+            consent: self.consent,
+            vision_goal: self.vision_goal,
+            accessibility: self.accessibility,
+            safety: self.safety,
+            intent: self.intent,
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ChatResponse {
+    pub success: bool,
+    pub response: String,
+    pub session_id: String,
+    pub primary_agent: String,
+    pub agents_used: Vec<String>,
+    pub fallback_used: bool,
+    pub error: Option<String>,
+}
+
+impl<B> AgentRuntime<B>
+where
+    B: TextBackend,
+{
+    pub fn handle_chat(
+        &mut self,
+        request: &ChatRequest,
+        metta_atom: &str,
+        prompt: &str,
+    ) -> Result<ChatResponse, RuntimeError> {
+        let runtime = self.handle(&request.policy_request(), metta_atom, prompt)?;
+        let decision = &runtime.decision;
+        let fallback_used =
+            !decision.is_actionable() || decision.mode == crate::RoutingMode::OfflineFallback;
+        Ok(ChatResponse {
+            success: decision.is_actionable(),
+            response: runtime.text,
+            session_id: request.request_id.clone(),
+            primary_agent: decision
+                .experts
+                .first()
+                .map(|expert| expert.expert.as_str().to_string())
+                .unwrap_or_else(|| "human-review".to_string()),
+            agents_used: decision
+                .experts
+                .iter()
+                .map(|expert| expert.expert.as_str().to_string())
+                .collect(),
+            fallback_used,
+            error: (!decision.is_actionable()).then(|| decision.public_summary.clone()),
+        })
+    }
+}
+
+#[cfg(test)]
+mod chat_tests {
+    use super::*;
+    use crate::{AgeBand, Connectivity, ConsentState, Intent, Role, SafetySignals, Vision2030Goal};
+
+    #[derive(Default)]
+    struct Backend;
+
+    impl TextBackend for Backend {
+        fn generate(&mut self, prompt: &str) -> Result<String, BackendError> {
+            Ok(format!("reply:{prompt}"))
+        }
+    }
+
+    fn request() -> ChatRequest {
+        ChatRequest {
+            request_id: "chat-1".into(),
+            message: "Explain fractions".into(),
+            user_id: "student-1".into(),
+            role: Role::Student,
+            age_band: AgeBand::Primary,
+            grade: Some("Grade 4".into()),
+            subject: Some("Mathematics".into()),
+            language: "en".into(),
+            connectivity: Connectivity::Online,
+            consent: ConsentState::Granted,
+            vision_goal: Vision2030Goal::InclusiveLearning,
+            accessibility: Default::default(),
+            safety: SafetySignals::default(),
+            intent: Intent::General,
+        }
+    }
+
+    #[test]
+    fn chat_response_matches_existing_frontend_shape() {
+        let mut runtime = AgentRuntime::new(AgentPolicy::default(), Backend);
+        let response = runtime
+            .handle_chat(&request(), "Approved", "Explain fractions")
+            .unwrap();
+        assert!(response.success);
+        assert_eq!(response.session_id, "chat-1");
+        assert!(!response.primary_agent.is_empty());
+        assert!(!response.agents_used.is_empty());
+        assert!(!response.response.is_empty());
+    }
+}
