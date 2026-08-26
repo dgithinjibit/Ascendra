@@ -34,20 +34,19 @@ class OfflineQueue {
   private processing = false;
   private readonly STORAGE_KEY = 'offline-queue';
   private readonly MAX_QUEUE_SIZE = 50;
+  private readonly MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
   constructor() {
     this.loadFromStorage();
 
     if (typeof window !== 'undefined') {
       window.addEventListener('online', () => {
-        console.log('🌐 Connection restored, processing queue...');
         this.processQueue();
       });
 
       window.addEventListener('focus', () => {
         if (navigator.onLine) {
-          console.log('👀 Window focused, checking queued requests...');
-          this.processQueue();
+            this.processQueue();
         }
       });
 
@@ -59,7 +58,6 @@ class OfflineQueue {
 
       window.addEventListener('message', (event) => {
         if (event.data?.type === 'OFFLINE_QUEUE_SYNC' && navigator.onLine) {
-          console.log('📩 Received sync request from service worker');
           this.processQueue();
         }
       });
@@ -107,17 +105,28 @@ class OfflineQueue {
     // Don't queue if we're online and can make the request immediately
     if (typeof navigator !== 'undefined' && navigator.onLine) {
       try {
-        await fetch(url, serializedOptions as RequestInit);
-        return;
-      } catch (error) {
-        console.log('Request failed, adding to queue:', error);
+        const response = await fetch(url, serializedOptions as RequestInit);
+        if (response.ok) return;
+        // Do not retry permanent client errors. Queue only transient failures.
+        if (response.status >= 400 && response.status < 500 && ![408, 429].includes(response.status)) return;
+      } catch {
+        // Network failure: continue to durable queueing below.
       }
     }
 
+    const requestId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     const request: QueuedRequest = {
-      id: crypto.randomUUID(),
+      id: requestId,
       url,
-      options: serializedOptions,
+      options: {
+        ...serializedOptions,
+        headers: {
+          ...(serializedOptions.headers ?? {}),
+          'x-syncsenta-event-id': requestId,
+        },
+      },
       timestamp: Date.now(),
       attempts: 0,
       lastAttemptAt: null,
@@ -135,7 +144,7 @@ class OfflineQueue {
     this.saveToStorage();
     await this.registerBackgroundSync();
 
-    console.log(`📴 Request queued (${this.queue.length} in queue)`);
+    // Deliberately do not log request payloads or learner identifiers.
   }
 
   /**
@@ -145,7 +154,7 @@ class OfflineQueue {
     if (this.processing || this.queue.length === 0) return;
 
     this.processing = true;
-    console.log(`🔄 Processing ${this.queue.length} queued requests...`);
+    // Process one durable, idempotent event at a time.
 
     let successCount = 0;
     let failCount = 0;
@@ -180,13 +189,17 @@ class OfflineQueue {
           this.queue.shift(); // Remove from queue
           successCount++;
           this.saveToStorage();
-        } else {
-          console.error(`Failed to process queued request: ${response.status}`);
+        } else if (response.status >= 400 && response.status < 500 && ![408, 429].includes(response.status)) {
+          // Permanent client/auth errors must not be retried indefinitely.
           request.status = 'failed';
-          // Persist failure status for diagnostics
+          this.queue.shift();
+          failCount++;
+          this.saveToStorage();
+        } else {
+          request.status = 'failed';
           this.saveToStorage();
           failCount++;
-          // stop processing to avoid hammering server
+          // Stop on transient failures to avoid hammering the server.
           break;
         }
       } catch (error) {
@@ -198,12 +211,8 @@ class OfflineQueue {
 
     this.processing = false;
 
-    if (successCount > 0) {
-      console.log(`✅ Processed ${successCount} queued requests`);
-    }
-    if (failCount > 0) {
-      console.log(`❌ Failed to process ${failCount} requests`);
-    }
+    void successCount;
+    void failCount;
   }
 
   /**
@@ -272,7 +281,9 @@ class OfflineQueue {
     if (typeof window === 'undefined') return;
     
     try {
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.queue));
+        const now = Date.now();
+        this.queue = this.queue.filter((request) => now - request.timestamp <= this.MAX_AGE_MS);
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.queue));
     } catch (error) {
       console.error('Failed to save queue to storage:', error);
     }
@@ -280,13 +291,14 @@ class OfflineQueue {
 
   private serializeRequestInit(options: RequestInit): SerializedRequestInit {
     const headers: Record<string, string> = {};
+    const allowedHeader = (key: string) => !['authorization', 'cookie', 'set-cookie', 'x-api-key'].includes(key.toLowerCase());
     if (options.headers instanceof Headers) {
       options.headers.forEach((value, key) => {
-        headers[key] = value;
+        if (allowedHeader(key)) headers[key] = value;
       });
     } else if (options.headers && typeof options.headers === 'object') {
       Object.entries(options.headers).forEach(([key, value]) => {
-        if (typeof value === 'string') {
+        if (typeof value === 'string' && allowedHeader(key)) {
           headers[key] = value;
         }
       });
@@ -365,8 +377,10 @@ class OfflineQueue {
     try {
       const stored = localStorage.getItem(this.STORAGE_KEY);
       if (stored) {
-        this.queue = JSON.parse(stored) as QueuedRequest[];
-        console.log(`📦 Loaded ${this.queue.length} queued requests from storage`);
+        const now = Date.now();
+        const restored = JSON.parse(stored) as QueuedRequest[];
+        this.queue = restored.filter((request) => now - request.timestamp <= this.MAX_AGE_MS);
+        this.queue = this.queue.slice(-this.MAX_QUEUE_SIZE);
       }
     } catch (error) {
       console.error('Failed to load queue from storage:', error);
