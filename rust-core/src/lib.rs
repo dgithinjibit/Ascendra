@@ -7,6 +7,7 @@ pub mod agent_runtime;
 pub mod feedback_review;
 pub mod intelligence_signals;
 pub mod moe_router;
+pub mod observability;
 pub mod specialist_contracts;
 pub use agent_runtime::{
     decide_tutoring, grade_assessment, plan_transport, role_allows, select_tutor_route,
@@ -24,6 +25,7 @@ pub use intelligence_signals::{
     classify_intelligence, IntelligenceSignal, SignalTag, SyncsentaAction,
 };
 pub use moe_router::{plan_specialists, MoePlan, SpecialistContract};
+pub use observability::{ObservabilityError, OperationalEvent, SafeDimension, SafeMetric};
 pub use specialist_contracts::{SpecialistDomain, SpecialistOutput, SpecialistOutputError};
 
 pub const MAX_MESSAGE_BYTES: usize = 16 * 1024;
