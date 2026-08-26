@@ -13,6 +13,11 @@ import { supabase } from '@/lib/supabase/client';
 import type { Database } from '@/lib/supabase/types';
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
+type ProfileInsert = Database['public']['Tables']['profiles']['Insert'];
+type ProfileUpdate = Database['public']['Tables']['profiles']['Update'];
+type ProfileSignup = Omit<ProfileInsert, 'id' | 'role' | 'email'> & {
+  role?: ProfileInsert['role'];
+};
 
 export interface AuthState {
   user: User | null;
@@ -23,11 +28,11 @@ export interface AuthState {
 }
 
 export interface AuthActions {
-  signUp: (email: string, password: string, profile: Partial<Profile>) => Promise<void>;
+  signUp: (email: string, password: string, profile: ProfileSignup) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
-  updateProfile: (updates: Partial<Profile>) => Promise<void>;
+  updateProfile: (updates: ProfileUpdate) => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
 
@@ -88,7 +93,7 @@ export function useAuth(): AuthState & AuthActions {
   const signUp = async (
     email: string,
     password: string,
-    profileData: Partial<Profile>
+    profileData: ProfileSignup
   ) => {
     try {
       setLoading(true);
@@ -104,10 +109,12 @@ export function useAuth(): AuthState & AuthActions {
       if (!data.user) throw new Error('No user returned from sign up');
 
       // Create profile
+      const { role = 'student', ...profileFields } = profileData;
       const { error: profileError } = await supabase.from('profiles').insert({
         id: data.user.id,
         email,
-        ...profileData,
+        role,
+        ...profileFields,
       });
 
       if (profileError) throw profileError;

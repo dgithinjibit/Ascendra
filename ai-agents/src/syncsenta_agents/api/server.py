@@ -56,6 +56,10 @@ class ChatRequest(BaseModel):
     """Student message routed through the Teacher_Agent orchestrator."""
     message: str
     user_id: str = "anonymous"
+    # Optional: the client (student app) may supply the assigned teacher's id.
+    # When absent, the server resolves it from the teacher_students mapping so
+    # AI decisions reach the correct teacher dashboard.
+    teacher_id: Optional[str] = None
     session_id: Optional[str] = None
     grade: Optional[str] = None
     subject: Optional[str] = None
@@ -227,6 +231,58 @@ def _ensure_session(
         return session_id  # Return original session_id to allow chat to continue
 
 
+def _resolve_teacher_id(
+    supabase,
+    student_id: str,
+    client_supplied: Optional[str] = None,
+) -> Optional[str]:
+    """Resolve the teacher who owns a student's AI interactions.
+
+    This is the core of the student→teacher connector: every AI decision must
+    be attributed to a teacher so it surfaces on that teacher's feedback
+    dashboard (which queries ai_decisions WHERE teacher_id = <teacher>).
+
+    Resolution order (fallback strategy):
+      1. client_supplied — trust the student app if it already knows the teacher
+      2. teacher_students mapping — look up the active assignment in Supabase
+      3. None — no teacher could be resolved (e.g. anonymous/demo student)
+
+    Returns the teacher's id, or None when unresolved. Never raises.
+    """
+    # 1. Prefer a client-supplied teacher_id (non-empty, not the student itself).
+    if client_supplied and client_supplied != student_id:
+        return client_supplied
+
+    # 2. Fall back to the teacher_students mapping.
+    if not supabase or not student_id or student_id == "anonymous":
+        return None
+
+    try:
+        resp = (
+            supabase.table("teacher_students")
+            .select("teacher_id")
+            .eq("student_id", student_id)
+            .eq("status", "active")
+            .limit(1)
+            .execute()
+        )
+        if resp.data:
+            teacher_id = resp.data[0].get("teacher_id")
+            if teacher_id:
+                logger.info(
+                    f"Resolved teacher {teacher_id} for student {student_id}"
+                )
+                return teacher_id
+        logger.warning(
+            f"No active teacher mapping found for student {student_id}; "
+            "AI decision will be logged without a teacher owner."
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.error(f"Failed to resolve teacher_id for {student_id}: {exc}")
+
+    return None
+
+
 def _save_message(
     supabase,
     session_id: Optional[str],
@@ -375,11 +431,21 @@ async def agent_chat(req: ChatRequest) -> Dict[str, Any]:
             content=req.message,
         )
         
+        # Resolve which teacher owns this student's AI interactions so the
+        # decision reaches the correct teacher dashboard. Prefer a client-
+        # supplied teacher_id, else look it up from the teacher_students map.
+        teacher_id = _resolve_teacher_id(
+            supabase,
+            student_id=req.user_id,
+            client_supplied=req.teacher_id,
+        )
+
         # Process the request through orchestrator
         orch = await get_orchestrator()
         agent_req = AgentRequest(
             message=req.message,
             user_id=req.user_id,
+            teacher_id=teacher_id,
             session_id=session_id,  # Use the ensured session_id
             grade=req.grade,
             subject=req.subject,

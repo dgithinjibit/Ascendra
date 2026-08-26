@@ -1,0 +1,13 @@
+[package]
+name = "syncsenta-moe-core"
+version = "0.1.0"
+edition = "2021"
+description = "Rust-first Syncsenta main agent with deterministic MoE planning and MeTTa policy contracts"
+license = "MIT"
+
+[lib]
+name = "syncsenta_moe_core"
+path = "src/lib.rs"
+
+[lints.rust]
+unsafe_code = "forbid"

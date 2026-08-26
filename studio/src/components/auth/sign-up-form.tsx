@@ -75,7 +75,6 @@ export function SignUpForm() {
 
     try {
       await signUp(formData.email, formData.password, {
-        email: formData.email,
         full_name: formData.fullName,
         role: formData.role,
         grade: formData.role === 'student' ? formData.grade : null,

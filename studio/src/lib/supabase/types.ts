@@ -13,6 +13,13 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[];
 
+type LegacyTable = {
+  Row: Record<string, any>;
+  Insert: Record<string, any>;
+  Update: Record<string, any>;
+  Relationships: [];
+};
+
 export interface Database {
   public: {
     Tables: {
@@ -27,6 +34,9 @@ export interface Database {
           grade: string | null;
           school_name: string | null;
           student_id: string | null;
+          school_id: string | null;
+          classroom_id: string | null;
+          total_points: number;
           date_of_birth: string | null;
           subjects: string[] | null;
           classes: string[] | null;
@@ -52,6 +62,9 @@ export interface Database {
           grade?: string | null;
           school_name?: string | null;
           student_id?: string | null;
+          school_id?: string | null;
+          classroom_id?: string | null;
+          total_points?: number;
           date_of_birth?: string | null;
           subjects?: string[] | null;
           classes?: string[] | null;
@@ -77,6 +90,9 @@ export interface Database {
           grade?: string | null;
           school_name?: string | null;
           student_id?: string | null;
+          school_id?: string | null;
+          classroom_id?: string | null;
+          total_points?: number;
           date_of_birth?: string | null;
           subjects?: string[] | null;
           classes?: string[] | null;
@@ -92,6 +108,7 @@ export interface Database {
           updated_at?: string;
           last_seen_at?: string;
         };
+        Relationships: [];
       };
       chat_sessions: {
         Row: {
@@ -139,6 +156,7 @@ export interface Database {
           ended_at?: string | null;
           status?: 'active' | 'archived' | 'deleted';
         };
+        Relationships: [];
       };
       chat_messages: {
         Row: {
@@ -186,6 +204,7 @@ export interface Database {
           feedback_comment?: string | null;
           created_at?: string;
         };
+        Relationships: [];
       };
       learning_progress: {
         Row: {
@@ -200,6 +219,7 @@ export interface Database {
           progress_percentage: number;
           questions_asked: number;
           questions_answered: number;
+          practice_count: number;
           correct_answers: number;
           time_spent_minutes: number;
           first_attempted_at: string;
@@ -218,6 +238,7 @@ export interface Database {
           progress_percentage?: number;
           questions_asked?: number;
           questions_answered?: number;
+          practice_count?: number;
           correct_answers?: number;
           time_spent_minutes?: number;
           first_attempted_at?: string;
@@ -236,12 +257,14 @@ export interface Database {
           progress_percentage?: number;
           questions_asked?: number;
           questions_answered?: number;
+          practice_count?: number;
           correct_answers?: number;
           time_spent_minutes?: number;
           first_attempted_at?: string;
           last_practiced_at?: string;
           mastered_at?: string | null;
         };
+        Relationships: [];
       };
       daily_activity: {
         Row: {
@@ -280,6 +303,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       achievements: {
         Row: {
@@ -309,6 +333,7 @@ export interface Database {
           badge_icon?: string | null;
           earned_at?: string;
         };
+        Relationships: [];
       };
       api_usage: {
         Row: {
@@ -350,6 +375,7 @@ export interface Database {
           user_agent?: string | null;
           created_at?: string;
         };
+        Relationships: [];
       };
       daily_quotas: {
         Row: {
@@ -379,6 +405,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       agent_keys: {
         Row: {
@@ -409,8 +436,8 @@ export interface Database {
           public_key?: string | null;
           is_active?: boolean;
           created_at?: string;
-          updated_at?: string;
         };
+        Relationships: [];
       };
       agent_traces: {
         Row: {
@@ -461,7 +488,27 @@ export interface Database {
           metadata?: Json | null;
           created_at?: string;
         };
+        Relationships: [];
       };
+      activity_submissions: LegacyTable;
+      ai_personalization_queue: LegacyTable;
+      ai_recommendations: LegacyTable;
+      batch_submissions: LegacyTable;
+      camera_frames: LegacyTable;
+      "esp32-uploads": LegacyTable;
+      point_transactions: LegacyTable;
+      referrals: LegacyTable;
+      student_alerts: LegacyTable;
+      teacher_feedback: LegacyTable;
+      teacher_grade_assignments: LegacyTable;
+      teacher_interventions: LegacyTable;
+      teacher_notifications: LegacyTable;
+      teacher_student_assignments: LegacyTable;
+      teacher_students: LegacyTable;
+      teacher_subject_assignments: LegacyTable;
+      voice_conversations: LegacyTable;
+      voice_messages: LegacyTable;
+      vision_submissions: LegacyTable;
     };
     Views: {
       [_ in never]: never;
@@ -485,6 +532,54 @@ export interface Database {
           competencies_mastered: number;
           achievements_earned: number;
         }[];
+      };
+      get_teacher_students: {
+        Args: { p_teacher_id: string; p_class_name?: string | null };
+        Returns: {
+          student_id: string;
+          student_name: string;
+          student_email: string;
+          grade: string;
+          class_name: string;
+          last_active: string;
+          total_sessions: number;
+          total_messages: number;
+          current_streak: number;
+          competencies_mastered: number;
+          average_mastery_percentage: number;
+        }[];
+      };
+      get_teacher_alerts: {
+        Args: { p_teacher_id: string; p_severity?: string | null };
+        Returns: {
+          alert_id: string;
+          student_id: string;
+          student_name: string;
+          alert_type: 'stuck' | 'frustrated' | 'off_topic' | 'struggling' | 'inactive' | 'breakthrough' | 'mastery';
+          severity: 'low' | 'medium' | 'high' | 'critical';
+          title: string;
+          description: string | null;
+          session_id: string | null;
+          competency_code: string | null;
+          created_at: string;
+        }[];
+      };
+      get_class_summary: {
+        Args: { p_teacher_id: string; p_class_name?: string | null };
+        Returns: {
+          total_students: number;
+          active_today: number;
+          active_this_week: number;
+          average_mastery_percentage: number;
+          total_sessions_today: number;
+          total_messages_today: number;
+          struggling_students: number;
+          excelling_students: number;
+        }[];
+      };
+      create_student_alert: {
+        Args: Record<string, any>;
+        Returns: string;
       };
     };
     Enums: {

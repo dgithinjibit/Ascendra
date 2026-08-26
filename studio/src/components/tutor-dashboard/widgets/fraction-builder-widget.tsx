@@ -208,7 +208,7 @@ export function FractionBuilderWidget({
                 x: [-3, 3],
                 y: [-3, 3],
               }}
-              preserveAspectRatio
+              preserveAspectRatio="contain"
             >
               {shape === 'circle' ? renderCircleFraction() : renderRectangleFraction()}
 

@@ -9,6 +9,7 @@ import {
   getLearningPath,
   calculatePathProgress,
   type LearningPath,
+  type LearningCheckpoint,
 } from '@/lib/learning-paths';
 import { getLearningProgress } from '@/lib/progress-tracking';
 
@@ -28,11 +29,16 @@ export function LearningPathProgress({
   const [path, setPath] = useState<LearningPath | null>(null);
   const [masteredCompetencies, setMasteredCompetencies] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
-  const [progress, setProgress] = useState({
+  const [progress, setProgress] = useState<{
+    totalCheckpoints: number;
+    completedCheckpoints: number;
+    percentComplete: number;
+    currentCheckpoint: LearningCheckpoint | undefined;
+  }>({
     totalCheckpoints: 0,
     completedCheckpoints: 0,
     percentComplete: 0,
-    currentCheckpoint: null,
+    currentCheckpoint: undefined,
   });
 
   useEffect(() => {
@@ -42,7 +48,7 @@ export function LearningPathProgress({
 
         // Get the learning path for this subject/grade
         const learningPath = getLearningPath(subject, grade);
-        setPath(learningPath);
+        setPath(learningPath ?? null);
 
         if (!learningPath) {
           setLoading(false);

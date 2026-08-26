@@ -286,7 +286,7 @@ export default function DrawingCanvas({
     if (!canvas) return;
 
     const imageData = canvas.toDataURL('image/png');
-    onSubmit(imageData);
+    onSubmit?.(imageData);
   };
 
   // Download drawing
