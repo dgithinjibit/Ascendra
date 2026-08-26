@@ -81,6 +81,7 @@ function TutorDashboardContent() {
 
   // Load progress from localStorage
   const getProgress = (lessonId: string) => {
+    if (typeof window === 'undefined') return null;
     try {
       const studentId = getStudentId();
       const saved = localStorage.getItem(`lesson-progress-${studentId}-${lessonId}`);
