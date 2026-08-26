@@ -382,3 +382,98 @@ mod metta_adapter_tests {
         assert!(matches!(decision.metta_verdict, MettaVerdict::Review(_)));
     }
 }
+
+use std::collections::HashMap;
+
+/// Small bounded response cache for metered and offline operation.
+///
+/// The cache is deliberately scoped to the backend boundary. It does not
+/// cache safety decisions or learner identifiers, and callers can create one
+/// per subject/session policy as needed.
+pub struct CachedBackend<B> {
+    backend: B,
+    entries: HashMap<String, String>,
+    capacity: usize,
+}
+
+impl<B> CachedBackend<B> {
+    pub fn new(backend: B, capacity: usize) -> Self {
+        Self {
+            backend,
+            entries: HashMap::new(),
+            capacity: capacity.max(1),
+        }
+    }
+
+    pub fn cached_len(&self) -> usize {
+        self.entries.len()
+    }
+}
+
+impl<B> TextBackend for CachedBackend<B>
+where
+    B: TextBackend,
+{
+    fn generate(&mut self, prompt: &str) -> Result<String, BackendError> {
+        if let Some(response) = self.entries.get(prompt) {
+            return Ok(response.clone());
+        }
+
+        let response = self.backend.generate(prompt)?;
+        if self.entries.len() >= self.capacity {
+            if let Some(oldest_key) = self.entries.keys().next().cloned() {
+                self.entries.remove(&oldest_key);
+            }
+        }
+        self.entries.insert(prompt.to_string(), response.clone());
+        Ok(response)
+    }
+}
+
+#[derive(Default)]
+pub struct OfflineTutorBackend;
+
+impl TextBackend for OfflineTutorBackend {
+    fn generate(&mut self, prompt: &str) -> Result<String, BackendError> {
+        let lower = prompt.to_ascii_lowercase();
+        let response = if lower.contains("fraction") || lower.contains("half") {
+            "A fraction shows part of a whole. What equal parts can you draw?"
+        } else {
+            "Let us solve this step by step. What do you already notice?"
+        };
+        Ok(response.to_string())
+    }
+}
+
+#[cfg(test)]
+mod backend_tests {
+    use super::*;
+
+    struct CountingBackend {
+        calls: usize,
+    }
+
+    impl TextBackend for CountingBackend {
+        fn generate(&mut self, prompt: &str) -> Result<String, BackendError> {
+            self.calls += 1;
+            Ok(format!("{}:{}", self.calls, prompt))
+        }
+    }
+
+    #[test]
+    fn cache_prevents_duplicate_provider_calls() {
+        let mut backend = CachedBackend::new(CountingBackend { calls: 0 }, 2);
+        assert_eq!(backend.generate("fractions").unwrap(), "1:fractions");
+        assert_eq!(backend.generate("fractions").unwrap(), "1:fractions");
+        assert_eq!(backend.cached_len(), 1);
+    }
+
+    #[test]
+    fn offline_backend_is_deterministic() {
+        let mut backend = OfflineTutorBackend;
+        let first = backend.generate("Explain fractions").unwrap();
+        let second = backend.generate("Explain fractions").unwrap();
+        assert_eq!(first, second);
+        assert!(first.contains("fraction"));
+    }
+}
