@@ -6,11 +6,12 @@ use std::fmt;
 pub mod agent_runtime;
 pub mod intelligence_signals;
 pub use agent_runtime::{
-    decide_tutoring, grade_assessment, plan_transport, role_allows, AgentRuntime, AssessmentAnswer,
-    AssessmentQuestion, AssessmentScore, BackendError, CachedBackend, ChatRequest, ChatResponse,
-    ContractVerdictEvaluator, LearningState, MediaKind, MettaAdapter, MettaEvaluator,
-    OfflineTutorBackend, RuntimeError, RuntimeResponse, ScaffoldingLevel, TextBackend,
-    TransportPlan, TutoringDecision, TutoringResponse, WorkflowCapability,
+    decide_tutoring, grade_assessment, plan_transport, role_allows, select_tutor_route,
+    AgentRuntime, AssessmentAnswer, AssessmentQuestion, AssessmentScore, BackendError,
+    CachedBackend, ChatRequest, ChatResponse, ContractVerdictEvaluator, LatencyBudget,
+    LearningState, MediaKind, MettaAdapter, MettaEvaluator, OfflineTutorBackend, RuntimeError,
+    RuntimeResponse, ScaffoldingLevel, TextBackend, TransportPlan, TutorRoute, TutoringDecision,
+    TutoringResponse, WorkflowCapability,
 };
 pub use intelligence_signals::{
     classify_intelligence, IntelligenceSignal, SignalTag, SyncsentaAction,

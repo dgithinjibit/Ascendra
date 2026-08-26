@@ -445,6 +445,112 @@ impl TextBackend for OfflineTutorBackend {
     }
 }
 
+/// The route selected before any provider call. `Offline` is deterministic and
+/// safe for disconnected or metered learners; `Cache` avoids unnecessary tail
+/// latency; `Remote` is used only when connectivity and the latency budget allow.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TutorRoute {
+    Cache,
+    Offline,
+    Remote,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct LatencyBudget {
+    pub max_remote_ms: u32,
+}
+
+impl Default for LatencyBudget {
+    fn default() -> Self {
+        Self {
+            max_remote_ms: 1_500,
+        }
+    }
+}
+
+impl LatencyBudget {
+    pub fn new(max_remote_ms: u32) -> Self {
+        Self { max_remote_ms }
+    }
+}
+
+/// Selects a low-latency tutoring route without making a network request.
+/// Unknown connectivity fails closed to the offline route. A cache hit always
+/// wins when remote inference would exceed the caller's budget.
+pub fn select_tutor_route(
+    connectivity: crate::Connectivity,
+    cache_available: bool,
+    estimated_remote_ms: Option<u32>,
+    budget: LatencyBudget,
+) -> TutorRoute {
+    match connectivity {
+        crate::Connectivity::Offline | crate::Connectivity::Unknown => TutorRoute::Offline,
+        crate::Connectivity::Metered => {
+            if cache_available {
+                TutorRoute::Cache
+            } else {
+                TutorRoute::Offline
+            }
+        }
+        crate::Connectivity::Online => {
+            if cache_available && estimated_remote_ms.unwrap_or(u32::MAX) > budget.max_remote_ms {
+                TutorRoute::Cache
+            } else {
+                TutorRoute::Remote
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod routing_tests {
+    use super::*;
+    use crate::Connectivity;
+
+    #[test]
+    fn offline_and_unknown_connectivity_never_route_to_remote() {
+        let budget = LatencyBudget::default();
+        assert_eq!(
+            select_tutor_route(Connectivity::Offline, true, Some(1), budget),
+            TutorRoute::Offline
+        );
+        assert_eq!(
+            select_tutor_route(Connectivity::Unknown, false, Some(1), budget),
+            TutorRoute::Offline
+        );
+    }
+
+    #[test]
+    fn metered_connectivity_uses_cache_or_offline_fallback() {
+        let budget = LatencyBudget::default();
+        assert_eq!(
+            select_tutor_route(Connectivity::Metered, true, Some(1), budget),
+            TutorRoute::Cache
+        );
+        assert_eq!(
+            select_tutor_route(Connectivity::Metered, false, Some(1), budget),
+            TutorRoute::Offline
+        );
+    }
+
+    #[test]
+    fn online_route_respects_tail_latency_budget() {
+        let budget = LatencyBudget::new(800);
+        assert_eq!(
+            select_tutor_route(Connectivity::Online, true, Some(1_200), budget),
+            TutorRoute::Cache
+        );
+        assert_eq!(
+            select_tutor_route(Connectivity::Online, true, Some(700), budget),
+            TutorRoute::Remote
+        );
+        assert_eq!(
+            select_tutor_route(Connectivity::Online, false, None, budget),
+            TutorRoute::Remote
+        );
+    }
+}
+
 #[cfg(test)]
 mod backend_tests {
     use super::*;
