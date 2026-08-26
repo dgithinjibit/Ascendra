@@ -80,6 +80,7 @@
   },
   "overrides": {
     "postcss": "$postcss",
-    "tmp": "^0.2.6"
+    "tmp": "^0.2.6",
+    "nanoid": "^5.1.16"
   }
 }
