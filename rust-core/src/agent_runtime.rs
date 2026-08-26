@@ -477,3 +477,116 @@ mod backend_tests {
         assert!(first.contains("fraction"));
     }
 }
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AssessmentQuestion {
+    pub id: String,
+    pub correct_answer: String,
+    pub points: u16,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AssessmentAnswer {
+    pub question_id: String,
+    pub answer: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AssessmentScore {
+    pub earned_points: u16,
+    pub possible_points: u16,
+    pub percentage: u8,
+    pub performance_band: &'static str,
+}
+
+fn normalized_answer(value: &str) -> String {
+    value
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .to_ascii_lowercase()
+}
+
+/// Deterministic first-pass grading. Rich short-answer rubric evaluation can
+/// be added behind TextBackend later, while objective questions remain local,
+/// fast, and available offline.
+pub fn grade_assessment(
+    questions: &[AssessmentQuestion],
+    answers: &[AssessmentAnswer],
+) -> AssessmentScore {
+    let possible_points = questions.iter().map(|question| question.points).sum();
+    let earned_points = questions
+        .iter()
+        .filter_map(|question| {
+            let answer = answers
+                .iter()
+                .find(|answer| answer.question_id == question.id)?;
+            (normalized_answer(&answer.answer) == normalized_answer(&question.correct_answer))
+                .then_some(question.points)
+        })
+        .sum();
+    let percentage = if possible_points == 0 {
+        0
+    } else {
+        ((earned_points as u32 * 100) / possible_points as u32) as u8
+    };
+    let performance_band = match percentage {
+        80..=100 => "exceeding",
+        65..=79 => "meeting",
+        50..=64 => "approaching",
+        _ => "below",
+    };
+    AssessmentScore {
+        earned_points,
+        possible_points,
+        percentage,
+        performance_band,
+    }
+}
+
+#[cfg(test)]
+mod assessment_tests {
+    use super::*;
+
+    #[test]
+    fn objective_grading_is_local_and_deterministic() {
+        let questions = vec![
+            AssessmentQuestion {
+                id: "q1".into(),
+                correct_answer: "Nairobi".into(),
+                points: 1,
+            },
+            AssessmentQuestion {
+                id: "q2".into(),
+                correct_answer: "1/2".into(),
+                points: 2,
+            },
+        ];
+        let answers = vec![
+            AssessmentAnswer {
+                question_id: "q1".into(),
+                answer: " nairobi ".into(),
+            },
+            AssessmentAnswer {
+                question_id: "q2".into(),
+                answer: "1/4".into(),
+            },
+        ];
+        assert_eq!(
+            grade_assessment(&questions, &answers),
+            AssessmentScore {
+                earned_points: 1,
+                possible_points: 3,
+                percentage: 33,
+                performance_band: "below",
+            }
+        );
+    }
+
+    #[test]
+    fn empty_assessment_fails_safe_without_division() {
+        let score = grade_assessment(&[], &[]);
+        assert_eq!(score.percentage, 0);
+        assert_eq!(score.performance_band, "below");
+    }
+}
