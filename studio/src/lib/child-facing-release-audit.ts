@@ -21,6 +21,16 @@ export interface ChildFacingReleaseAudit {
   auditDigest: string
 }
 
+function digestAudit(unsigned: Omit<ChildFacingReleaseAudit, 'auditDigest'>): string {
+  return createHash('sha256').update(JSON.stringify(unsigned)).digest('hex')
+}
+
+export function verifyChildFacingReleaseAudit(audit: ChildFacingReleaseAudit): boolean {
+  if (audit.schemaVersion !== 'syncsenta.child-facing-release-audit.v1') return false
+  const { auditDigest, ...unsigned } = audit
+  return /^[a-f0-9]{64}$/.test(auditDigest) && digestAudit(unsigned) === auditDigest
+}
+
 export function createChildFacingReleaseAudit(
   decision: ChildFacingReleaseDecision,
   bundle: ApprovalEvidenceBundle,
@@ -43,6 +53,6 @@ export function createChildFacingReleaseAudit(
     blockingGateCount: decision.blockingGates.length,
     blockingRoleCount: decision.blockingRoles.length,
   }
-  const auditDigest = createHash('sha256').update(JSON.stringify(unsigned)).digest('hex')
+  const auditDigest = digestAudit(unsigned)
   return { ...unsigned, auditDigest }
 }
