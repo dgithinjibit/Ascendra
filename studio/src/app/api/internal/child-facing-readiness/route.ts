@@ -25,6 +25,28 @@ function isAuthorized(request: Request): boolean {
   return Boolean(expected && provided && provided === expected)
 }
 
+export async function GET(request: Request) {
+  if (!isAuthorized(request)) {
+    return NextResponse.json({ error: 'release_check_unauthorized' }, { status: 401, headers: { 'Cache-Control': 'no-store' } })
+  }
+  const safeConfiguration = isChildFacingProductionConfigurationSafe({
+    nodeEnv: process.env.NODE_ENV,
+    syntheticData: process.env.SYNC_SENTA_ALLOW_SYNTHETIC_DATA === 'true',
+    mockAuth: process.env.SYNC_SENTA_USE_MOCK_AUTH === 'true' || process.env.REQUIRE_MOCK_AUTH === 'true',
+    biometricProcessing: process.env.SYNC_SENTA_ENABLE_BIOMETRIC_PROCESSING === 'true',
+  })
+  if (!safeConfiguration) {
+    return NextResponse.json({ error: 'production_configuration_blocked' }, { status: 503, headers: { 'Cache-Control': 'no-store' } })
+  }
+  return NextResponse.json({
+    status: 'blocked',
+    reason: 'evidence_not_submitted',
+    requiredGates: CHILD_FACING_GATES,
+    requiredRoles: ['student', 'teacher', 'head', 'parent'],
+    evidenceSource: 'operator-submitted-release-evidence',
+  }, { status: 200, headers: { 'Cache-Control': 'no-store' } })
+}
+
 export async function POST(request: Request) {
   if (!isAuthorized(request)) {
     return NextResponse.json({ error: 'release_check_unauthorized' }, { status: 401, headers: { 'Cache-Control': 'no-store' } })

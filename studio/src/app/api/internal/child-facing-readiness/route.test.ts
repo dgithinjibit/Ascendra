@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { CHILD_FACING_GATES } from '@/lib/child-facing-readiness'
-import { POST } from './route'
+import { GET, POST } from './route'
 
 const allPassing = Object.fromEntries(CHILD_FACING_GATES.map((gate) => [gate, 'pass']))
 const roles = { student: 'pass', teacher: 'pass', head: 'pass', parent: 'pass' }
@@ -12,6 +12,17 @@ const request = (body: unknown, headers: Record<string, string> = {}) => new Req
 })
 
 describe('internal child-facing readiness route', () => {
+  it('returns a redacted blocked-by-default operator report', async () => {
+    const response = await GET(new Request('http://localhost/api/internal/child-facing-readiness'))
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body).toMatchObject({ status: 'blocked', reason: 'evidence_not_submitted' })
+    expect(body.requiredGates).toHaveLength(10)
+    expect(body.requiredRoles).toEqual(['student', 'teacher', 'head', 'parent'])
+    expect(body).not.toHaveProperty('learnerId')
+    expect(body).not.toHaveProperty('secret')
+  })
+
   it('returns approved only for complete passing evidence', async () => {
     const response = await POST(request({ gates: allPassing, roles }))
     expect(response.status).toBe(200)
