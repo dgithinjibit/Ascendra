@@ -542,6 +542,12 @@ export interface Database {
         Update: { id?: string; teacher_id?: string; student_id?: string; class_name?: string; attendance_date?: string; status?: 'present' | 'absent' | 'late' | 'excused'; note?: string | null; created_at?: string; updated_at?: string };
         Relationships: [];
       };
+      wellbeing_checkins: {
+        Row: { id: string; student_id: string; consent_version: string; consented_at: string; state: 'ready' | 'unsure' | 'tired' | 'upset' | 'needs_help' | 'prefer_not_to_say'; note: string | null; support_requested: boolean; visibility: 'student_only' | 'teacher' | 'teacher_and_parent' | 'safeguarding_team'; created_at: string };
+        Insert: { id?: string; student_id: string; consent_version: string; consented_at?: string; state: 'ready' | 'unsure' | 'tired' | 'upset' | 'needs_help' | 'prefer_not_to_say'; note?: string | null; support_requested?: boolean; visibility?: 'student_only' | 'teacher' | 'teacher_and_parent' | 'safeguarding_team'; created_at?: string };
+        Update: { id?: string; student_id?: string; consent_version?: string; consented_at?: string; state?: 'ready' | 'unsure' | 'tired' | 'upset' | 'needs_help' | 'prefer_not_to_say'; note?: string | null; support_requested?: boolean; visibility?: 'student_only' | 'teacher' | 'teacher_and_parent' | 'safeguarding_team'; created_at?: string };
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;

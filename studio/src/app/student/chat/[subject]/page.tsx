@@ -27,6 +27,7 @@ import { LearningPathProgress } from '@/components/student/learning-path-progres
 import { getStudentId } from '@/lib/auth/student-id';
 import { tutorLabelFor } from '@/lib/grade-greetings';
 import { Card } from '@/components/ui/card';
+import { WellbeingCheckIn } from '@/components/student/wellbeing-checkin';
 
 const STORAGE_GRADE = 'learningJourney.grade';
 const DEFAULT_GRADE = 'Grade 4';
@@ -90,10 +91,11 @@ function StudentChatContent({ params }: PageProps) {
       <main className="flex-1 container mx-auto px-4 py-6 max-w-6xl flex flex-col gap-4">
         <div className="flex items-center justify-between gap-4 flex-col md:flex-row">
           <div>
-            <h1 className="text-2xl font-bold">mwalimu_ai · {subject}</h1>
+            <h1 className="text-2xl font-bold">Mwalimu AI · {subject}</h1>
             <p className="text-sm text-muted-foreground">
-              {grade} · {tutorLabelFor(grade)}
+              Your CBC learning guide · {grade} · {tutorLabelFor(grade)}
             </p>
+            <p className="text-xs text-muted-foreground mt-1">It uses your selected grade, subject, language, and learning progress to choose the next helpful step.</p>
           </div>
           <ChatModeSelector
             currentMode={chatMode}
@@ -120,6 +122,7 @@ function StudentChatContent({ params }: PageProps) {
           </div>
 
           <aside className="space-y-4">
+            <WellbeingCheckIn />
             {/* Learning Path Progress */}
             <LearningPathProgress
               subject={subject}

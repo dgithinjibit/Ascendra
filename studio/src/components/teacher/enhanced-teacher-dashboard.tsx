@@ -33,18 +33,18 @@ export function EnhancedTeacherDashboard() {
           <div className="flex items-center gap-3">
             <Sparkles className="h-8 w-8 text-primary" />
             <div>
-              <h1 className="text-4xl font-bold">SyncSenta Teacher Studio</h1>
+              <h1 className="text-4xl font-bold">Your teaching workspace</h1>
               <p className="text-muted-foreground">
-                AI-Powered Teaching Assistant for Kenyan CBC Curriculum
+                Plan lessons, assess learning, and support each learner with Kenyan CBC guidance.
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Badge variant="outline" className="gap-1">
+              <Badge variant="outline" className="gap-1">
               <GraduationCap className="h-3 w-3" />
-              Grade 4 Mathematics
+              CBC teaching tools
             </Badge>
-            <Badge variant="secondary">Term 2, Week 5</Badge>
+            <Badge variant="secondary">Choose a class to begin</Badge>
           </div>
         </div>
       </div>

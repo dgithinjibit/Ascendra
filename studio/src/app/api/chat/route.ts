@@ -19,6 +19,7 @@ import { z } from 'zod';
 import {
   buildSocraticSystemPrompt,
   buildCompassSystemPrompt,
+  type LearnerLearningContext,
 } from '@/lib/socratic-prompts';
 import { checkChatRateLimit } from '@/lib/rate-limit-upstash';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
@@ -66,6 +67,30 @@ function sseError(message: string, detail?: string): string {
   return `data: ${JSON.stringify(payload)}\n\n`;
 }
 
+function cbcStageForGrade(grade: string): string {
+  const normalized = grade.toLowerCase();
+  if (/grade\s?[1-3]|g[1-3]|pp[1-2]|pre-primary/.test(normalized)) return 'Early Years / Lower Primary foundation';
+  if (/grade\s?[4-6]|g[4-6]/.test(normalized)) return 'Upper Primary';
+  if (/grade\s?[7-9]|g[7-9]/.test(normalized)) return 'Junior Secondary';
+  return 'CBC stage to be confirmed';
+}
+
+function ageBandFromDateOfBirth(dateOfBirth: string | null | undefined): string | undefined {
+  if (!dateOfBirth) return undefined;
+  const birth = new Date(dateOfBirth);
+  if (Number.isNaN(birth.getTime())) return undefined;
+  const now = new Date();
+  let age = now.getUTCFullYear() - birth.getUTCFullYear();
+  const month = now.getUTCMonth() - birth.getUTCMonth();
+  if (month < 0 || (month === 0 && now.getUTCDate() < birth.getUTCDate())) age -= 1;
+  if (age <= 5) return '5 and under';
+  if (age <= 8) return '6–8';
+  if (age <= 11) return '9–11';
+  if (age <= 14) return '12–14';
+  if (age <= 17) return '15–17';
+  return '18+';
+}
+
 // ──────────────────────────────────────────────────────────────────────────
 // Handler
 // ──────────────────────────────────────────────────────────────────────────
@@ -99,10 +124,10 @@ export async function POST(req: NextRequest) {
   const profile = authenticatedUser
     ? (await supabase
         .from('profiles')
-        .select('subscription_tier, grade, full_name')
+        .select('subscription_tier, grade, full_name, date_of_birth, language_preference')
         .eq('id', authenticatedUser.id)
         .single()).data
-    : { subscription_tier: 'free', grade: null, full_name: 'Development learner' };
+    : { subscription_tier: 'free', grade: null, full_name: 'Development learner', date_of_birth: null, language_preference: 'mixed' as const };
 
   if (!profile) {
     return Response.json(
@@ -151,6 +176,32 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     const detail = err instanceof Error ? err.message : 'Invalid JSON';
     return Response.json({ error: 'Invalid request body', detail }, { status: 400 });
+  }
+
+  const verifiedGrade = profile.grade || body.grade;
+  const learnerContext: LearnerLearningContext = {
+    ageBand: ageBandFromDateOfBirth(profile.date_of_birth),
+    cbcStage: cbcStageForGrade(verifiedGrade),
+  };
+
+  if (authenticatedUser) {
+    const { data: masteryRows } = await supabase
+      .from('learning_progress')
+      .select('competency_name, mastery_level, progress_percentage, last_practiced_at')
+      .eq('user_id', authenticatedUser.id)
+      .eq('subject', body.subject)
+      .eq('grade', verifiedGrade)
+      .order('last_practiced_at', { ascending: false })
+      .limit(5);
+    const current = body.competencyCode
+      ? masteryRows?.find((row) => row.competency_name === body.competencyCode)
+      : masteryRows?.[0];
+    if (current) {
+      learnerContext.currentCompetency = current.competency_name;
+      learnerContext.masteryLevel = current.mastery_level;
+      learnerContext.progressPercentage = current.progress_percentage;
+      learnerContext.recentPractice = current.last_practiced_at;
+    }
   }
 
   if (body.mode === 'compass' && !body.teacherContext) {
@@ -213,12 +264,14 @@ export async function POST(req: NextRequest) {
           teacherContext: body.teacherContext!,
           language: body.language,
           studentName: body.studentName || profile.full_name || undefined,
+          learnerContext,
         })
       : buildSocraticSystemPrompt({
-          grade: body.grade,
+          grade: verifiedGrade,
           subject: body.subject,
-          language: body.language,
+          language: body.language === 'mixed' && profile.language_preference ? profile.language_preference : body.language,
           studentName: body.studentName || profile.full_name || undefined,
+          learnerContext,
         });
 
   // Cap history

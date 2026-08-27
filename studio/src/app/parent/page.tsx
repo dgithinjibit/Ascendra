@@ -24,7 +24,7 @@ export default function ParentDashboardPage() {
           </h1>
           <p className="max-w-2xl text-muted-foreground">
             This dashboard is the connection point for a learner’s progress,
-            teacher communication, wellbeing signals, and consent settings.
+            teacher communication, voluntary wellbeing check-ins, and consent settings.
             Learner information appears only after a verified relationship is
             connected.
           </p>
@@ -51,7 +51,7 @@ export default function ParentDashboardPage() {
             <CardHeader>
               <HeartHandshake className="mb-2 h-5 w-5 text-primary" />
               <CardTitle className="text-base">Wellbeing support</CardTitle>
-              <CardDescription>Supportive check-ins with human escalation when needed.</CardDescription>
+              <CardDescription>Voluntary learner check-ins with human support when needed.</CardDescription>
             </CardHeader>
             <CardContent><Badge variant="outline">Not yet connected</Badge></CardContent>
           </Card>
@@ -59,7 +59,7 @@ export default function ParentDashboardPage() {
             <CardHeader>
               <ShieldCheck className="mb-2 h-5 w-5 text-primary" />
               <CardTitle className="text-base">Privacy and consent</CardTitle>
-              <CardDescription>Control who can view and support learner information.</CardDescription>
+              <CardDescription>Choose who can view and support information the learner shares.</CardDescription>
             </CardHeader>
             <CardContent><Badge variant="outline">Review settings</Badge></CardContent>
           </Card>

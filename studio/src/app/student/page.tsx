@@ -137,10 +137,10 @@ export default function StudentDashboardPage() {
     }
 
     // Load personalized learning data
-    loadPersonalizedData();
+    loadPersonalizedLearningData();
   }, [router]);
 
-  const loadPersonalizedData = async () => {
+  const loadPersonalizedLearningData = async () => {
     try {
       setIsLoading(true);
       
@@ -270,14 +270,26 @@ export default function StudentDashboardPage() {
             <div className="flex items-center gap-2">
               <Badge variant="outline" className="gap-1 border-teal-200 text-teal-800">
                 <Brain className="h-3 w-3" />
-                mwalimu_ai Active
+                Mwalimu AI ready
               </Badge>
               <Badge variant="outline" className="gap-1 border-teal-200 text-teal-800">
                 <Clock className="h-3 w-3" />
-                Personalized
+                Based on your progress
               </Badge>
             </div>
           </div>
+
+          <section className="overflow-hidden rounded-2xl border border-teal-100 bg-gradient-to-r from-teal-50 via-white to-amber-50 p-4 md:p-6" aria-label="Your learning guide">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="max-w-2xl">
+                <p className="text-xs font-semibold uppercase tracking-wide text-teal-700">Your next step</p>
+                <h2 className="mt-1 text-xl md:text-2xl font-bold">Ask Mwalimu AI, practise a strand, or check in privately.</h2>
+                <p className="mt-2 text-sm text-slate-600">Your guide uses your selected grade, subject, language, and learning progress. You choose what wellbeing information to share.</p>
+                <div className="mt-4 flex flex-wrap gap-2"><Button onClick={() => goToChat(learningProgress[0]?.subject || 'Mathematics')} className="gap-2"><Brain className="h-4 w-4" />Start learning</Button><Button variant="outline" onClick={() => setActiveTab('competency')} className="gap-2"><Map className="h-4 w-4" />View learning map</Button></div>
+              </div>
+              <img src="/images/learning-catalog/ai.png" alt="Illustration for Mwalimu AI learning support" className="h-28 w-28 object-contain self-center md:h-36 md:w-36" />
+            </div>
+          </section>
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card className={DASHBOARD_CARD_CLASS}>
@@ -368,7 +380,7 @@ export default function StudentDashboardPage() {
             <div className="grid gap-6 lg:grid-cols-3">
               <Card className={`${DASHBOARD_CARD_CLASS} lg:col-span-2`}>
               <CardHeader>
-                <CardTitle>Personalized Learning Path</CardTitle>
+                <CardTitle>Your personalized learning path</CardTitle>
                 <CardDescription>AI-adapted curriculum based on your progress and interests</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
