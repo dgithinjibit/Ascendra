@@ -548,6 +548,33 @@ export interface Database {
         Update: { id?: string; student_id?: string; consent_version?: string; consented_at?: string; state?: 'ready' | 'unsure' | 'tired' | 'upset' | 'needs_help' | 'prefer_not_to_say'; note?: string | null; support_requested?: boolean; visibility?: 'student_only' | 'teacher' | 'teacher_and_parent' | 'safeguarding_team'; created_at?: string };
         Relationships: [];
       };
+      sandbox_artifacts: {
+        Row: {
+          id: string; requester_id: string; student_profile_id: string | null;
+          artifact_type: 'image' | 'video' | 'presentation'; prompt: string; grade: string;
+          subject: string; competency: string | null; consent_version: string; consent_verified: boolean;
+          moderation_status: 'pending' | 'approved' | 'rejected'; status: 'queued' | 'processing' | 'ready' | 'failed' | 'cancelled';
+          provider: string; storage_path: string | null; error_code: string | null;
+          cancel_requested_at: string | null; expires_at: string; created_at: string; updated_at: string;
+        };
+        Insert: {
+          id?: string; requester_id: string; student_profile_id?: string | null;
+          artifact_type: 'image' | 'video' | 'presentation'; prompt: string; grade: string;
+          subject: string; competency?: string | null; consent_version: string; consent_verified?: boolean;
+          moderation_status?: 'pending' | 'approved' | 'rejected'; status?: 'queued' | 'processing' | 'ready' | 'failed' | 'cancelled';
+          provider?: string; storage_path?: string | null; error_code?: string | null;
+          cancel_requested_at?: string | null; expires_at?: string; created_at?: string; updated_at?: string;
+        };
+        Update: {
+          id?: string; requester_id?: string; student_profile_id?: string | null;
+          artifact_type?: 'image' | 'video' | 'presentation'; prompt?: string; grade?: string;
+          subject?: string; competency?: string | null; consent_version?: string; consent_verified?: boolean;
+          moderation_status?: 'pending' | 'approved' | 'rejected'; status?: 'queued' | 'processing' | 'ready' | 'failed' | 'cancelled';
+          provider?: string; storage_path?: string | null; error_code?: string | null;
+          cancel_requested_at?: string | null; expires_at?: string; created_at?: string; updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;
