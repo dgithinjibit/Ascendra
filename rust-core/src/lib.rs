@@ -3,6 +3,7 @@
 
 use std::fmt;
 
+pub mod adaptive_question;
 pub mod agent_runtime;
 pub mod attendance;
 pub mod feedback_review;
@@ -16,6 +17,10 @@ pub mod parent_report;
 pub mod specialist_contracts;
 pub mod supabase_notifications;
 pub mod teacher_adaptation;
+pub use adaptive_question::{
+    choose_next_question, AdaptiveQuestionDecision, AdaptiveQuestionError, AdaptiveQuestionRequest,
+    NextQuestionAction,
+};
 pub use agent_runtime::{
     decide_tutoring, grade_assessment, plan_transport, role_allows, select_tutor_route,
     AgentRuntime, AssessmentAnswer, AssessmentQuestion, AssessmentScore, BackendError,
