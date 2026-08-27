@@ -83,12 +83,24 @@ pub fn evaluate_evidence(evidence: &HolisticEvidence) -> HolisticEvaluation {
     }
 
     let next_step = match evidence.domain {
-        DevelopmentDomain::Learning => Some("Offer one scaffolded practice task and invite learner reflection."),
-        DevelopmentDomain::Communication => Some("Invite the learner to explain their reasoning in their preferred class language."),
-        DevelopmentDomain::Collaboration => Some("Offer a small peer task with teacher-observed participation."),
-        DevelopmentDomain::Creativity => Some("Invite a learner-chosen artifact or alternative solution."),
-        DevelopmentDomain::SelfManagement => Some("Set one learner-owned goal with a review point."),
-        DevelopmentDomain::WellbeingCheckIn => Some("Show the learner a voluntary check-in and a human-support option."),
+        DevelopmentDomain::Learning => {
+            Some("Offer one scaffolded practice task and invite learner reflection.")
+        }
+        DevelopmentDomain::Communication => {
+            Some("Invite the learner to explain their reasoning in their preferred class language.")
+        }
+        DevelopmentDomain::Collaboration => {
+            Some("Offer a small peer task with teacher-observed participation.")
+        }
+        DevelopmentDomain::Creativity => {
+            Some("Invite a learner-chosen artifact or alternative solution.")
+        }
+        DevelopmentDomain::SelfManagement => {
+            Some("Set one learner-owned goal with a review point.")
+        }
+        DevelopmentDomain::WellbeingCheckIn => {
+            Some("Show the learner a voluntary check-in and a human-support option.")
+        }
     };
 
     HolisticEvaluation {
@@ -102,7 +114,11 @@ pub fn evaluate_evidence(evidence: &HolisticEvidence) -> HolisticEvaluation {
 mod tests {
     use super::*;
 
-    fn evidence(domain: DevelopmentDomain, statement: &str, consent_granted: bool) -> HolisticEvidence {
+    fn evidence(
+        domain: DevelopmentDomain,
+        statement: &str,
+        consent_granted: bool,
+    ) -> HolisticEvidence {
         HolisticEvidence {
             learner_id: "learner-01".into(),
             domain,
@@ -114,28 +130,48 @@ mod tests {
 
     #[test]
     fn accepts_explicit_learning_evidence_with_bounded_support() {
-        let result = evaluate_evidence(&evidence(DevelopmentDomain::Learning, "I can explain my solution", false));
+        let result = evaluate_evidence(&evidence(
+            DevelopmentDomain::Learning,
+            "I can explain my solution",
+            false,
+        ));
         assert_eq!(result.decision, EvidenceDecision::Accepted);
         assert!(result.next_step.unwrap().contains("scaffolded"));
     }
 
     #[test]
     fn wellbeing_requires_explicit_consent() {
-        let result = evaluate_evidence(&evidence(DevelopmentDomain::WellbeingCheckIn, "I would like support", false));
+        let result = evaluate_evidence(&evidence(
+            DevelopmentDomain::WellbeingCheckIn,
+            "I would like support",
+            false,
+        ));
         assert_eq!(result.decision, EvidenceDecision::ConsentRequired);
     }
 
     #[test]
     fn consented_wellbeing_remains_voluntary_and_human_supported() {
-        let result = evaluate_evidence(&evidence(DevelopmentDomain::WellbeingCheckIn, "I feel ready to check in", true));
+        let result = evaluate_evidence(&evidence(
+            DevelopmentDomain::WellbeingCheckIn,
+            "I feel ready to check in",
+            true,
+        ));
         assert_eq!(result.decision, EvidenceDecision::Accepted);
         assert!(result.next_step.unwrap().contains("human-support"));
     }
 
     #[test]
     fn biometric_and_emotion_inference_is_rejected() {
-        for statement in ["facial expression says the learner is sad", "emotion detected by camera", "voiceprint matched"] {
-            let result = evaluate_evidence(&evidence(DevelopmentDomain::WellbeingCheckIn, statement, true));
+        for statement in [
+            "facial expression says the learner is sad",
+            "emotion detected by camera",
+            "voiceprint matched",
+        ] {
+            let result = evaluate_evidence(&evidence(
+                DevelopmentDomain::WellbeingCheckIn,
+                statement,
+                true,
+            ));
             assert_eq!(result.decision, EvidenceDecision::BiometricEvidenceRejected);
         }
     }
