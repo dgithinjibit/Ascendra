@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { CHILD_FACING_GATES } from '@/lib/child-facing-readiness'
 import { evaluateChildFacingReleaseDecision } from '@/lib/child-facing-release-decision'
 import type { ApprovalEvidenceBundle } from '@/lib/child-facing-evidence'
+import { createChildFacingReleaseAudit } from '@/lib/child-facing-release-audit'
 
 const digest = z.string().regex(/^[a-f0-9]{64}$/)
 const record = z.object({
@@ -46,11 +47,13 @@ export async function POST(request: Request) {
   if (!parsed.success) return NextResponse.json({ error: 'invalid_release_decision_payload' }, { status: 400 })
 
   const decision = evaluateChildFacingReleaseDecision(parsed.data.bundle as ApprovalEvidenceBundle, parsed.data.expectedEnvironment, process.env)
+  const audit = createChildFacingReleaseAudit(decision, parsed.data.bundle as ApprovalEvidenceBundle, new Date().toISOString())
   return NextResponse.json({
     status: decision.status,
     reason: decision.reason,
     evidenceValid: decision.evidenceValid,
     evidenceReviewed: decision.evidenceReviewed,
     readiness: decision.readiness,
+    audit,
   }, { status: decision.reason === 'production_configuration_blocked' ? 503 : decision.status === 'approved' ? 200 : 409, headers: { 'Cache-Control': 'no-store' } })
 }
