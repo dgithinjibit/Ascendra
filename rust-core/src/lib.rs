@@ -1358,6 +1358,10 @@ mod tests {
         assert!(METTA_POLICY_SOURCE.contains("syncsenta-policy"));
         assert!(METTA_POLICY_SOURCE.contains("child-consent-ok?"));
         assert!(METTA_POLICY_SOURCE.contains("Approved"));
+        assert!(METTA_POLICY_SOURCE.contains("attendance-token-route"));
+        assert!(METTA_POLICY_SOURCE.contains("attendance-replay"));
+        assert!(METTA_POLICY_SOURCE.contains("attendance-scope"));
+        assert!(METTA_POLICY_SOURCE.contains("attendance-action-route"));
     }
 
     #[test]
