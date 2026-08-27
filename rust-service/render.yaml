@@ -1,0 +1,12 @@
+# Optional Render blueprint for the stateless Rust adaptive service.
+# This file is a deployment template only; it does not trigger a deployment.
+services:
+  - type: web
+    name: syncsenta-rust-adaptive
+    runtime: docker
+    dockerfilePath: ./rust-service/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: SYNC_SENTA_ADAPTIVE_BIND
+        value: 0.0.0.0:8091
