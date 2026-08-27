@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
+import { buildReflectionEvidencePlan } from '@/lib/teacher-reflection-evidence';
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,6 +24,14 @@ export async function POST(request: NextRequest) {
       feedback_text,
       improvement_suggestions,
       context,
+      student_id,
+      school_name,
+      subject,
+      mastery_percent,
+      teacher_summary,
+      next_step,
+      parent_linked,
+      parent_consent,
     } = body;
 
     // Validate required fields
@@ -73,7 +82,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({ data, success: true });
+    const evidencePlan = typeof student_id === 'string'
+      ? buildReflectionEvidencePlan({
+          teacherId: user.id,
+          studentId: student_id,
+          schoolName: school_name,
+          subject,
+          masteryPercent: Number(mastery_percent),
+          teacherSummary: teacher_summary,
+          nextStep: next_step,
+          parentLinked: parent_linked === true,
+          parentConsent: parent_consent === true,
+        })
+      : null;
+
+    return NextResponse.json({ data, evidencePlan, success: true });
   } catch (error) {
     console.error('Error in feedback API:', error);
     return NextResponse.json(
