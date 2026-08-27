@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { createSchoolReviewAudit } from '@/lib/school-review-audit';
 
 const MAX_BODY_BYTES = 16 * 1024;
 
@@ -58,10 +59,17 @@ export async function POST(request: NextRequest) {
     if (fetchError) return NextResponse.json({ error: 'Unable to read registration.' }, { status: 503 });
     if (!registration) return NextResponse.json({ error: 'Pending registration not found.' }, { status: 404 });
 
+    const classes = Array.isArray(registration.classes) ? registration.classes.filter((item): item is string => typeof item === 'string' && item.length > 0) : [];
+    const reviewedAt = new Date().toISOString();
+    const reviewerRef = request.headers.get('x-syncsenta-reviewer-ref') || undefined;
+
     if (action === 'reject') {
-      const { error } = await supabase.from('school_onboarding_requests').update({ status: 'rejected', reviewed_at: new Date().toISOString() }).eq('id', requestId).eq('status', 'pending');
+      const { error } = await supabase.from('school_onboarding_requests').update({ status: 'rejected', reviewed_at: reviewedAt }).eq('id', requestId).eq('status', 'pending');
       if (error) return NextResponse.json({ error: 'Unable to reject registration.' }, { status: 503 });
-      return NextResponse.json({ success: true, status: 'rejected' });
+      const audit = createSchoolReviewAudit({ requestId, action, result: 'rejected', schoolId: null, schoolName: registration.school_name, county: registration.county, schoolCode: registration.school_code, schoolType: registration.school_type, classes, reviewerRef }, reviewedAt);
+      const { error: auditError } = await supabase.from('school_review_audits').insert({ request_id: audit.requestId, action: audit.action, result: audit.result, school_id: audit.schoolId, source_digest: audit.sourceDigest, reviewer_ref: audit.reviewerRef, created_at: audit.createdAt });
+      if (auditError) return NextResponse.json({ error: 'Registration was rejected but the audit record could not be written.' }, { status: 503 });
+      return NextResponse.json({ success: true, status: 'rejected', auditDigest: audit.auditDigest });
     }
 
     const { data: school, error: schoolError } = await supabase
@@ -71,16 +79,18 @@ export async function POST(request: NextRequest) {
       .single();
     if (schoolError || !school) return NextResponse.json({ error: 'Unable to publish school.' }, { status: 503 });
 
-    const classes = Array.isArray(registration.classes) ? registration.classes.filter((item): item is string => typeof item === 'string' && item.length > 0) : [];
     if (classes.length > 0) {
       const classRows = classes.map((name) => ({ school_id: school.id, name, grade: name, status: 'active' }));
       const { error: classError } = await supabase.from('school_classes').upsert(classRows, { onConflict: 'school_id,name,academic_year', ignoreDuplicates: true });
       if (classError) return NextResponse.json({ error: 'Unable to publish school classes.' }, { status: 503 });
     }
 
-    const { error: updateError } = await supabase.from('school_onboarding_requests').update({ status: 'approved', reviewed_at: new Date().toISOString() }).eq('id', requestId).eq('status', 'pending');
+    const { error: updateError } = await supabase.from('school_onboarding_requests').update({ status: 'approved', reviewed_at: reviewedAt }).eq('id', requestId).eq('status', 'pending');
     if (updateError) return NextResponse.json({ error: 'School was published but registration status could not be updated.' }, { status: 503 });
-    return NextResponse.json({ success: true, status: 'approved', school: { id: school.id, name: school.name, county: school.county, code: school.code } });
+    const audit = createSchoolReviewAudit({ requestId, action, result: 'approved', schoolId: school.id, schoolName: registration.school_name, county: registration.county, schoolCode: registration.school_code, schoolType: registration.school_type, classes, reviewerRef }, reviewedAt);
+    const { error: auditError } = await supabase.from('school_review_audits').insert({ request_id: audit.requestId, action: audit.action, result: audit.result, school_id: audit.schoolId, source_digest: audit.sourceDigest, reviewer_ref: audit.reviewerRef, created_at: audit.createdAt });
+    if (auditError) return NextResponse.json({ error: 'School was published but the audit record could not be written.' }, { status: 503 });
+    return NextResponse.json({ success: true, status: 'approved', auditDigest: audit.auditDigest, school: { id: school.id, name: school.name, county: school.county, code: school.code } });
   } catch {
     return NextResponse.json({ error: 'Invalid reviewer request.' }, { status: 400 });
   }
