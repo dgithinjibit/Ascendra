@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://syncsenta.org/datasets/holistic-development/v1/schema.json",
+  "title": "SyncSenta Holistic Development Evidence v1",
+  "description": "Synthetic, privacy-safe educational evidence for bounded learner support. This schema does not encode biometric or inferred psychological attributes.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["record_id", "learner_ref", "domain", "evidence_source", "statement", "consent", "provenance"],
+  "properties": {
+    "record_id": {"type": "string", "pattern": "^synthetic-[a-z0-9-]+$"},
+    "learner_ref": {"type": "string", "pattern": "^learner-[0-9]{2}$"},
+    "domain": {"enum": ["learning", "communication", "collaboration", "creativity", "self_management", "wellbeing_check_in"]},
+    "evidence_source": {"enum": ["learner_self_report", "teacher_observation", "completed_learning_artifact"]},
+    "statement": {"type": "string", "minLength": 1, "maxLength": 1000},
+    "language": {"enum": ["en", "sw"]},
+    "consent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["recorded", "version"],
+      "properties": {
+        "recorded": {"type": "boolean"},
+        "version": {"type": "string", "maxLength": 64}
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "license", "created_at"],
+      "properties": {
+        "kind": {"const": "synthetic_fixture"},
+        "license": {"const": "CC BY 4.0"},
+        "created_at": {"type": "string", "format": "date"}
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"domain": {"const": "wellbeing_check_in"}}},
+      "then": {"properties": {"consent": {"properties": {"recorded": {"const": true}}}}}
+    }
+  ]
+}
