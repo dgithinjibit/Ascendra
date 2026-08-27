@@ -26,6 +26,9 @@ if [[ -f "$repo/studio/package.json" ]]; then
     [[ -x node_modules/.bin/tsc ]] || fail "frontend dependencies are not installed; refusing to install during a readiness gate"
     ./node_modules/.bin/tsc --noEmit
     pass "frontend TypeScript check"
+    [[ -x node_modules/.bin/vitest ]] || fail "frontend test runner is not installed; refusing to install during a readiness gate"
+    ./node_modules/.bin/vitest run src/app/api/internal/schools/onboarding/route.test.ts
+    pass "school-review audit integration tests"
   elif [[ "${REQUIRE_FRONTEND_CHECK:-true}" == "true" ]]; then
     fail "studio/package.json has no typecheck script"
   fi
