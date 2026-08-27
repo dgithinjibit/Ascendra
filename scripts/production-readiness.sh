@@ -29,8 +29,11 @@ check_command pnpm
 check_file scripts/staging-e2e-gate.sh
 check_file studio/src/lib/sandbox-provider-runtime.ts
 check_file studio/src/lib/__tests__/sandbox-provider-runtime.test.ts
+check_file studio/src/app/api/internal/schools/onboarding/route.test.ts
+check_file studio/src/lib/school-review-audit.ts
 check_file scripts/rust-agent-cutover.sh
 check_file supabase/migrations/20260827000014_attendance_integrity_tokens_and_ledger.sql
+check_file supabase/migrations/20260827000014_school_review_audit.sql
 check_file supabase/migrations/20260827000020_sandbox_artifact_queue.sql
 check_file supabase/migrations/20260827000021_sandbox_artifact_claims.sql
 
