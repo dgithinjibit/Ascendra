@@ -45,4 +45,23 @@ describe('evaluateChildFacingReleaseDecision', () => {
     expect(decision.status).toBe('blocked')
     expect(decision.reason).toBe('invalid_evidence')
   })
+
+  it('blocks unsafe production configuration even with valid reviewed evidence', () => {
+    const decision = evaluateChildFacingReleaseDecision(makeBundle({ environment: 'production' }), 'production', {
+      NODE_ENV: 'production',
+      SYNC_SENTA_ALLOW_SYNTHETIC_DATA: 'true',
+      NEXT_PUBLIC_SUPABASE_URL: 'https://real.supabase.co',
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: 'real-anon-key',
+    })
+    expect(decision.status).toBe('blocked')
+    expect(decision.reason).toBe('production_configuration_blocked')
+  })
+
+  it('allows a safe non-production configuration to proceed to evidence checks', () => {
+    const decision = evaluateChildFacingReleaseDecision(makeBundle(), 'staging', {
+      NODE_ENV: 'staging',
+      SYNC_SENTA_ALLOW_SYNTHETIC_DATA: 'true',
+    })
+    expect(decision.status).toBe('approved')
+  })
 })

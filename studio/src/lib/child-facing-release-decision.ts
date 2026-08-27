@@ -5,12 +5,13 @@ import {
   type ChildFacingReadinessResult,
 } from './child-facing-readiness'
 import { verifyApprovalEvidenceBundle, type ApprovalEvidenceBundle } from './child-facing-evidence'
+import { checkProductionFixtureGuard } from './production-fixture-guard'
 
 const ROLES: ChildFacingRole[] = ['student', 'teacher', 'head', 'parent']
 
 export interface ChildFacingReleaseDecision {
   status: 'approved' | 'blocked'
-  reason: 'approved' | 'invalid_evidence' | 'evidence_environment_mismatch' | 'unreviewed_evidence' | 'readiness_blocked'
+  reason: 'approved' | 'invalid_evidence' | 'evidence_environment_mismatch' | 'unreviewed_evidence' | 'readiness_blocked' | 'production_configuration_blocked'
   evidenceValid: boolean
   evidenceReviewed: boolean
   readiness: ChildFacingReadinessResult
@@ -21,7 +22,9 @@ export interface ChildFacingReleaseDecision {
 export function evaluateChildFacingReleaseDecision(
   bundle: ApprovalEvidenceBundle,
   expectedEnvironment: ApprovalEvidenceBundle['environment'],
+  configuration: Record<string, string | undefined> = process.env,
 ): ChildFacingReleaseDecision {
+  const configurationSafety = checkProductionFixtureGuard(configuration)
   const evidenceValid = verifyApprovalEvidenceBundle(bundle)
   const environmentMatches = bundle.environment === expectedEnvironment && bundle.records.every((record) => record.environment === expectedEnvironment)
   const evidenceReviewed = bundle.records.length === CHILD_FACING_GATES.length + ROLES.length && bundle.records.every((record) => record.reviewerStatus === 'verified')
@@ -30,7 +33,8 @@ export function evaluateChildFacingReleaseDecision(
   const readiness = evaluateChildFacingReadiness({ gates, roles })
 
   let reason: ChildFacingReleaseDecision['reason'] = 'approved'
-  if (!evidenceValid) reason = 'invalid_evidence'
+  if (!configurationSafety.allowed) reason = 'production_configuration_blocked'
+  else if (!evidenceValid) reason = 'invalid_evidence'
   else if (!environmentMatches) reason = 'evidence_environment_mismatch'
   else if (!evidenceReviewed) reason = 'unreviewed_evidence'
   else if (readiness.status !== 'approved') reason = 'readiness_blocked'

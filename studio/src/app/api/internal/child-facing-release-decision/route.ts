@@ -45,12 +45,12 @@ export async function POST(request: Request) {
   const parsed = requestSchema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: 'invalid_release_decision_payload' }, { status: 400 })
 
-  const decision = evaluateChildFacingReleaseDecision(parsed.data.bundle as ApprovalEvidenceBundle, parsed.data.expectedEnvironment)
+  const decision = evaluateChildFacingReleaseDecision(parsed.data.bundle as ApprovalEvidenceBundle, parsed.data.expectedEnvironment, process.env)
   return NextResponse.json({
     status: decision.status,
     reason: decision.reason,
     evidenceValid: decision.evidenceValid,
     evidenceReviewed: decision.evidenceReviewed,
     readiness: decision.readiness,
-  }, { status: decision.status === 'approved' ? 200 : 409, headers: { 'Cache-Control': 'no-store' } })
+  }, { status: decision.reason === 'production_configuration_blocked' ? 503 : decision.status === 'approved' ? 200 : 409, headers: { 'Cache-Control': 'no-store' } })
 }
