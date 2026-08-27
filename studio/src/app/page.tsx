@@ -22,7 +22,7 @@ const roles = [
     description: "Learn at your pace with CBC-aligned guidance and feedback.",
     icon: GraduationCap,
     href: "/auth/signup?role=student",
-    items: ["Personalised learning journeys", "Practice and feedback matched to your level", "Ask Mwalimu for guided help"],
+    items: ["Personalised learning journeys", "Practice and feedback matched to your level", "Ask SyncSenta for guided help"],
   },
   {
     title: "Teachers",
