@@ -18,6 +18,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { WalletAuthButton } from '@/components/auth/wallet-auth-button';
 
 /**
  * Map a CBC grade string (e.g. "Grade 5") to the level id used by
@@ -390,6 +391,8 @@ export function SignUpForm() {
             )}
           </Button>
         </form>
+
+        <div className="my-5"><WalletAuthButton mode="signup" role={formData.role} fullName={formData.fullName} /></div>
 
         <div className="relative my-6">
           <div className="absolute inset-0 flex items-center">

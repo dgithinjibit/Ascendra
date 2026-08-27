@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { WalletAuthButton } from '@/components/auth/wallet-auth-button';
 
 export function SignInForm() {
   const router = useRouter();
@@ -117,6 +118,8 @@ export function SignInForm() {
             )}
           </Button>
         </form>
+
+        <div className="my-5"><WalletAuthButton mode="signin" /></div>
 
         <div className="relative my-6">
           <div className="absolute inset-0 flex items-center">
