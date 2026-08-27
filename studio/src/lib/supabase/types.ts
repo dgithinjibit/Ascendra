@@ -509,6 +509,39 @@ export interface Database {
       voice_conversations: LegacyTable;
       voice_messages: LegacyTable;
       vision_submissions: LegacyTable;
+      teacher_assessments: {
+        Row: {
+          id: string; teacher_id: string; grade: string; subject: string; term: string;
+          assessment_period: 'formative' | 'midterm' | 'end_of_term'; title: string;
+          instructions: string | null; questions: Json; total_marks: number;
+          status: 'draft' | 'published' | 'archived'; created_at: string; updated_at: string;
+        };
+        Insert: {
+          id?: string; teacher_id: string; grade: string; subject: string; term: string;
+          assessment_period: 'formative' | 'midterm' | 'end_of_term'; title: string;
+          instructions?: string | null; questions?: Json; total_marks?: number;
+          status?: 'draft' | 'published' | 'archived'; created_at?: string; updated_at?: string;
+        };
+        Update: {
+          id?: string; teacher_id?: string; grade?: string; subject?: string; term?: string;
+          assessment_period?: 'formative' | 'midterm' | 'end_of_term'; title?: string;
+          instructions?: string | null; questions?: Json; total_marks?: number;
+          status?: 'draft' | 'published' | 'archived'; created_at?: string; updated_at?: string;
+        };
+        Relationships: [];
+      };
+      assessment_results: {
+        Row: { id: string; assessment_id: string; teacher_id: string; student_id: string; score: number; feedback: string | null; marked_at: string; updated_at: string };
+        Insert: { id?: string; assessment_id: string; teacher_id: string; student_id: string; score: number; feedback?: string | null; marked_at?: string; updated_at?: string };
+        Update: { id?: string; assessment_id?: string; teacher_id?: string; student_id?: string; score?: number; feedback?: string | null; marked_at?: string; updated_at?: string };
+        Relationships: [];
+      };
+      class_attendance: {
+        Row: { id: string; teacher_id: string; student_id: string; class_name: string; attendance_date: string; status: 'present' | 'absent' | 'late' | 'excused'; note: string | null; created_at: string; updated_at: string };
+        Insert: { id?: string; teacher_id: string; student_id: string; class_name: string; attendance_date: string; status: 'present' | 'absent' | 'late' | 'excused'; note?: string | null; created_at?: string; updated_at?: string };
+        Update: { id?: string; teacher_id?: string; student_id?: string; class_name?: string; attendance_date?: string; status?: 'present' | 'absent' | 'late' | 'excused'; note?: string | null; created_at?: string; updated_at?: string };
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;

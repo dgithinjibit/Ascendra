@@ -20,6 +20,7 @@ import { InterventionCenter } from './intervention-center'
 import { ResourceLibrary } from './resource-library'
 import { AnalyticsDashboard } from './analytics-dashboard'
 import { ProfessionalDevelopment } from './professional-development'
+import { AssessmentRecordsPanel } from './assessment-records-panel'
 
 export function EnhancedTeacherDashboard() {
   const [activeTab, setActiveTab] = useState('overview')
@@ -115,8 +116,9 @@ export function EnhancedTeacherDashboard() {
         </TabsContent>
 
         {/* Assessments Tab */}
-        <TabsContent value="assessments">
+        <TabsContent value="assessments" className="space-y-6">
           <AssessmentGenerator />
+          <AssessmentRecordsPanel />
         </TabsContent>
 
         {/* Students Tab */}
