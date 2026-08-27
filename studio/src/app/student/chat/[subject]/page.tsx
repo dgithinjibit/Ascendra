@@ -43,7 +43,9 @@ function StudentChatContent({ params }: PageProps) {
   const { subject: subjectParam } = use(params);
 
   const subject = decodeURIComponent(subjectParam);
-  const [grade, setGrade] = useState<string>(DEFAULT_GRADE);
+  const routeGrade = searchParams.get('grade')?.trim();
+  const [grade, setGrade] = useState<string>(routeGrade || DEFAULT_GRADE);
+  const effectiveGrade = routeGrade || grade;
   const [studentId, setStudentId] = useState<string>('user1');
   const [studentName, setStudentName] = useState<string>('Mwanafunzi');
   const [language, setLanguage] = useState<'english' | 'kiswahili' | 'mixed'>('mixed');
@@ -52,11 +54,15 @@ function StudentChatContent({ params }: PageProps) {
   const [competencyCode, setCompetencyCode] = useState<string | undefined>(undefined);
 
   useEffect(() => {
-    const queryGrade = searchParams.get('grade');
+    const queryGrade = (searchParams.get('grade') || (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('grade') : null))?.trim();
     if (queryGrade) {
       setGrade(queryGrade);
+      if (typeof window !== 'undefined') {
+        window.sessionStorage.setItem(STORAGE_GRADE, queryGrade);
+        window.localStorage.setItem(STORAGE_GRADE, queryGrade);
+      }
     } else if (typeof window !== 'undefined') {
-      const stored = window.sessionStorage.getItem(STORAGE_GRADE);
+      const stored = window.sessionStorage.getItem(STORAGE_GRADE) || window.localStorage.getItem(STORAGE_GRADE);
       if (stored) setGrade(stored);
     }
 
@@ -93,7 +99,7 @@ function StudentChatContent({ params }: PageProps) {
           <div>
             <h1 className="text-2xl font-bold">Mwalimu AI · {subject}</h1>
             <p className="text-sm text-muted-foreground">
-              Your CBC learning guide · {grade} · {tutorLabelFor(grade)}
+              Your CBC learning guide · {effectiveGrade} · {tutorLabelFor(effectiveGrade)}
             </p>
             <p className="text-xs text-muted-foreground mt-1">It uses your selected grade, subject, language, and learning progress to choose the next helpful step.</p>
           </div>
@@ -113,7 +119,7 @@ function StudentChatContent({ params }: PageProps) {
             <SocraticChat
               studentId={studentId}
               studentName={studentName}
-              grade={grade}
+              grade={effectiveGrade}
               subject={subject}
               language={language}
                 mode={chatMode}
@@ -126,7 +132,7 @@ function StudentChatContent({ params }: PageProps) {
             {/* Learning Path Progress */}
             <LearningPathProgress
               subject={subject}
-              grade={grade}
+              grade={effectiveGrade}
               userId={studentId}
               onSelectCheckpoint={(code) => {
                 // When user clicks a checkpoint, guide the chat to that topic

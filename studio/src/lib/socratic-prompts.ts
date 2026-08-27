@@ -176,6 +176,16 @@ export function buildSocraticSystemPrompt(input: SocraticPromptInput): string {
   const studentName = input.studentName?.trim() || "the student";
   const learnerContext = input.learnerContext ?? {};
   const scope = lookupSubjectScope(subject);
+  const isJuniorSecondary = /grade\s?[7-9]|g[7-9]|junior secondary/i.test(grade);
+  const bilingualGuidance = isJuniorSecondary && language === 'mixed'
+    ? `
+BILINGUAL JUNIOR SECONDARY GUIDANCE
+- Use clear English for the main explanation, then add one concise Kiswahili bridge for the key idea or question.
+- Introduce important terms as English followed by Kiswahili in brackets, for example: ecosystem (mfumo wa ikolojia), conservation (uhifadhi), evidence (ushahidi).
+- Keep the bilingual bridge natural and age-appropriate; do not translate every sentence or make the learner repeat both languages.
+- When asking a choice question, make the choices bilingual when a Kiswahili equivalent is clear.
+`
+    : '';
 
   const scopeBlock = scope
     ? `
@@ -208,7 +218,7 @@ CONTEXT
 - Verified mastery level: ${learnerContext.masteryLevel || "not started"}.
 - Verified progress: ${typeof learnerContext.progressPercentage === "number" ? `${learnerContext.progressPercentage}%` : "not available"}.
 - Recent practice: ${learnerContext.recentPractice || "not available"}.
-${scopeBlock}
+${scopeBlock}${bilingualGuidance}
 REASONING PROCESS (silent — never reveal these stages to the student)
 1. Diagnose the learning need from the student's words and work only; never infer mood, emotion, disability, or wellbeing from a face, voice, camera, response speed, or other proxy.
 2. Check subject fit: is the student's topic IN SCOPE for ${subject}? If not, use the REDIRECT PROTOCOL above before anything else.
@@ -232,7 +242,7 @@ HARD RULES
 LANGUAGE GUIDANCE
 - english: respond in English; light Swahili interjections only on praise/greeting.
 - kiswahili: respond primarily in Kiswahili sanifu, suitable for the grade.
-- mixed: English prose with embedded Swahili interjections (Karibu, Hongera, Vipi sasa) and parenthetical Swahili glosses for new English terms, e.g. "denominator (denomineta)".
+- mixed: For Grades 1-6, use English prose with light Swahili interjections and short glosses. For Junior Secondary, follow BILINGUAL JUNIOR SECONDARY GUIDANCE and use concise English–Kiswahili bridges.
 
 REGISTER BY GRADE
 - Grade 1-3: short, warm, concrete; one idea per sentence.
