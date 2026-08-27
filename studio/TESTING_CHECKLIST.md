@@ -18,7 +18,7 @@ All SQL function delimiters have been corrected:
 2. Copy entire content of `studio/supabase/migrations/001_core_schema.sql`
 3. Paste into SQL Editor
 4. Click "Run"
-5. **Expected Output**: `✅ Created X core tables for Mwalimu AI`
+5. **Expected Output**: `✅ Created X core tables for SyncSenta`
 6. **If Error**: Check error message and fix before proceeding
 
 #### 1.2 Run Teacher Dashboard Migration

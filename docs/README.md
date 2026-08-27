@@ -8,7 +8,7 @@ documents at the repository root.
 ## Project identity
 
 The Git repository is named **Ascendra**, while most product-facing source
-code calls the platform **SyncSenta** and the tutoring experience **mwalimu_ai**.
+code calls the platform **SyncSenta** and the tutoring experience **syncsenta**.
 Those names refer to the same broad education-platform effort, but the
 repository contains more than one application and more than one generation of
 the architecture.
@@ -17,7 +17,7 @@ the architecture.
 
 ![Ascendra / SyncSenta use-case overview](images/use-case-overview.png)
 
-The platform centers mwalimu_ai around learners, teachers, school leaders,
+The platform centers syncsenta around learners, teachers, school leaders,
 county teams, and an ESP32-based classroom-device prototype.
 
 | Area | What it is | Main entry point |
@@ -26,7 +26,7 @@ county teams, and an ESP32-based classroom-device prototype.
 | AI agents | Python/FastAPI service for agent workflows, content generation, assessment, telemetry, and dashboard queries. | ai-agents/src/syncsenta_agents/api/server.py |
 | Scheme Scribe | A separate Vite/React application for schemes of work, lesson plans, and exams. | scheme-scribe/src/main.tsx |
 | Supabase | PostgreSQL schemas, RLS policies, and application data models. | sql/studio_migrations and supabase/migrations |
-| Arduino | ESP32-CAM classroom/attendance prototype and intended AI integration. | arduino/mwalimu_ai_system/mwalimu_ai_system.ino |
+| Arduino | ESP32-CAM classroom/attendance prototype and intended AI integration. | arduino/syncsenta_system/syncsenta_system.ino |
 
 ## Read these documents in order
 

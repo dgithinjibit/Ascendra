@@ -60,7 +60,7 @@ export function PWAInstallPrompt() {
             <Download className="h-6 w-6 text-primary" />
           </div>
           <div className="flex-1 space-y-2">
-            <h3 className="font-semibold text-sm">Install mwalimu_ai</h3>
+            <h3 className="font-semibold text-sm">Install syncsenta</h3>
             <p className="text-xs text-muted-foreground">
               Get faster access and work offline. Install our app for the best experience.
             </p>

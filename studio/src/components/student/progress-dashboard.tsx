@@ -158,7 +158,7 @@ export function ProgressDashboard({ userId }: ProgressDashboardProps) {
           <CardContent>
             <div className="text-2xl font-bold">{stats?.totalSessions || 0}</div>
             <p className="text-xs text-muted-foreground">
-              Total conversations with mwalimu_ai
+              Total conversations with syncsenta
             </p>
           </CardContent>
         </Card>

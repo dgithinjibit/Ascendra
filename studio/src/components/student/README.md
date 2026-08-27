@@ -1,4 +1,4 @@
-# mwalimu_ai Chat Component
+# syncsenta Chat Component
 
 Production-level student chatbot interface for SyncSenta Education OS.
 
@@ -46,11 +46,11 @@ Production-level student chatbot interface for SyncSenta Education OS.
 ### Basic Usage
 
 ```tsx
-import { MwalimuChat } from '@/components/student/mwalimu-chat';
+import { SyncSentaChat } from '@/components/student/syncsenta-chat';
 
 export default function ChatPage() {
   return (
-    <MwalimuChat
+    <SyncSentaChat
       studentId="stu_turkana_001"
       studentName="Akiru Lokol"
       subject="Mathematics"
@@ -64,7 +64,7 @@ export default function ChatPage() {
 ### With Emotional State Tracking
 
 ```tsx
-import { MwalimuChat } from '@/components/student/mwalimu-chat';
+import { SyncSentaChat } from '@/components/student/syncsenta-chat';
 import { useState } from 'react';
 
 export default function ChatPage() {
@@ -72,7 +72,7 @@ export default function ChatPage() {
 
   return (
     <div>
-      <MwalimuChat
+      <SyncSentaChat
         studentId="stu_turkana_001"
         studentName="Akiru Lokol"
         subject="Mathematics"
@@ -195,7 +195,7 @@ interface EmotionalState {
 
 ### Unit Tests
 ```bash
-npm run test -- mwalimu-chat.test.tsx
+npm run test -- syncsenta-chat.test.tsx
 ```
 
 ### Integration Tests

@@ -1,7 +1,7 @@
 # Supabase Migrations
 
 ## Overview
-This directory contains SQL migration files for the Mwalimu AI platform.
+This directory contains SQL migration files for the SyncSenta platform.
 
 ## Migration Files
 
@@ -51,7 +51,7 @@ Execute migrations in order in the Supabase SQL Editor:
    - Copy entire file content
    - Paste into Supabase SQL Editor
    - Click "Run"
-   - Verify success message: "✅ Created X core tables for Mwalimu AI"
+   - Verify success message: "✅ Created X core tables for SyncSenta"
 
 2. **Run 002_teacher_dashboard.sql**
    - Copy entire file content

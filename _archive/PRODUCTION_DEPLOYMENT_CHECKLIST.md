@@ -48,7 +48,7 @@
    - Copy entire file content
    - Paste in SQL Editor
    - Click "Run"
-   - Verify: `✅ Created X core tables for Mwalimu AI`
+   - Verify: `✅ Created X core tables for SyncSenta`
 3. Run `studio/supabase/migrations/002_teacher_dashboard.sql`
    - Copy entire file content
    - Paste in SQL Editor

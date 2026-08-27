@@ -2,9 +2,9 @@
 
 ## Overview
 
-The Teacher Feedback Loop is Mwalimu AI's **competitive advantage** - a system that learns from real Kenyan teachers to become more culturally relevant and pedagogically effective over time.
+The Teacher Feedback Loop is SyncSenta's **competitive advantage** - a system that learns from real Kenyan teachers to become more culturally relevant and pedagogically effective over time.
 
-Unlike competitors (MagicSchool, Synthesis, DreamBox) with static, Western-centric rules, Mwalimu AI **learns from every interaction** and adapts to Kenyan education context.
+Unlike competitors (MagicSchool, Synthesis, DreamBox) with static, Western-centric rules, SyncSenta **learns from every interaction** and adapts to Kenyan education context.
 
 ## How It Works
 
@@ -231,7 +231,7 @@ import { AIFeedbackDashboard } from '@/components/teacher/ai-feedback-dashboard'
 
 ## Competitive Advantage
 
-| Feature | MagicSchool | Synthesis | DreamBox | **Mwalimu AI** |
+| Feature | MagicSchool | Synthesis | DreamBox | **SyncSenta** |
 |---------|-------------|-----------|----------|----------------|
 | **Pedagogical Rules** | Static, US-centric | Static, generic | Static, game-based | **Learned from Kenyan teachers** |
 | **Examples** | Pizza, dollars | Generic | Abstract games | **Matatu, shamba, M-Pesa** |
@@ -276,7 +276,7 @@ import { AIFeedbackDashboard } from '@/components/teacher/ai-feedback-dashboard'
 ### 1. Run Database Migrations
 ```bash
 # Apply schema
-psql -U postgres -d mwalimu_ai -f ai-agents/src/syncsenta_agents/db/teacher_feedback_schema.sql
+psql -U postgres -d syncsenta -f ai-agents/src/syncsenta_agents/db/teacher_feedback_schema.sql
 ```
 
 ### 2. Configure Supabase Client
@@ -361,6 +361,6 @@ ORDER BY pattern_count DESC;
 
 ## Questions?
 
-This is the foundation of Mwalimu AI's self-learning system. Every piece of teacher feedback makes the system smarter and more culturally relevant.
+This is the foundation of SyncSenta's self-learning system. Every piece of teacher feedback makes the system smarter and more culturally relevant.
 
-**By 2030, Mwalimu AI will have the world's best pedagogical knowledge base for Kenyan education.**
+**By 2030, SyncSenta will have the world's best pedagogical knowledge base for Kenyan education.**

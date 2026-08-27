@@ -38,7 +38,7 @@ The Rust/MeTTa policy layer should treat `safety_flags` and `escalation` as hard
 
 ## Intended use
 
-The dataset can support evaluation of Mwalimu AI responses, policy routing regression tests, curriculum-aware personalization, learner-choice scaffolding, educator training, and offline-first practice flows. Developers should adapt it through educator review, child-safety review, Kenyan curriculum alignment, multilingual review, accessibility review, and documented dataset versioning. It must not be used for clinical assessment, automated high-stakes decisions, surveillance, sensitive-trait inference, or autonomous safeguarding decisions.
+The dataset can support evaluation of SyncSenta responses, policy routing regression tests, curriculum-aware personalization, learner-choice scaffolding, educator training, and offline-first practice flows. Developers should adapt it through educator review, child-safety review, Kenyan curriculum alignment, multilingual review, accessibility review, and documented dataset versioning. It must not be used for clinical assessment, automated high-stakes decisions, surveillance, sensitive-trait inference, or autonomous safeguarding decisions.
 
 ## AI and wellbeing expansion
 

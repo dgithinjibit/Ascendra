@@ -23,7 +23,7 @@ Sample profile:
 | Progress | 46% |
 | Language | English |
 
-The prompt regression test confirmed that Mwalimu AI receives the verified stage, age band, competency, mastery, progress, Environmental Activities subject scope, and the explicit prohibition on inferring emotion or wellbeing from facial, voice, response-speed, or behavioral proxies.
+The prompt regression test confirmed that SyncSenta receives the verified stage, age band, competency, mastery, progress, Environmental Activities subject scope, and the explicit prohibition on inferring emotion or wellbeing from facial, voice, response-speed, or behavioral proxies.
 
 ## Verification
 

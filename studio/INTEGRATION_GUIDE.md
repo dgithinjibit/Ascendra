@@ -1,4 +1,4 @@
-# Mwalimu AI - Integration Guide
+# SyncSenta - Integration Guide
 
 **Version:** 1.0.0  
 **Date:** May 4, 2026

@@ -12,7 +12,7 @@ services:
       - key: SUPABASE_SERVICE_KEY
         sync: false
       - key: FRONTEND_URL
-        value: https://mwalimu-ai.vercel.app
+        value: https://syncsenta.vercel.app
       - key: GROQ_MODEL
         value: llama-3.3-70b-versatile
     healthCheckPath: /healthz

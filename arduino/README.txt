@@ -1,4 +1,4 @@
-MWALIMU AI - AUTOMATED TEACHER SYSTEM
+SYNCSENTA - AUTOMATED TEACHER SYSTEM
 ======================================
 
 Fully automated AI-powered system for Arduino Mastery Course.
@@ -20,7 +20,7 @@ COST: $40-80
 
 AUTOMATED FEATURES:
 1. Automatic face recognition attendance (no manual check-in)
-2. AI-powered exam generation and grading (Mwalimu AI agent)
+2. AI-powered exam generation and grading (SyncSenta agent)
 3. Automatic project assessment based on code analysis
 4. Real-time progress tracking
 5. Automated notifications to students
@@ -29,7 +29,7 @@ AUTOMATED FEATURES:
 
 SYSTEM COMPONENTS:
 - ESP32-CAM: Face recognition + camera
-- Mwalimu AI Agent: Exam generation, grading, assessment
+- SyncSenta Agent: Exam generation, grading, assessment
 - Cloud Backend: Data storage and AI processing
 - Web Dashboard: Real-time monitoring
 
@@ -46,7 +46,7 @@ All code files are heavily commented.
 HARDWARE SHOPPING LIST
 ======================
 
-MWALIMU AI AUTOMATED SYSTEM ($40-80)
+SYNCSENTA AUTOMATED SYSTEM ($40-80)
 -------------------------------------
 1. ESP32-CAM AI-Thinker - $8-12
 2. FTDI Programmer USB-TTL - $3-5
@@ -71,18 +71,18 @@ WHERE TO BUY:
 
 CLOUD SERVICES (Optional):
 - Firebase (free tier) - for data storage
-- OpenAI API - for Mwalimu AI agent
+- OpenAI API - for SyncSenta agent
 - Twilio - for SMS notifications
 
 PIN CONNECTIONS:
 See comments in the code files for detailed wiring.
-MWALIMU AI - FULLY AUTOMATED TEACHER SYSTEM
+SYNCSENTA - FULLY AUTOMATED TEACHER SYSTEM
 ============================================
 
 CONCEPT:
 --------
 Completely automated AI-powered system that eliminates manual teacher tasks.
-The Mwalimu AI agent handles everything automatically:
+The SyncSenta agent handles everything automatically:
 - Attendance (face recognition)
 - Exam generation (AI creates personalized exams)
 - Code grading (AI assesses student code)
@@ -98,7 +98,7 @@ SYSTEM COMPONENTS:
    - Camera monitors classroom continuously
    - Local processing + cloud AI integration
 
-2. Mwalimu AI Agent (Cloud Backend)
+2. SyncSenta Agent (Cloud Backend)
    - Generates personalized exams based on student level
    - Grades Arduino code automatically
    - Analyzes student progress
@@ -133,7 +133,7 @@ HOW IT WORKS:
 
 3. AUTOMATIC CODE GRADING:
    - Student submits Arduino code to system
-   - Code automatically sent to Mwalimu AI
+   - Code automatically sent to SyncSenta
    - AI analyzes code quality, functionality, style
    - Provides detailed feedback and score
    - No teacher review needed
@@ -162,7 +162,7 @@ Day 1 - Weather Station Project:
 
 14:00 - Student submits code
         Code uploaded to system
-        Mwalimu AI analyzes code
+        SyncSenta analyzes code
         Grades: 85/100
         Feedback: "Good sensor integration, improve error handling"
         Student receives instant feedback
@@ -205,7 +205,7 @@ Total: ~$54
 
 CLOUD SERVICES:
 ---------------
-- Mwalimu AI Backend (your AI server)
+- SyncSenta Backend (your AI server)
 - Firebase/MongoDB (data storage)
 - OpenAI API (optional - for enhanced AI)
 - Twilio (optional - SMS notifications)

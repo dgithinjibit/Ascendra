@@ -47,7 +47,7 @@ function welcomeMessage(studentName: string, subject: string): ChatMessage {
 }
 
 /**
- * A lightweight, dashboard-wide way to ask mwalimu_ai about a concept without
+ * A lightweight, dashboard-wide way to ask syncsenta about a concept without
  * interrupting the student's selected learning activity.
  */
 export function FloatingConceptChat({
@@ -131,7 +131,7 @@ export function FloatingConceptChat({
       });
 
       if (!response.ok || !response.body) {
-        let detail = `mwalimu_ai could not answer right now (${response.status}).`;
+        let detail = `syncsenta could not answer right now (${response.status}).`;
         try {
           const body = await response.json();
           detail = body.detail || body.error || detail;
@@ -206,7 +206,7 @@ export function FloatingConceptChat({
       {open && (
         <section
           id="mwalimu-concept-chat"
-          aria-label="Ask mwalimu_ai about a concept"
+          aria-label="Ask syncsenta about a concept"
           className="flex h-[min(39rem,calc(100vh-14rem))] w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-3xl border bg-background shadow-2xl sm:h-[min(39rem,calc(100vh-7rem))] sm:w-[25rem]"
         >
           <header className="flex items-center gap-3 border-b bg-primary px-4 py-3 text-primary-foreground">
@@ -216,7 +216,7 @@ export function FloatingConceptChat({
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0 flex-1">
-              <p className="font-semibold">mwalimu_ai</p>
+              <p className="font-semibold">syncsenta</p>
               <p className="text-xs text-primary-foreground/80">
                 {subject === 'Concept help' ? 'Concept help · Ask anything' : `${subject} · Concept help`}
               </p>
@@ -226,7 +226,7 @@ export function FloatingConceptChat({
               size="icon"
               className="text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground"
               onClick={closePanel}
-              aria-label="Close mwalimu_ai chat"
+              aria-label="Close syncsenta chat"
             >
               <X className="h-5 w-5" />
             </Button>
@@ -304,7 +304,7 @@ export function FloatingConceptChat({
                 rows={2}
                 disabled={busy}
                 className="min-h-10 resize-none rounded-xl"
-                aria-label="Question for mwalimu_ai"
+                aria-label="Question for syncsenta"
               />
               {busy ? (
                 <Button
@@ -312,7 +312,7 @@ export function FloatingConceptChat({
                   size="icon"
                   variant="destructive"
                   onClick={() => abortRef.current?.abort()}
-                  aria-label="Stop mwalimu_ai's response"
+                  aria-label="Stop syncsenta's response"
                 >
                   <Square className="h-4 w-4" />
                 </Button>
@@ -321,7 +321,7 @@ export function FloatingConceptChat({
                   type="submit"
                   size="icon"
                   disabled={!input.trim()}
-                  aria-label="Send question to mwalimu_ai"
+                  aria-label="Send question to syncsenta"
                 >
                   <Send className="h-4 w-4" />
                 </Button>
@@ -338,7 +338,7 @@ export function FloatingConceptChat({
         aria-controls="mwalimu-concept-chat"
       >
         {open ? <X className="mr-2 h-5 w-5" /> : <MessageCircle className="mr-2 h-5 w-5" />}
-        {open ? 'Close chat' : 'Ask mwalimu_ai'}
+        {open ? 'Close chat' : 'Ask syncsenta'}
         {!open && <Sparkles className="ml-2 h-4 w-4" />}
       </Button>
     </div>

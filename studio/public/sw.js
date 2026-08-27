@@ -1,11 +1,11 @@
 /**
- * Service Worker for Mwalimu AI
+ * Service Worker for SyncSenta
  * 
  * Provides offline support and caching for better performance.
  * Implements a network-first strategy for API calls and cache-first for static assets.
  */
 
-const CACHE_NAME = 'mwalimu-ai-v1';
+const CACHE_NAME = 'syncsenta-v1';
 const OFFLINE_URL = '/offline';
 
 // Assets to cache on install
@@ -146,7 +146,7 @@ async function syncQueuedRequests() {
 // Push notifications (future enhancement)
 self.addEventListener('push', (event) => {
   const data = event.data ? event.data.json() : {};
-  const title = data.title || 'Mwalimu AI';
+  const title = data.title || 'SyncSenta';
   const options = {
     body: data.body || 'You have a new notification',
     icon: '/icon-192.png',

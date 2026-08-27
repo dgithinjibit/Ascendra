@@ -2,7 +2,7 @@
  * Active Scheme Context API
  * 
  * Returns the active scheme context for a student's class.
- * Used by AI agents (mwalimu_ai, CBC Agent) to ground responses in current curriculum.
+ * Used by AI agents (syncsenta, CBC Agent) to ground responses in current curriculum.
  * 
  * Students never see this data directly - only AI agents use it as guardrails.
  */

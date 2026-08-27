@@ -222,7 +222,7 @@ export default function StudentDashboardPage() {
   };
 
   const getPersonalizedMotivation = () => {
-    if (!profile) return "Ready to learn with mwalimu_ai today?";
+    if (!profile) return "Ready to learn with syncsenta today?";
     
     const totalSessions = learningProgress.reduce((sum, p) => sum + p.totalSessions, 0);
     const maxStreak = Math.max(...learningProgress.map(p => p.streakDays), 0);
@@ -305,7 +305,7 @@ export default function StudentDashboardPage() {
             <div className="flex items-center gap-2">
               <Badge variant="outline" className="gap-1 border-teal-200 text-teal-800">
                 <Brain className="h-3 w-3" />
-                Mwalimu AI ready
+                SyncSenta ready
               </Badge>
               <Badge variant="outline" className="gap-1 border-teal-200 text-teal-800">
                 <Clock className="h-3 w-3" />
@@ -318,11 +318,11 @@ export default function StudentDashboardPage() {
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div className="max-w-2xl">
                 <p className="text-xs font-semibold uppercase tracking-wide text-teal-700">Your next step</p>
-                <h2 className="mt-1 text-xl md:text-2xl font-bold">Ask Mwalimu AI, practise a strand, or check in privately.</h2>
+                <h2 className="mt-1 text-xl md:text-2xl font-bold">Ask SyncSenta, practise a strand, or check in privately.</h2>
                 <p className="mt-2 text-sm text-slate-600">Your guide uses your selected grade, subject, language, and learning progress. You choose what wellbeing information to share.</p>
                 <div className="mt-4 flex flex-wrap gap-2"><Button onClick={() => goToChat(learningProgress[0]?.subject || 'Mathematics')} className="gap-2"><Brain className="h-4 w-4" />Start learning</Button><Button variant="outline" onClick={() => setActiveTab('competency')} className="gap-2"><Map className="h-4 w-4" />View learning map</Button></div>
               </div>
-              <img src="/images/learning-catalog/ai.png" alt="Illustration for Mwalimu AI learning support" className="h-28 w-28 object-contain self-center md:h-36 md:w-36" />
+              <img src="/images/learning-catalog/ai.png" alt="Illustration for SyncSenta learning support" className="h-28 w-28 object-contain self-center md:h-36 md:w-36" />
             </div>
           </section>
 
@@ -503,7 +503,7 @@ export default function StudentDashboardPage() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Zap className="h-5 w-5" />
-                    mwalimu_ai Tutor
+                    syncsenta Tutor
                   </CardTitle>
                   <CardDescription>
                     {tutorTaglineFor(profile?.grade)}
@@ -543,7 +543,7 @@ export default function StudentDashboardPage() {
                     Practice Sandbox
                   </CardTitle>
                   <CardDescription>
-                    Drag, build, and explore. mwalimu_ai learns from how you think.
+                    Drag, build, and explore. syncsenta learns from how you think.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>

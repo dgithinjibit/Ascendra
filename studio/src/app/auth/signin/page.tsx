@@ -10,7 +10,7 @@ export default function SignInPage() {
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
           <p className="education-kicker mb-3">CBC learning companion</p>
-          <h1 className="mb-2 font-headline text-4xl font-bold text-primary">mwalimu_ai</h1>
+          <h1 className="mb-2 font-headline text-4xl font-bold text-primary">syncsenta</h1>
           <p className="text-muted-foreground">
             Welcome back! Continue your learning journey
           </p>

@@ -6,7 +6,7 @@ This job runs periodically (e.g., daily) to:
 3. Update rule confidence scores
 4. Export rule snapshots
 
-This is the "self-learning" automation that makes mwalimu_ai
+This is the "self-learning" automation that makes syncsenta
 smarter without manual intervention.
 """
 
@@ -92,7 +92,7 @@ class RuleLearningJob:
         """Generate a human-readable report of the learning job."""
         report = []
         report.append("=" * 60)
-        report.append("MWALIMU_AI - RULE LEARNING REPORT")
+        report.append("SYNCSENTA - RULE LEARNING REPORT")
         report.append(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         report.append("=" * 60)
         report.append("")
@@ -127,7 +127,7 @@ class RuleLearningJob:
         report.append("3. Approved rules enter A/B testing")
         report.append("4. Validated rules become active")
         report.append("")
-        report.append("This is how mwalimu_ai learns from Kenyan teachers!")
+        report.append("This is how syncsenta learns from Kenyan teachers!")
         report.append("")
         
         return "\n".join(report)

@@ -7,7 +7,7 @@
 import { TeacherDashboardNew } from '@/components/teacher/teacher-dashboard-new';
 
 export const metadata = {
-  title: 'Teacher Dashboard - mwalimu_ai',
+  title: 'Teacher Dashboard - syncsenta',
   description: 'Monitor your students in real-time and provide timely interventions',
 };
 

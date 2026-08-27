@@ -108,7 +108,7 @@ export function AIFeedbackDashboard({ teacherId }: { teacherId: string }) {
       if (response.ok) {
         toast({
           title: 'Feedback Submitted!',
-          description: 'Thank you for helping mwalimu_ai learn',
+          description: 'Thank you for helping syncsenta learn',
         })
         
         // Refresh data
@@ -140,7 +140,7 @@ export function AIFeedbackDashboard({ teacherId }: { teacherId: string }) {
         <div className="flex items-center gap-3 mb-2">
           <Brain className="h-8 w-8 text-primary" />
           <h1 className="text-3xl font-bold">AI Feedback Dashboard</h1>
-          <Badge variant="secondary">Help mwalimu_ai Learn</Badge>
+          <Badge variant="secondary">Help syncsenta Learn</Badge>
         </div>
         <p className="text-muted-foreground">
           Review AI decisions and help build Kenya's best pedagogical intelligence
@@ -491,7 +491,7 @@ export function AIFeedbackDashboard({ teacherId }: { teacherId: string }) {
                   Your Impact
                 </CardTitle>
                 <CardDescription>
-                  How you're helping mwalimu_ai learn
+                  How you're helping syncsenta learn
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -515,7 +515,7 @@ export function AIFeedbackDashboard({ teacherId }: { teacherId: string }) {
                   <div className="bg-blue-50 dark:bg-blue-950 p-3 rounded-md text-sm">
                     <p className="font-semibold mb-1">🎯 Keep it up!</p>
                     <p className="text-xs">
-                      Your feedback is training mwalimu_ai to understand Kenyan students better.
+                      Your feedback is training syncsenta to understand Kenyan students better.
                       Every review helps build the world's best CBC-aligned pedagogical intelligence.
                     </p>
                   </div>

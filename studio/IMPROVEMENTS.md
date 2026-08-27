@@ -1,7 +1,7 @@
 # SyncSenta Studio: Improvements & Enhancements
 
 ## Overview
-This document outlines the comprehensive improvements made to the SyncSenta studio repository, combining Magic School AI and Synthesis Tutor features with the existing Mwalimu AI platform for the Kenyan education sector.
+This document outlines the comprehensive improvements made to the SyncSenta studio repository, combining Magic School AI and Synthesis Tutor features with the existing SyncSenta platform for the Kenyan education sector.
 
 ## 1. Frontend Color Palette Update
 
@@ -38,7 +38,7 @@ The new palette is designed for maximum engagement and readability for children 
 ## 2. Dify Agent Integration
 
 ### Objective
-Create an advanced AI agent that combines Magic School AI, Synthesis Tutor, and Mwalimu AI features using the Dify MCP server and Hugging Face datasets.
+Create an advanced AI agent that combines Magic School AI, Synthesis Tutor, and SyncSenta features using the Dify MCP server and Hugging Face datasets.
 
 ### Files Created
 
@@ -48,7 +48,7 @@ Configuration file defining:
 - **Capabilities:** 
   - Magic School AI: Lesson planning, worksheet generation, rubric creation, quiz generation
   - Synthesis Tutor: Step-by-step guidance, adaptive learning, multisensory approach
-  - Mwalimu AI: Socratic tutoring, cultural relevance
+  - SyncSenta: Socratic tutoring, cultural relevance
 - **System Prompt:** Comprehensive instructions for the agent
 - **RAG Configuration:** Retrieval-Augmented Generation with curriculum grounding
 
@@ -105,7 +105,7 @@ REST API endpoint:
 - **Adaptive Learning:** Adjust explanations based on student understanding
 - **Multisensory Approach:** Engage visual, auditory, and kinesthetic learners
 
-### Mwalimu AI Enhancement
+### SyncSenta Enhancement
 - **Socratic Method:** Refined questioning techniques
 - **Cultural Relevance:** Kenyan examples and context
 - **Bilingual Support:** English and Swahili
@@ -267,7 +267,7 @@ The SyncSenta Multi-Agent System is an advanced orchestration layer that combine
 
 The multi-agent system consists of three specialized agents working under a central orchestrator:
 
-**1. Mwalimu AI Expert Agent**
+**1. SyncSenta Expert Agent**
 - **Purpose:** Master authority on the Kenyan CBC curriculum
 - **Data Source:** Synthesized from `scheme-genie`, `scheme-scribe-ai`, `Syncsenta_local`, and `WisdomEdu` repositories
 - **Capabilities:** Curriculum guidance, lesson planning, strand-based instruction, cultural integration

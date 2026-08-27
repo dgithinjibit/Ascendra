@@ -3,7 +3,7 @@
 /**
  * <SocraticChat />
  *
- * The student-facing chat panel for mwalimu_ai. Talks to the local Next.js
+ * The student-facing chat panel for syncsenta. Talks to the local Next.js
  * route handler at POST /api/chat which streams Groq tokens back as SSE.
  *
  * Responsibilities:
@@ -21,7 +21,7 @@
  *   - Surface backend errors visibly (no silent fallbacks).
  *
  * Intentional non-goals:
- *   - No WebSocket / teacher intervention pipe (those live in mwalimu-chat.tsx).
+ *   - No WebSocket / teacher intervention pipe (those live in syncsenta-chat.tsx).
  *   - No multi-device sync. Clearing browser storage wipes history.
  *   - No streaming TTS — we speak the final message, not token-by-token.
  */
@@ -136,7 +136,7 @@ function introMessage(opts: {
     role: 'assistant',
     // Grade-aware: lower-primary learners ("Grade 2 Environmental, what
     // should we learn today?") never see the word "Socratic"; older
-    // learners keep the mwalimu_ai / Socratic framing they're used to.
+    // learners keep the syncsenta / Socratic framing they're used to.
     content: tutorIntroMessage({
       studentName: opts.studentName,
       subject: opts.subject,
@@ -649,8 +649,8 @@ export function SocraticChat({
             aria-pressed={speakEnabled}
             aria-label={
               speakEnabled
-                ? 'Mute mwalimu_ai (currently speaking responses)'
-                : 'Have mwalimu_ai speak responses aloud'
+                ? 'Mute syncsenta (currently speaking responses)'
+                : 'Have syncsenta speak responses aloud'
             }
             title={speakEnabled ? 'Mute responses' : 'Speak responses aloud'}
           >
@@ -702,7 +702,7 @@ export function SocraticChat({
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={`Ask mwalimu_ai about ${subject}...`}
+            placeholder={`Ask syncsenta about ${subject}...`}
             rows={2}
             className="resize-none min-h-[2.5rem]"
             disabled={busy}
@@ -713,8 +713,8 @@ export function SocraticChat({
               size="icon"
               onClick={() => setCallOpen(true)}
               disabled={busy}
-              aria-label="Start voice call with mwalimu_ai"
-              title="Call mwalimu_ai — voice chat"
+              aria-label="Start voice call with syncsenta"
+              title="Call syncsenta — voice chat"
             >
               <Phone className="h-4 w-4" />
             </Button>
@@ -745,7 +745,7 @@ export function SocraticChat({
         open={callOpen}
         onOpenChange={setCallOpen}
         persona={{
-          name: 'mwalimu_ai',
+          name: 'syncsenta',
           subtitle: `${subject} · ${grade}`,
           initial: 'M',
         }}
@@ -796,7 +796,7 @@ function MessageBubble({
           {message.streaming && (
             <span
               className="inline-block w-2 h-4 ml-1 bg-current opacity-60 animate-pulse align-middle"
-              aria-label="mwalimu_ai is thinking"
+              aria-label="syncsenta is thinking"
             />
           )}
         </div>

@@ -244,7 +244,7 @@ export function TeacherInputsStep() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Source material for RAG <span className="font-normal text-muted-foreground">(optional)</span></CardTitle>
-            <CardDescription>Paste notes or extracted document text. Mwalimu AI retrieves the relevant excerpts before creating the scheme.</CardDescription>
+            <CardDescription>Paste notes or extracted document text. SyncSenta retrieves the relevant excerpts before creating the scheme.</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="mb-3 rounded-lg border border-dashed p-3">

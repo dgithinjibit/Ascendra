@@ -29,7 +29,7 @@ async function testAISA() {
       body: JSON.stringify({
         model: 'deepseek-v3',
         messages: [
-          { role: 'system', content: 'You are Mwalimu, an AI assistant for Kenya\'s CBC education system.' },
+          { role: 'system', content: 'You are SyncSenta, an AI assistant for Kenya\'s CBC education system.' },
           { role: 'user', content: 'Hello, test connection for SyncSenta' }
         ],
         temperature: 0.3,
@@ -74,7 +74,7 @@ async function testGroq() {
       body: JSON.stringify({
         model: 'llama-3.1-8b-instant',
         messages: [
-          { role: 'system', content: 'You are Mwalimu, an AI assistant for Kenya\'s CBC education system.' },
+          { role: 'system', content: 'You are SyncSenta, an AI assistant for Kenya\'s CBC education system.' },
           { role: 'user', content: 'Hello, test connection for SyncSenta' }
         ],
         temperature: 0.7,
@@ -137,7 +137,7 @@ async function testCBCPrompts() {
           messages: [
             { 
               role: 'system', 
-              content: `You are Mwalimu, an AI assistant specialized in Kenya's Competency-Based Curriculum (CBC).
+              content: `You are SyncSenta, an AI assistant specialized in Kenya's Competency-Based Curriculum (CBC).
 
 Your role:
 - Help students, teachers, and parents with CBC-aligned educational content
@@ -190,7 +190,7 @@ async function main() {
     
     console.log('\n🚀 Next steps:');
     console.log('1. Start the studio frontend: cd studio && npm run dev');
-    console.log('2. Test Mwalimu AI at http://localhost:3000');
+    console.log('2. Test SyncSenta at http://localhost:3000');
     console.log('3. Try different grades and subjects');
     console.log('4. Monitor which AI service is being used');
   } else {

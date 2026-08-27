@@ -186,7 +186,7 @@ export default function JourneyPage() {
           </h1>
           <p className="text-muted-foreground max-w-xl mx-auto">
             {step === 'level' &&
-              'Tell mwalimu_ai your school level so the conversation matches your CBC syllabus.'}
+              'Tell syncsenta your school level so the conversation matches your CBC syllabus.'}
             {step === 'grade' && currentLevel &&
               `${currentLevel.label} — ${currentLevel.description}`}
             {step === 'subject' && grade &&

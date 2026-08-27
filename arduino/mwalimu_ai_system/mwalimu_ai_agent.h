@@ -1,8 +1,8 @@
 /*
- * MWALIMU AI AGENT
+ * SYNCSENTA AGENT
  * ================
  * 
- * Integration with Mwalimu AI backend for:
+ * Integration with SyncSenta backend for:
  * - Automatic exam generation
  * - Code assessment and grading
  * - Student progress analysis
@@ -11,8 +11,8 @@
  * The AI agent handles all teacher tasks automatically
  */
 
-#ifndef MWALIMU_AI_AGENT_H
-#define MWALIMU_AI_AGENT_H
+#ifndef SYNCSENTA_AGENT_H
+#define SYNCSENTA_AGENT_H
 
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
@@ -24,7 +24,7 @@ extern const char* AI_API_KEY;
 
 /*
  * AI ASSESSMENT RESULT STRUCTURE
- * Contains the grading results from Mwalimu AI
+ * Contains the grading results from SyncSenta
  */
 struct AIAssessmentResult {
   bool success;              // Whether AI grading succeeded
@@ -37,7 +37,7 @@ struct AIAssessmentResult {
 
 /*
  * TEST AI CONNECTION
- * Verifies that Mwalimu AI backend is reachable
+ * Verifies that SyncSenta backend is reachable
  * Returns: true if connected, false otherwise
  */
 bool testAIConnection() {
@@ -55,7 +55,7 @@ bool testAIConnection() {
 }
 
 /*
- * SEND CODE TO MWALIMU AI FOR ASSESSMENT
+ * SEND CODE TO SYNCSENTA FOR ASSESSMENT
  * Submits student code to AI for automatic grading
  * 
  * Parameters:
@@ -64,7 +64,7 @@ bool testAIConnection() {
  * 
  * Returns: AIAssessmentResult with score and feedback
  */
-AIAssessmentResult sendToMwalimuAI(String code, String filename) {
+AIAssessmentResult sendToSyncSenta(String code, String filename) {
   AIAssessmentResult result;
   result.success = false;
   result.score = 0;
@@ -95,12 +95,12 @@ AIAssessmentResult sendToMwalimuAI(String code, String filename) {
   String jsonPayload;
   serializeJson(doc, jsonPayload);
   
-  // Send to Mwalimu AI API
+  // Send to SyncSenta API
   http.begin(String(AI_API_ENDPOINT) + "/assess");
   http.addHeader("Content-Type", "application/json");
   http.addHeader("Authorization", "Bearer " + String(AI_API_KEY));
   
-  Serial.println("Sending code to Mwalimu AI...");
+  Serial.println("Sending code to SyncSenta...");
   int httpCode = http.POST(jsonPayload);
   
   if (httpCode == 200) {
@@ -139,7 +139,7 @@ AIAssessmentResult sendToMwalimuAI(String code, String filename) {
 
 /*
  * GENERATE EXAM FOR STUDENT
- * Requests Mwalimu AI to generate a personalized exam
+ * Requests SyncSenta to generate a personalized exam
  * based on student's progress and weak areas
  * 
  * Parameters:
@@ -163,7 +163,7 @@ String generateExamForStudent(String studentId, int projectDay) {
   String jsonPayload;
   serializeJson(doc, jsonPayload);
   
-  // Request exam from Mwalimu AI
+  // Request exam from SyncSenta
   http.begin(String(AI_API_ENDPOINT) + "/generate-exam");
   http.addHeader("Content-Type", "application/json");
   http.addHeader("Authorization", "Bearer " + String(AI_API_KEY));
@@ -299,4 +299,4 @@ int submitExamAnswers(String studentId, String examId, String answers) {
   return score;
 }
 
-#endif // MWALIMU_AI_AGENT_H
+#endif // SYNCSENTA_AGENT_H

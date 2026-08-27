@@ -51,7 +51,7 @@ interface EmotionalState {
   indicators: string[];
 }
 
-interface MwalimuChatProps {
+interface SyncSentaChatProps {
   studentId: string;
   studentName: string;
   /**
@@ -72,7 +72,7 @@ interface MwalimuChatProps {
 // Component
 // ---------------------------------------------------------------------------
 
-export function MwalimuChat({
+export function SyncSentaChat({
   studentId,
   studentName,
   teacherId,
@@ -81,7 +81,7 @@ export function MwalimuChat({
   language = 'english',
   onEmotionalStateChange,
   className,
-}: MwalimuChatProps) {
+}: SyncSentaChatProps) {
   const { toast } = useToast();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
@@ -119,7 +119,7 @@ export function MwalimuChat({
         const ws = new WebSocket(wsUrl);
 
         ws.onopen = () => {
-          console.log('[MwalimuChat] WebSocket connected');
+          console.log('[SyncSentaChat] WebSocket connected');
           setWsConnected(true);
           
           // Send initial heartbeat
@@ -152,24 +152,24 @@ export function MwalimuChat({
               });
             }
           } catch (err) {
-            console.error('[MwalimuChat] Failed to parse WebSocket message:', err);
+            console.error('[SyncSentaChat] Failed to parse WebSocket message:', err);
           }
         };
 
         ws.onerror = (error) => {
-          console.error('[MwalimuChat] WebSocket error:', error);
+          console.error('[SyncSentaChat] WebSocket error:', error);
           setWsConnected(false);
         };
 
         ws.onclose = () => {
-          console.log('[MwalimuChat] WebSocket closed, reconnecting...');
+          console.log('[SyncSentaChat] WebSocket closed, reconnecting...');
           setWsConnected(false);
           setTimeout(connectWebSocket, 3000);
         };
 
         wsRef.current = ws;
       } catch (err) {
-        console.error('[MwalimuChat] Failed to connect WebSocket:', err);
+        console.error('[SyncSentaChat] Failed to connect WebSocket:', err);
         setTimeout(connectWebSocket, 3000);
       }
     };
@@ -230,7 +230,7 @@ export function MwalimuChat({
     // Show toast for significant emotional changes
     if (newState.state === 'frustrated' || newState.state === 'confused') {
       toast({
-        title: 'mwalimu_ai is adapting',
+        title: 'syncsenta is adapting',
         description: `Adjusting teaching approach for ${newState.state} state`,
         duration: 2000,
       });
@@ -312,7 +312,7 @@ export function MwalimuChat({
         });
       }
     } catch (err) {
-      console.error('[MwalimuChat] Failed to send message:', err);
+      console.error('[SyncSentaChat] Failed to send message:', err);
       
       // Add error message
       setMessages((prev) => [...prev, {
@@ -386,7 +386,7 @@ export function MwalimuChat({
         duration: 1000,
       });
     } catch (err) {
-      console.error('[MwalimuChat] Failed to start recording:', err);
+      console.error('[SyncSentaChat] Failed to start recording:', err);
       toast({
         title: 'Microphone access denied',
         description: 'Please allow microphone access to use voice input',
@@ -494,7 +494,7 @@ export function MwalimuChat({
               </AvatarFallback>
             </Avatar>
             <div>
-              <CardTitle className="text-lg">mwalimu_ai Tutor</CardTitle>
+              <CardTitle className="text-lg">syncsenta Tutor</CardTitle>
               <p className="text-sm text-muted-foreground">
                 {subject} • {grade}
               </p>
@@ -531,7 +531,7 @@ export function MwalimuChat({
                 <Brain className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
                 <h3 className="font-semibold mb-2">Welcome, {studentName}!</h3>
                 <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                  I'm mwalimu_ai, your AI tutor. Ask me anything about {subject} and I'll help you learn!
+                  I'm syncsenta, your AI tutor. Ask me anything about {subject} and I'll help you learn!
                 </p>
               </div>
             )}
@@ -686,7 +686,7 @@ export function MwalimuChat({
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Ask mwalimu_ai anything..."
+              placeholder="Ask syncsenta anything..."
               className="min-h-[60px] max-h-[120px] resize-none"
               disabled={isLoading}
             />

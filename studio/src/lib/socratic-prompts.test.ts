@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildSocraticSystemPrompt } from './socratic-prompts';
 
-describe('Mwalimu AI learner context', () => {
+describe('SyncSenta learner context', () => {
   it('grounds Junior Secondary Environmental Activities tutoring in verified context', () => {
     const prompt = buildSocraticSystemPrompt({
       grade: 'Grade 8',

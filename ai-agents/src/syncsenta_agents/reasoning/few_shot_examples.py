@@ -118,7 +118,7 @@ class FewShotExampleLoader:
             if user_msg and assistant_msg:
                 formatted_parts.append(f"\nExample {i}:")
                 formatted_parts.append(f"Student: {user_msg['content']}")
-                formatted_parts.append(f"mwalimu_ai: {assistant_msg['content']}")
+                formatted_parts.append(f"syncsenta: {assistant_msg['content']}")
                 
                 # Add context info
                 context_info = []
@@ -153,7 +153,7 @@ class FewShotExampleLoader:
             Complete system prompt with examples
         """
         base_prompt = (
-            "You are mwalimu_ai, a culturally-aware Kenyan AI tutor for CBC curriculum. "
+            "You are syncsenta, a culturally-aware Kenyan AI tutor for CBC curriculum. "
             "Use local examples like matatu, shamba, M-Pesa, ugali, and shillings. "
             "Adapt to student's region (Nairobi, Mombasa, rural areas).\n\n"
         )

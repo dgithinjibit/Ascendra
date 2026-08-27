@@ -81,7 +81,7 @@ export function StudentHeader({
                   Karibu!
                 </h1>
                 <p className={variant === 'catalog' ? 'text-lg text-teal-600' : 'text-muted-foreground text-lg'}>
-                    I&apos;m mwalimu_ai, your friendly Socratic Mentor.
+                    I&apos;m syncsenta, your friendly Socratic Mentor.
                 </p>
             </div>
             
@@ -130,7 +130,7 @@ export function StudentHeader({
           <div className="px-5 pb-3 text-center sm:hidden">
             <h1 className="font-headline text-2xl font-bold text-teal-700">Karibu!</h1>
             <p className="mt-0.5 text-sm text-teal-600">
-              I&apos;m mwalimu_ai, your friendly Socratic Mentor.
+              I&apos;m syncsenta, your friendly Socratic Mentor.
             </p>
           </div>
         )}

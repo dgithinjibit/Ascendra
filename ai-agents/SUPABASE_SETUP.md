@@ -1,4 +1,4 @@
-# Supabase Database Setup for Mwalimu AI
+# Supabase Database Setup for SyncSenta
 
 This guide will help you set up the database for the Teacher Feedback Loop (self-learning system).
 
@@ -20,7 +20,7 @@ This guide will help you set up the database for the Teacher Feedback Loop (self
 
 You should see:
 ```
-✅ Created 6 tables for Mwalimu AI Teacher Feedback Loop
+✅ Created 6 tables for SyncSenta Teacher Feedback Loop
 ```
 
 ### Step 3: Verify Tables Were Created

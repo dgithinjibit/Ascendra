@@ -81,7 +81,7 @@ async function generateAIResponse(
       const gemini = new GoogleGenerativeAI(geminiApiKey);
       const model = gemini.getGenerativeModel({
         model: process.env.GEMINI_MODEL || 'gemini-3.6-flash',
-        systemInstruction: `You are Mwalimu AI, an intelligent and friendly educational tutor. Help students learn through concise, natural conversation.\n\nContext:\n${context}\n\nRecent conversation:\n${history}\n\nKeep responses to 2-3 short sentences, use age-appropriate language, encourage the learner, and ask one follow-up question when useful.`,
+        systemInstruction: `You are SyncSenta, an intelligent and friendly educational tutor. Help students learn through concise, natural conversation.\n\nContext:\n${context}\n\nRecent conversation:\n${history}\n\nKeep responses to 2-3 short sentences, use age-appropriate language, encourage the learner, and ask one follow-up question when useful.`,
       });
       const result = await model.generateContent(message);
       return result.response.text().trim() || 'Could you try that again?';

@@ -1,4 +1,4 @@
-# Deployment Checklist - Mwalimu AI
+# Deployment Checklist - SyncSenta
 
 **Status**: Ready for Initial Deployment
 **Last Updated**: Implementation Phase Complete
@@ -92,7 +92,7 @@
 3. **Use Process Manager** (PM2 recommended)
    ```bash
    npm install -g pm2
-   pm2 start npm --name "mwalimu-ai" -- start
+   pm2 start npm --name "syncsenta" -- start
    pm2 save
    pm2 startup
    ```

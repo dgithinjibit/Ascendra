@@ -1,11 +1,11 @@
-MWALIMU AI - AUTOMATED TEACHER SYSTEM
+SYNCSENTA - AUTOMATED TEACHER SYSTEM
 ======================================
 
 Production-ready AI-powered system for Arduino Mastery Course.
 
 ARDUINO HARDWARE SYSTEM:
 -------------------------
-Location: arduino/mwalimu_ai_system/
+Location: arduino/syncsenta_system/
 
 Fully automated system using ESP32-CAM with face recognition.
 No manual teacher input needed - AI handles everything.
@@ -23,7 +23,7 @@ See arduino/README.txt for details.
 PROJECT STRUCTURE:
 ------------------
 arduino/                    # Hardware system (ESP32-CAM)
-  mwalimu_ai_system/       # Main code
+  syncsenta_system/       # Main code
   README.txt               # Complete documentation
 
 ai-agents/                 # AI backend agents

@@ -8,7 +8,7 @@
 import { Phase2TeacherDashboard } from '@/components/teacher/phase2-teacher-dashboard';
 
 export const metadata = {
-  title: 'MeTTa Analytics - mwalimu_ai',
+  title: 'MeTTa Analytics - syncsenta',
   description: 'Advanced behavioral analytics and misconception detection dashboard',
 };
 

@@ -199,7 +199,7 @@ export function SignUpForm() {
       <CardHeader>
         <CardTitle>Create Account</CardTitle>
         <CardDescription>
-          Join mwalimu_ai to start your learning journey
+          Join syncsenta to start your learning journey
         </CardDescription>
       </CardHeader>
 

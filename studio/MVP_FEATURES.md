@@ -1,4 +1,4 @@
-# Mwalimu AI - MVP Features Implementation
+# SyncSenta - MVP Features Implementation
 
 **Status:** ✅ Implemented  
 **Date:** May 4, 2026  
@@ -6,7 +6,7 @@
 
 ## Overview
 
-This document describes the MVP features implemented for Mwalimu AI, inspired by Synthesis Tutor (student side) and Magic School AI (teacher side), adapted for the Kenyan context with CBC curriculum alignment.
+This document describes the MVP features implemented for SyncSenta, inspired by Synthesis Tutor (student side) and Magic School AI (teacher side), adapted for the Kenyan context with CBC curriculum alignment.
 
 ---
 
@@ -139,7 +139,7 @@ This document describes the MVP features implemented for Mwalimu AI, inspired by
   3. **📊 Reports:**
      - Student progress reports
      - Performance summaries
-     - AI tutor insights (Mwalimu AI data)
+     - AI tutor insights (SyncSenta data)
      - Recommendations for parents
 
 - **One-Click Generation:** Fill form, click generate
@@ -214,7 +214,7 @@ All components follow the design system defined in `.kiro/skills/mwalimu-ui-ux-d
 - **API Endpoints:** `/api/mwalimu/chat`, `/api/mwalimu/memory/*`
 
 ### Frontend Integration (Implemented)
-- **Chat Interface:** `studio/src/components/student/mwalimu-chat.tsx`
+- **Chat Interface:** `studio/src/components/student/syncsenta-chat.tsx`
 - **WebSocket:** Real-time messaging and agent activity
 - **API Calls:** Fetch student data, send messages, generate content
 
@@ -332,4 +332,4 @@ Grid layouts: Responsive with `grid-cols-1 md:grid-cols-2 lg:grid-cols-3`
 ---
 
 **Built with ❤️ for Kenyan learners**  
-**Powered by Mwalimu AI + MeTTa**
+**Powered by SyncSenta + MeTTa**

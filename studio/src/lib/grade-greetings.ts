@@ -97,7 +97,7 @@ export function tutorIntroMessage(opts: {
     return `Karibu ${studentName}! Welcome to ${gradeBit}${subject}. What should we learn today?`
   }
   if (band === 'upper-primary') {
-    return `Karibu, ${studentName}! I'm mwalimu_ai. What part of ${subject} would you like to work on today?`
+    return `Karibu, ${studentName}! I'm syncsenta. What part of ${subject} would you like to work on today?`
   }
-  return `Karibu, ${studentName}! I'm mwalimu_ai, your Socratic mentor for ${subject}. What part of ${subject} would you like to explore today?`
+  return `Karibu, ${studentName}! I'm syncsenta, your Socratic mentor for ${subject}. What part of ${subject} would you like to explore today?`
 }

@@ -10,7 +10,7 @@
 
 Ascendra (branded as SyncSenta) is an AI-powered educational platform designed specifically for Kenya's Competency-Based Curriculum (CBC). It provides:
 
-- **For Students**: Socratic AI tutor (Mwalimu AI) with voice support, gamification, and adaptive learning
+- **For Students**: Socratic AI tutor (SyncSenta) with voice support, gamification, and adaptive learning
 - **For Teachers**: AI-powered lesson planning, scheme generation, assessment creation, and real-time student monitoring
 - **For Parents**: Progress tracking and engagement portal (planned)
 
@@ -28,7 +28,7 @@ Ascendra (branded as SyncSenta) is an AI-powered educational platform designed s
 - ✅ Vercel deployment pipeline
 
 ### Student Experience (80%)
-- ✅ Socratic AI tutor (Mwalimu AI) with Groq LLM
+- ✅ Socratic AI tutor (SyncSenta) with Groq LLM
 - ✅ Voice input/output (Web Speech API)
 - ✅ Progress tracking and visualization
 - ✅ Gamification (badges, streaks)

@@ -4,7 +4,7 @@
 
 ## 1. The Context: What we built
 SyncSenta is a unified digital ecosystem for the Kenyan education sector, strictly aligned with the Competency-Based Curriculum (CBC). It serves four distinct personas:
-- **Students:** Engage with "Mwalimu AI," a Socratic tutor that uses inquiry-based learning.
+- **Students:** Engage with "SyncSenta," a Socratic tutor that uses inquiry-based learning.
 - **Teachers:** Use a resource hub to generate CBC-compliant lesson plans, "Schemers" (Schemes of Work), and "Classroom Compass" (private RAG-based study rooms).
 - **School Heads:** Access an "AI Operational Consultant" to analyze school data (attendance, performance, finance).
 - **County Officers:** Oversee school networks via interactive maps and county-level briefings.
@@ -44,4 +44,4 @@ If you encounter `fatal: Authentication failed` or `remote: Invalid username or 
 - **Solution:** Generate a [Personal Access Token (PAT)](https://github.com/settings/tokens) with `repo` scopes and use it as your password when pushing to the repository.
 - **Alternative:** Configure SSH keys for your development environment to bypass HTTPS token prompts entirely.
 
-**Your first action:** Analyze the interaction between `src/app/student/chat/chat-interface.tsx` and `src/ai/flows/mwalimu-ai-flow.ts` to design the first Python-based API endpoint that will replace it.
+**Your first action:** Analyze the interaction between `src/app/student/chat/chat-interface.tsx` and `src/ai/flows/syncsenta-flow.ts` to design the first Python-based API endpoint that will replace it.

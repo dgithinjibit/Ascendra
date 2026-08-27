@@ -5,7 +5,7 @@
 This project already has strong foundations in teacher-facing AI tooling and CBC curriculum grounding, but the student side is vague and the AI agent architecture is not fully realized.
 
 Key findings:
-- Student-facing Mwalimu AI has a convincing Socratic prompt design and streaming SSE chat, but the experience is incomplete and largely local-storage-only.
+- Student-facing SyncSenta has a convincing Socratic prompt design and streaming SSE chat, but the experience is incomplete and largely local-storage-only.
 - The multi-agent architecture described in documentation is aspirational: the actual Python orchestrator only registers `socratic_tutor`, `assessment`, and `lesson_architect`.
 - Important claims like Kikuyu translation, Dify agent integration, and school intelligence agents are not present in the implemented agent registry.
 - There is a mismatch between UI language support and backend prompt acceptance.

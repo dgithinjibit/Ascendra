@@ -96,7 +96,7 @@ function StudentChatContent({ params }: PageProps) {
       <main className="flex-1 container mx-auto px-4 py-6 max-w-6xl flex flex-col gap-4">
         <div className="flex items-center justify-between gap-4 flex-col md:flex-row">
           <div>
-            <h1 className="text-2xl font-bold">Mwalimu AI · {subject}</h1>
+            <h1 className="text-2xl font-bold">SyncSenta · {subject}</h1>
             <p className="text-sm text-muted-foreground">
               Your CBC learning guide · {effectiveGrade} · {tutorLabelFor(effectiveGrade)}
             </p>

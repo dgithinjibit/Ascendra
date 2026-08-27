@@ -8,7 +8,7 @@ A consent-gated test now runs before the Junior Secondary learner-context test. 
 
 ## Junior Secondary bilingual prompt contract
 
-For mixed-language Grades 7–9 tutoring, Mwalimu AI now uses clear English for the main explanation and one concise Kiswahili bridge for the key idea or question. Important terms are introduced bilingually, such as `ecosystem (mfumo wa ikolojia)`, `conservation (uhifadhi)`, and `evidence (ushahidi)`. The prompt explicitly avoids translating every sentence or inferring emotion or wellbeing.
+For mixed-language Grades 7–9 tutoring, SyncSenta now uses clear English for the main explanation and one concise Kiswahili bridge for the key idea or question. Important terms are introduced bilingually, such as `ecosystem (mfumo wa ikolojia)`, `conservation (uhifadhi)`, and `evidence (ushahidi)`. The prompt explicitly avoids translating every sentence or inferring emotion or wellbeing.
 
 ## Preview verification
 

@@ -148,7 +148,7 @@ export function MaterialLessonGenerator() {
 
   const generateLesson = async () => {
     if (!subject.trim()) {
-      toast({ title: 'Choose a subject', description: 'Add the subject so Mwalimu AI can align the session.', variant: 'destructive' })
+      toast({ title: 'Choose a subject', description: 'Add the subject so SyncSenta can align the session.', variant: 'destructive' })
       return
     }
 
@@ -308,7 +308,7 @@ export function MaterialLessonGenerator() {
               <CardTitle>Session lesson plan</CardTitle>
               <CardDescription>{plan ? (planSource === 'ai' ? 'AI-generated from your teaching material' : 'Prescribed CBC schedule generated locally') : 'Your generated lesson will appear here'}</CardDescription>
             </div>
-            {plan && <Badge variant={planSource === 'ai' ? 'secondary' : 'outline'} className="gap-1"><Sparkles className="h-3 w-3" /> {planSource === 'ai' ? 'Mwalimu AI' : 'Prescribed CBC'}</Badge>}
+            {plan && <Badge variant={planSource === 'ai' ? 'secondary' : 'outline'} className="gap-1"><Sparkles className="h-3 w-3" /> {planSource === 'ai' ? 'SyncSenta' : 'Prescribed CBC'}</Badge>}
           </div>
         </CardHeader>
         <CardContent className="space-y-4 pt-6">
@@ -316,13 +316,13 @@ export function MaterialLessonGenerator() {
             <div className="flex min-h-[500px] flex-col items-center justify-center rounded-2xl border border-dashed border-border/80 bg-muted/20 p-8 text-center">
               <FileText className="mb-4 h-10 w-10 text-muted-foreground/60" />
               <h3 className="text-lg font-semibold">A focused lesson, built from your material</h3>
-              <p className="mt-2 max-w-md text-sm leading-6 text-muted-foreground">Upload your notes, choose the session context, and Mwalimu AI will organize the objectives, activities, assessment, and differentiation.</p>
+              <p className="mt-2 max-w-md text-sm leading-6 text-muted-foreground">Upload your notes, choose the session context, and SyncSenta will organize the objectives, activities, assessment, and differentiation.</p>
             </div>
           )}
           {loading && (
             <div className="flex min-h-[500px] flex-col items-center justify-center rounded-2xl bg-primary/[0.04] p-8 text-center">
               <Loader2 className="mb-4 h-10 w-10 animate-spin text-primary" />
-              <h3 className="text-lg font-semibold">Mwalimu AI is shaping your session</h3>
+              <h3 className="text-lg font-semibold">SyncSenta is shaping your session</h3>
               <p className="mt-2 text-sm text-muted-foreground">Reading the material and aligning the lesson with CBC outcomes.</p>
             </div>
           )}

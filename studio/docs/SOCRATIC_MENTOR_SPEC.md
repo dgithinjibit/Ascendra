@@ -1,4 +1,4 @@
-# Socratic Mentor (Mwalimu AI) — Chain-of-Thought Specification
+# Socratic Mentor (SyncSenta) — Chain-of-Thought Specification
 
 > Source of truth for the system prompts in `src/lib/socratic-prompts.ts` and the
 > route handler in `src/app/api/chat/route.ts`. If you change either, update

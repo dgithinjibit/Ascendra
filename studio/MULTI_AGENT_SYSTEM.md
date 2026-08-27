@@ -10,7 +10,7 @@ The SyncSenta Multi-Agent System is an advanced orchestration layer that combine
 
 The multi-agent system consists of three specialized agents working under a central orchestrator:
 
-**1. Mwalimu AI Expert Agent**
+**1. SyncSenta Expert Agent**
 - **Purpose:** Master authority on the Kenyan CBC curriculum
 - **Data Source:** Synthesized from `scheme-genie`, `scheme-scribe-ai`, `Syncsenta_local`, and `WisdomEdu` repositories
 - **Capabilities:** Curriculum guidance, lesson planning, strand-based instruction, cultural integration

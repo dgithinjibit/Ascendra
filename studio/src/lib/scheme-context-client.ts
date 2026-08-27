@@ -1,7 +1,7 @@
 /**
  * Scheme Context Client
  * 
- * Fetches active scheme of work for AI agents (mwalimu_ai, CBC Agent)
+ * Fetches active scheme of work for AI agents (syncsenta, CBC Agent)
  * to ground their responses in the current week's curriculum.
  * 
  * Students never see this UI - only AI agents use this context.

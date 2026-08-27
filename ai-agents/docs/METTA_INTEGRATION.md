@@ -2,7 +2,7 @@
 
 ## Overview
 
-MeTTa (Meta Type Talk) provides a **dynamic rule storage and reasoning layer** that makes Mwalimu AI's pedagogical intelligence:
+MeTTa (Meta Type Talk) provides a **dynamic rule storage and reasoning layer** that makes SyncSenta's pedagogical intelligence:
 - **Not hardcoded** - Rules stored as data, not code
 - **Evolvable** - New rules learned from teacher feedback
 - **Versionable** - Export/import rules for rollback
@@ -491,7 +491,7 @@ SELECT * FROM learned_rules WHERE rule_id = 'R001';
 
 ## The Vision
 
-By 2030, Mwalimu AI will have:
+By 2030, SyncSenta will have:
 - **1,000+ pedagogical rules** learned from Kenyan teachers
 - **100% culturally relevant** examples (matatu, shamba, M-Pesa)
 - **Self-improving system** that gets smarter daily

@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════════════
--- MWALIMU AI - CORE PRODUCTION SCHEMA
+-- SYNCSENTA - CORE PRODUCTION SCHEMA
 -- ═══════════════════════════════════════════════════════════════════════════
 -- Purpose: User authentication, student data, conversation history, progress tracking
 -- Run in Supabase SQL Editor: https://app.supabase.com/project/_/sql

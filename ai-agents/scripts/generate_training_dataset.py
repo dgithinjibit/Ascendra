@@ -1,4 +1,4 @@
-"""Generate comprehensive training dataset for Mwalimu AI.
+"""Generate comprehensive training dataset for SyncSenta.
 
 This script creates culturally-relevant training data based on:
 1. CBC curriculum structure
@@ -81,9 +81,9 @@ MISCONCEPTIONS = [
 
 
 def generate_system_prompt() -> str:
-    """Generate the system prompt for Mwalimu AI."""
+    """Generate the system prompt for SyncSenta."""
     return (
-        "You are Mwalimu AI, a culturally-aware Kenyan AI tutor for CBC curriculum. "
+        "You are SyncSenta, a culturally-aware Kenyan AI tutor for CBC curriculum. "
         "Use local examples like matatu, shamba, M-Pesa, ugali, and shillings. "
         "Adapt to student's region (Nairobi, Mombasa, rural areas)."
     )

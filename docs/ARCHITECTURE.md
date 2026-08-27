@@ -14,7 +14,7 @@ paths** in Studio:
 1. The Socratic student chat calls Studio's own POST /api/chat route. That
    route authenticates, rate-limits when Upstash is configured, calls Groq
    directly, persists progress, and streams Server-Sent Events to the browser.
-2. mwalimu_ai chat, teacher generators, telemetry, and dashboard tooling call the
+2. syncsenta chat, teacher generators, telemetry, and dashboard tooling call the
    FastAPI service at NEXT_PUBLIC_AI_AGENTS_URL, normally on port 8001 in
    development.
 
@@ -88,7 +88,7 @@ Useful source areas:
 | Client/service configuration | studio/src/lib/api-config.ts |
 | Supabase helpers | studio/src/lib/supabase |
 | Student Socratic chat | studio/src/components/student/socratic-chat.tsx |
-| Direct multi-agent chat | studio/src/components/student/mwalimu-chat.tsx |
+| Direct multi-agent chat | studio/src/components/student/syncsenta-chat.tsx |
 | Security headers and CSP | studio/src/middleware.ts |
 
 Studio starts on port 5173 because its dev script is next dev -p 5173.
@@ -172,7 +172,7 @@ Studio until a deliberate migration unifies them.
 
 ### 5. ESP32-CAM firmware
 
-Location: [arduino/mwalimu_ai_system](../arduino/mwalimu_ai_system)
+Location: [arduino/syncsenta_system](../arduino/syncsenta_system)
 
 The firmware is designed around local SD-card data, Wi-Fi, a camera/face
 recognition loop, attendance collection, and HTTP calls to a backend. Its
@@ -218,7 +218,7 @@ credentials disable rate limiting rather than blocking chat.
 
 ~~~mermaid
 sequenceDiagram
-  participant B as mwalimu_ai chat or teacher UI
+  participant B as syncsenta chat or teacher UI
   participant A as FastAPI /agents/chat
   participant S as Supabase
   participant O as SyncSentaOrchestrator
@@ -232,7 +232,7 @@ sequenceDiagram
   A-->>B: JSON response
 ~~~
 
-mwalimu_ai chat reads NEXT_PUBLIC_AI_AGENTS_URL but also has a hard-coded Render
+syncsenta chat reads NEXT_PUBLIC_AI_AGENTS_URL but also has a hard-coded Render
 fallback. Teacher components use the shared API configuration helper. This is
 a JSON API, not the same SSE transport as SocraticChat.
 

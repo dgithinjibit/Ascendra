@@ -93,7 +93,7 @@ After redeployment, test these features:
 - [ ] Student progress dashboard
 
 ### Student Features
-- [ ] Chat with Mwalimu AI
+- [ ] Chat with SyncSenta
 - [ ] Interactive sandbox
 - [ ] Telemetry capture
 

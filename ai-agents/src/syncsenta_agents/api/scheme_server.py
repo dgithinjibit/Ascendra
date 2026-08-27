@@ -16,7 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .lesson_architect_api import router as lesson_architect_router
 
 
-app = FastAPI(title="mwalimu_ai Scheme API", version="0.1.0")
+app = FastAPI(title="syncsenta Scheme API", version="0.1.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[

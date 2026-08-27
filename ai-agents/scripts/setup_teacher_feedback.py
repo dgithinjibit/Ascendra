@@ -94,7 +94,7 @@ def setup_database():
         print("  3. Start using the teacher feedback system!")
         print()
         print("🎯 Once set up, every AI decision will be logged automatically")
-        print("   Teachers can review and provide feedback to help Mwalimu AI learn!")
+        print("   Teachers can review and provide feedback to help SyncSenta learn!")
         
     except Exception as e:
         print(f"❌ Error: {e}")

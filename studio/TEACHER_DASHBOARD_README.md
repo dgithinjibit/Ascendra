@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Teacher Dashboard provides real-time student monitoring, interventions, and class analytics for teachers using Mwalimu AI.
+The Teacher Dashboard provides real-time student monitoring, interventions, and class analytics for teachers using SyncSenta.
 
 ## Features Implemented
 

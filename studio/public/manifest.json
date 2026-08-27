@@ -1,6 +1,6 @@
 {
-  "name": "Mwalimu AI - CBC Learning Assistant",
-  "short_name": "Mwalimu AI",
+  "name": "SyncSenta - CBC Learning Assistant",
+  "short_name": "SyncSenta",
   "description": "Your personal AI tutor for Kenya's CBC curriculum. Learn Math, Science, English, and more with Socratic guidance.",
   "start_url": "/",
   "display": "standalone",

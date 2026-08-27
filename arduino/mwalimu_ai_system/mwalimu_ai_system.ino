@@ -1,5 +1,5 @@
 /*
- * MWALIMU AI - AUTOMATED TEACHER SYSTEM
+ * SYNCSENTA - AUTOMATED TEACHER SYSTEM
  * ======================================
  * 
  * Fully automated AI-powered system for Arduino Mastery Course
@@ -7,7 +7,7 @@
  * 
  * FEATURES:
  * - Automatic face recognition attendance
- * - AI-generated exams (Mwalimu AI agent)
+ * - AI-generated exams (SyncSenta agent)
  * - Automatic code assessment and grading
  * - Real-time progress tracking
  * - Cloud sync and notifications
@@ -19,7 +19,7 @@
  * - DS3231 RTC Module
  * - Buzzer, LEDs
  * 
- * AUTHOR: Mwalimu AI System
+ * AUTHOR: SyncSenta System
  * DATE: 2026
  */
 
@@ -43,7 +43,7 @@
 #include "config.h"
 #include "camera_pins.h"
 #include "face_recognition.h"
-#include "mwalimu_ai_agent.h"
+#include "syncsenta_agent.h"
 #include "attendance_auto.h"
 #include "assessment_auto.h"
 #include "display.h"
@@ -64,7 +64,7 @@ const unsigned long FACE_CHECK_INTERVAL = 2000;  // Check for faces every 2 seco
 const char* ssid = "YOUR_WIFI_SSID";
 const char* password = "YOUR_WIFI_PASSWORD";
 
-// Mwalimu AI API endpoint - your AI backend
+// SyncSenta API endpoint - your AI backend
 const char* AI_API_ENDPOINT = "https://your-ai-backend.com/api";
 const char* AI_API_KEY = "YOUR_API_KEY";
 
@@ -79,7 +79,7 @@ static face_id_list id_list = {0};
 void setup() {
   Serial.begin(115200);
   Serial.println("=================================");
-  Serial.println("MWALIMU AI - AUTOMATED TEACHER");
+  Serial.println("SYNCSENTA - AUTOMATED TEACHER");
   Serial.println("=================================");
   Serial.println("Initializing system...");
   
@@ -179,11 +179,11 @@ void setup() {
     lcd.setCursor(0, 2);
     lcd.print(WiFi.localIP());
     
-    // Test connection to Mwalimu AI backend
+    // Test connection to SyncSenta backend
     lcd.setCursor(0, 3);
     lcd.print("Testing AI API...");
     if (testAIConnection()) {
-      Serial.println("Mwalimu AI connected!");
+      Serial.println("SyncSenta connected!");
       lcd.setCursor(0, 3);
       lcd.print("AI: Ready");
     } else {
@@ -206,7 +206,7 @@ void setup() {
   
   lcd.clear();
   lcd.setCursor(0, 0);
-  lcd.print("MWALIMU AI READY");
+  lcd.print("SYNCSENTA READY");
   lcd.setCursor(0, 1);
   lcd.print("Auto Attendance: ON");
   lcd.setCursor(0, 2);
@@ -315,7 +315,7 @@ void checkForStudents() {
       // Return to watching mode
       lcd.clear();
       lcd.setCursor(0, 0);
-      lcd.print("MWALIMU AI");
+      lcd.print("SYNCSENTA");
       lcd.setCursor(0, 1);
       lcd.print("Watching...");
       
@@ -347,7 +347,7 @@ void checkForStudents() {
 
 /*
  * PROCESS AI ASSESSMENTS
- * Checks for student code submissions and sends to Mwalimu AI for grading
+ * Checks for student code submissions and sends to SyncSenta for grading
  */
 void processAIAssessments() {
   // Check SD card for new code submissions
@@ -370,14 +370,14 @@ void processAIAssessments() {
           code += (char)file.read();
         }
         
-        // Send to Mwalimu AI for assessment
+        // Send to SyncSenta for assessment
         lcd.clear();
         lcd.setCursor(0, 0);
         lcd.print("AI Grading...");
         lcd.setCursor(0, 1);
         lcd.print(filename);
         
-        AIAssessmentResult result = sendToMwalimuAI(code, filename);
+        AIAssessmentResult result = sendToSyncSenta(code, filename);
         
         if (result.success) {
           // Save grade to database

@@ -1,6 +1,6 @@
-# Mwalimu AI - Setup Guide
+# SyncSenta - Setup Guide
 
-Complete setup guide for getting Mwalimu AI running locally and deploying to production.
+Complete setup guide for getting SyncSenta running locally and deploying to production.
 
 ## Prerequisites
 
@@ -18,7 +18,7 @@ Complete setup guide for getting Mwalimu AI running locally and deploying to pro
 1. Go to [https://app.supabase.com](https://app.supabase.com)
 2. Click "New Project"
 3. Fill in:
-   - **Name**: `mwalimu-ai` (or your choice)
+   - **Name**: `syncsenta` (or your choice)
    - **Database Password**: Generate a strong password (save it!)
    - **Region**: Choose closest to Kenya (e.g., `eu-west-1` or `ap-southeast-1`)
 4. Click "Create new project" (takes ~2 minutes)
@@ -30,7 +30,7 @@ Complete setup guide for getting Mwalimu AI running locally and deploying to pro
 3. Copy the entire contents
 4. Paste into the Supabase SQL Editor
 5. Click **Run** (or press Ctrl+Enter / Cmd+Enter)
-6. You should see: `✅ Created 8 core tables for Mwalimu AI`
+6. You should see: `✅ Created 8 core tables for SyncSenta`
 
 ### Step 3: Get API Credentials
 
@@ -103,7 +103,7 @@ The app will be available at [http://localhost:5173](http://localhost:5173)
 ### Step 3: Test the Setup
 
 1. Open [http://localhost:5173](http://localhost:5173)
-2. You should see the Mwalimu AI interface
+2. You should see the SyncSenta interface
 3. Try asking a question in the Socratic Chat
 4. Check Supabase dashboard → **Table Editor** → `chat_sessions` to see data being saved
 

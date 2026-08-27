@@ -343,7 +343,7 @@ export function PreviewStep() {
         </div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Sparkles className="h-4 w-4" />
-          <span>Powered by Mwalimu AI</span>
+          <span>Powered by SyncSenta</span>
         </div>
       </div>
     );

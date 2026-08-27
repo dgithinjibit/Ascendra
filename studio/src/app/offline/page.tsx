@@ -33,7 +33,7 @@ export default function OfflinePage() {
             <li>✓ Browse achievements</li>
           </ul>
           <p className="text-sm text-muted-foreground">
-            To start new conversations with mwalimu_ai, please reconnect to the internet.
+            To start new conversations with syncsenta, please reconnect to the internet.
           </p>
           <Button
             onClick={() => window.location.reload()}
