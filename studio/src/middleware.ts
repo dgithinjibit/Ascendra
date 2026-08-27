@@ -49,7 +49,7 @@ export async function middleware(request: NextRequest) {
   // Protect learner and teacher workspaces in production. Local demos can
   // explicitly opt out through an ignored `.env.local`; this flag is never a
   // production default.
-  const protectedRoute = request.nextUrl.pathname.startsWith('/teacher') || request.nextUrl.pathname.startsWith('/student');
+  const protectedRoute = request.nextUrl.pathname.startsWith('/teacher') || request.nextUrl.pathname.startsWith('/student') || request.nextUrl.pathname.startsWith('/parent') || request.nextUrl.pathname.startsWith('/head');
   const demoBypass = process.env.NODE_ENV !== 'production' && process.env.NEXT_PUBLIC_AUTH_DEMO_BYPASS === 'true';
   // Authentication is opt-in. Presentation deployments can run without a
   // Supabase project; a real production deployment enables this explicitly.

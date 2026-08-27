@@ -43,6 +43,7 @@ import { getDemoBadges } from '@/lib/gamification/badges';
 import { getStudentId } from '@/lib/auth/student-id';
 import { CompetencyMap } from '@/components/student/competency-map';
 import { FloatingConceptChat } from '@/components/student/floating-concept-chat';
+import { GuardianLinkCodeCard } from '@/components/student/guardian-link-code-card';
 
 interface StudentProfile {
   id: string;
@@ -324,6 +325,8 @@ export default function StudentDashboardPage() {
               <img src="/images/learning-catalog/ai.png" alt="Illustration for Mwalimu AI learning support" className="h-28 w-28 object-contain self-center md:h-36 md:w-36" />
             </div>
           </section>
+
+          <GuardianLinkCodeCard />
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card className={DASHBOARD_CARD_CLASS}>

@@ -1,10 +1,13 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, BookOpen, HeartHandshake, ShieldCheck, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ParentLinkingCanvas } from '@/components/parent/parent-linking-canvas';
+import { useAuth } from '@/hooks/use-auth';
 
 /**
  * Parent/guardian entry point.
@@ -14,6 +17,40 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
  * then populate the cards through read-only parent APIs.
  */
 export default function ParentDashboardPage() {
+  const { user, profile, loading, refreshProfile } = useAuth();
+  const [hasVerifiedLink, setHasVerifiedLink] = useState(false);
+
+  useEffect(() => {
+    setHasVerifiedLink(profile?.role === 'parent' && (profile.children_ids?.length ?? 0) > 0);
+  }, [profile]);
+
+  if (loading) {
+    return <main className="education-shell flex min-h-screen items-center justify-center p-6"><p className="text-sm text-muted-foreground">Preparing your private family space…</p></main>;
+  }
+
+  if (!user) {
+    return (
+      <main className="education-shell flex min-h-screen items-center justify-center p-6">
+        <Card className="w-full max-w-md">
+          <CardHeader><CardTitle>Sign in to connect a learner</CardTitle><CardDescription>No learner information is available before authentication and a verified relationship.</CardDescription></CardHeader>
+          <CardContent><Button asChild className="w-full"><Link href="/login?next=/parent">Sign in securely <ArrowRight className="ml-2 h-4 w-4" /></Link></Button></CardContent>
+        </Card>
+      </main>
+    );
+  }
+
+  if (profile?.role === 'parent' && !hasVerifiedLink) {
+    return (
+      <main className="education-shell min-h-screen p-6 md:p-10">
+        <div className="mx-auto max-w-3xl space-y-6">
+          <header className="space-y-3"><Badge variant="secondary">Parent / guardian</Badge><h1 className="text-3xl font-bold tracking-tight md:text-4xl">Your private family space</h1><p className="max-w-2xl text-muted-foreground">No learner information is shown on this account yet. Connect only a learner who intentionally shares their one-time code with you.</p></header>
+          <ParentLinkingCanvas onLinked={() => void refreshProfile()} />
+          <p className="text-center text-xs text-muted-foreground">A wallet address, email address, or school name alone never grants access to a learner.</p>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="education-shell min-h-screen p-6 md:p-10">
       <div className="mx-auto max-w-6xl space-y-8">
