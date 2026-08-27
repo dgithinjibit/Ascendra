@@ -18,6 +18,7 @@ type SchemeRequest = {
     subStrands?: string[];
     sub_strands?: string[];
   }>;
+  language?: 'english' | 'kiswahili' | 'mixed';
 };
 
 /**
@@ -29,6 +30,7 @@ function prescribedScheme(payload: SchemeRequest, reason: string) {
   const grade = payload.grade || 'Grade 4';
   const subject = payload.subject || 'General Studies';
   const term = payload.term || 'Term 1';
+  const isSwahili = payload.language === 'kiswahili' || subject.toLowerCase().includes('kiswahili');
   const selectedStrands = Array.isArray(payload.strands) ? payload.strands : [];
   const strandChoices = selectedStrands.length
     ? selectedStrands
@@ -45,11 +47,21 @@ function prescribedScheme(payload: SchemeRequest, reason: string) {
         lesson,
         strand,
         subStrand,
-        specificLearningOutcome: `By the end of the lesson, the learner should be able to explain and apply ${subStrand}.`,
-        learningExperiences: `Activate prior knowledge, model the concept, practise ${subStrand} in pairs, and share a short reflection.`,
-        keyInquiryQuestion: `How can we use ${subStrand} in everyday learning?`,
-        learningResources: 'Learner book, teacher guide, chart paper, and locally available materials.',
-        assessmentMethods: 'Observation checklist, oral questions, and an exit task.',
+        specificLearningOutcome: isSwahili
+          ? `Mwisho wa somo, mwanafunzi aweze kueleza na kutumia ${subStrand}.`
+          : `By the end of the lesson, the learner should be able to explain and apply ${subStrand}.`,
+        learningExperiences: isSwahili
+          ? `Kumbusha maarifa ya awali, onyesha dhana, fanya mazoezi ya ${subStrand} kwa jozi, kisha mwanafunzi atafakari kwa ufupi.`
+          : `Activate prior knowledge, model the concept, practise ${subStrand} in pairs, and share a short reflection.`,
+        keyInquiryQuestion: isSwahili
+          ? `Tunawezaje kutumia ${subStrand} katika ujifunzaji wa kila siku?`
+          : `How can we use ${subStrand} in everyday learning?`,
+        learningResources: isSwahili
+          ? 'Kitabu cha mwanafunzi, mwongozo wa mwalimu, karatasi ya chati na vifaa vinavyopatikana katika mazingira ya karibu.'
+          : 'Learner book, teacher guide, chart paper, and locally available materials.',
+        assessmentMethods: isSwahili
+          ? 'Orodha ya uchunguzi, maswali ya mdomo na kazi ya mwisho ya somo.'
+          : 'Observation checklist, oral questions, and an exit task.',
         reflection: '',
       };
     });
@@ -57,7 +69,7 @@ function prescribedScheme(payload: SchemeRequest, reason: string) {
 
   return {
     scheme_id: `prescribed_${Date.now()}`,
-    title: `${grade} ${subject} ${term} - Prescribed CBC Scheme`,
+    title: isSwahili ? `${grade} ${subject} ${term} - Mpango wa Kazi wa CBC` : `${grade} ${subject} ${term} - Prescribed CBC Scheme`,
     grade,
     subject,
     term,

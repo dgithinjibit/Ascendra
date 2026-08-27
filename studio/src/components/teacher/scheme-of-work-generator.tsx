@@ -27,6 +27,7 @@ import SchemePreview from '@/components/scheme-wizard/scheme-preview'
 import LessonPlanDialog from '@/components/scheme-wizard/lesson-plan-dialog'
 import { UnpackedOutcomeRenderer } from './unpacked-outcome-renderer'
 import { ExportTrainingDataButton } from './export-training-data-button'
+import { FeedbackWidget } from '@/components/teacher/feedback-widget'
 import type { SchemeRow } from '@/types/curriculum'
 
 // Stopgap teacher identity. Until real auth lands, persist a single ID per
@@ -87,6 +88,8 @@ export function SchemeOfWorkGenerator() {
     try {
       const teacherId = getTeacherId()
 
+      const language = subject.toLowerCase().includes('kiswahili') ? 'kiswahili' : 'english'
+
       // Use fetchWithRetry to handle network errors
       const response = await fetchWithRetry(
         buildApiUrl(API_ENDPOINTS.LESSON_ARCHITECT_GENERATE_SCHEME),
@@ -99,7 +102,7 @@ export function SchemeOfWorkGenerator() {
             subject,
             term,
             mode: 'standard',
-            language: 'english',
+            language,
           }),
           maxRetries: 3,
           retryDelay: 2000,
@@ -218,7 +221,7 @@ export function SchemeOfWorkGenerator() {
           outcome,
           grade,
           subject,
-          language: 'english',
+          language: subject.toLowerCase().includes('kiswahili') ? 'kiswahili' : 'english',
         }),
       })
 
@@ -408,6 +411,14 @@ export function SchemeOfWorkGenerator() {
               </div>
             </div>
           )}
+          {currentSchemeId && schemeRows.length > 0 && (
+            <FeedbackWidget
+              contentType="scheme"
+              contentId={currentSchemeId}
+              context={{ grade, subject, term, language: subject.toLowerCase().includes('kiswahili') ? 'kiswahili' : 'english' }}
+              className="mt-4 border-t pt-4"
+            />
+          )}
         </CardContent>
       </Card>
 
@@ -422,6 +433,7 @@ export function SchemeOfWorkGenerator() {
           subject={subject}
           term={term}
           teacherId={getTeacherId()}
+          schemeId={currentSchemeId || undefined}
         />
       )}
 

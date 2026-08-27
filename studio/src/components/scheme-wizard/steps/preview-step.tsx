@@ -85,6 +85,7 @@ export function PreviewStep() {
         term: selectedTerm?.replace(/^Term([1-3])$/, 'Term $1'),
         strands: selectedStrands,
         teacherInputs,
+        language: selectedSubject?.toLowerCase().includes('kiswahili') ? 'kiswahili' : 'english',
       };
 
       // Call backend API for scheme generation

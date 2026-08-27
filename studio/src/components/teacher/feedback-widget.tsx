@@ -14,7 +14,6 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { getSupabaseClient } from '@/lib/supabase/client';
 
 interface FeedbackWidgetProps {
   contentType: 'scheme' | 'lesson_plan' | 'assessment' | 'worksheet' | 'text_leveler' | 'standards_unpacker';
@@ -37,7 +36,6 @@ export function FeedbackWidget({
   const [improvementSuggestions, setImprovementSuggestions] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
-  const supabase = getSupabaseClient();
 
   const handleRatingClick = (selectedRating: 'thumbs_up' | 'thumbs_down') => {
     setRating(selectedRating);
@@ -57,28 +55,23 @@ export function FeedbackWidget({
   ) => {
     setIsSubmitting(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        toast({
-          title: 'Error',
-          description: 'You must be logged in to submit feedback',
-          variant: 'destructive',
-        });
-        return;
+      const response = await fetch('/api/teacher/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content_type: contentType,
+          content_id: contentId,
+          rating: finalRating,
+          feedback_text: feedback || null,
+          improvement_suggestions: suggestions || null,
+          context: context || null,
+        }),
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload.error || payload.detail || 'Failed to save feedback');
       }
-
-      const { error } = await supabase.from('teacher_feedback').insert({
-        teacher_id: user.id,
-        content_type: contentType,
-        content_id: contentId,
-        rating: finalRating,
-        feedback_text: feedback || null,
-        improvement_suggestions: suggestions || null,
-        context: context || null,
-      } as any);
-
-      if (error) throw error;
 
       toast({
         title: 'Feedback submitted',
@@ -97,8 +90,8 @@ export function FeedbackWidget({
     } catch (error) {
       console.error('Error submitting feedback:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to submit feedback. Please try again.',
+        title: 'Feedback submission failed',
+        description: error instanceof Error ? error.message : 'Please try again.',
         variant: 'destructive',
       });
     } finally {

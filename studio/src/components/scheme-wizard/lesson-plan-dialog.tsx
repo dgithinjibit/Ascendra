@@ -101,7 +101,7 @@ export default function LessonPlanDialog({
       // ported from scheme-scribe-ai. Returns the LessonPlan camelCase shape
       // this component already renders against.
       const response = await fetch(
-        buildApiUrl(API_ENDPOINTS.LESSON_ARCHITECT_GENERATE_LESSON_PLAN),
+        '/api/generate/lesson-plan',
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -114,6 +114,7 @@ export default function LessonPlanDialog({
             grade,
             subject,
             term,
+            language: isSw ? 'kiswahili' : 'english',
             additional_notes: additionalNotes || undefined,
           }),
         }
