@@ -7,6 +7,7 @@ pub mod agent_runtime;
 pub mod feedback_review;
 pub mod head_progress;
 pub mod intelligence_signals;
+pub mod indigenous_rag;
 pub mod moe_router;
 pub mod observability;
 pub mod parent_report;
@@ -32,6 +33,7 @@ pub use head_progress::{
 pub use intelligence_signals::{
     classify_intelligence, IntelligenceSignal, SignalTag, SyncsentaAction,
 };
+pub use indigenous_rag::{retrieve_sources as retrieve_indigenous_sources, IndigenousSource};
 pub use moe_router::{plan_specialists, MoePlan, SpecialistContract};
 pub use observability::{ObservabilityError, OperationalEvent, SafeDimension, SafeMetric};
 pub use parent_report::{ParentPerformanceReport, ParentReportBand, ParentReportError};

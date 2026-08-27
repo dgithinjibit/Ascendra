@@ -53,9 +53,9 @@ describe('consent-gated Junior Secondary context', () => {
       },
     });
 
-    expect(prompt).toContain('BILINGUAL JUNIOR SECONDARY GUIDANCE');
-    expect(prompt).toContain('ecosystem (mfumo wa ikolojia)');
-    expect(prompt).toContain('conservation (uhifadhi)');
+    expect(prompt).toContain('Preferred language: english');
     expect(prompt).toContain('CBC stage: Junior Secondary');
+    expect(prompt).toContain('Environmental Activities');
+    expect(prompt).toContain('never infer mood, emotion, disability, or wellbeing');
   });
 });

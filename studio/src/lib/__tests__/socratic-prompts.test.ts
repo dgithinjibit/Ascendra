@@ -38,7 +38,7 @@ describe('buildSocraticSystemPrompt', () => {
     expect(prompt).toContain('Grade 4');
     expect(prompt).toContain('Mathematics');
     expect(prompt).toContain('Amani');
-    expect(prompt).toContain('mixed');
+    expect(prompt).toContain('Preferred language: english');
   });
 
   it('enforces the four-sentence cap', () => {
@@ -78,12 +78,21 @@ describe('buildSocraticSystemPrompt', () => {
     expect(prompt).toContain('REGROUND');
   });
 
-  it('defaults language to mixed when omitted', () => {
+  it('defaults language to pure English when omitted', () => {
     const prompt = buildSocraticSystemPrompt({
       grade: 'Grade 4',
       subject: 'Mathematics',
     });
-    expect(prompt).toContain('Preferred language: mixed');
+    expect(prompt).toContain('Preferred language: english');
+  });
+
+  it('forces pure Kiswahili for Kiswahili subjects', () => {
+    const prompt = buildSocraticSystemPrompt({
+      grade: 'Grade 8',
+      subject: 'Kiswahili',
+      language: 'mixed',
+    });
+    expect(prompt).toContain('Preferred language: kiswahili');
   });
 
   it('falls back to "the student" when studentName is missing', () => {

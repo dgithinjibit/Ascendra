@@ -28,6 +28,7 @@ import { getStudentId } from '@/lib/auth/student-id';
 import { tutorLabelFor } from '@/lib/grade-greetings';
 import { Card } from '@/components/ui/card';
 import { WellbeingCheckIn } from '@/components/student/wellbeing-checkin';
+import { resolveTeachingLanguage } from '@/lib/teaching-language-policy';
 
 const STORAGE_GRADE = 'learningJourney.grade';
 const DEFAULT_GRADE = 'Grade 4';
@@ -48,7 +49,7 @@ function StudentChatContent({ params }: PageProps) {
   const effectiveGrade = routeGrade || grade;
   const [studentId, setStudentId] = useState<string>('user1');
   const [studentName, setStudentName] = useState<string>('Mwanafunzi');
-  const [language, setLanguage] = useState<'english' | 'kiswahili' | 'mixed'>('mixed');
+  const [language, setLanguage] = useState<'english' | 'kiswahili' | 'mixed'>('english');
   const [chatMode, setChatMode] = useState<ChatMode>('socratic');
   const [showAdaptiveDifficulty, setShowAdaptiveDifficulty] = useState(true);
   const [competencyCode, setCompetencyCode] = useState<string | undefined>(undefined);
@@ -75,12 +76,10 @@ function StudentChatContent({ params }: PageProps) {
       if (name) setStudentName(name);
 
       const savedLanguage = window.localStorage.getItem('preferredLanguage');
-      if (
-        savedLanguage === 'english' ||
-        savedLanguage === 'kiswahili' ||
-        savedLanguage === 'mixed'
-      ) {
-        setLanguage(savedLanguage);
+      if (savedLanguage === 'english' || savedLanguage === 'kiswahili' || savedLanguage === 'mixed') {
+        setLanguage(resolveTeachingLanguage({ subject, grade: routeGrade || grade, requestedLanguage: savedLanguage }));
+      } else {
+        setLanguage(resolveTeachingLanguage({ subject, grade: routeGrade || grade }));
       }
 
       const savedMode = window.localStorage.getItem('chatMode.preferred');
@@ -88,7 +87,7 @@ function StudentChatContent({ params }: PageProps) {
         setChatMode(savedMode as ChatMode);
       }
     }
-  }, [searchParams]);
+  }, [searchParams, subject]);
 
   return (
     <div className="education-shell flex flex-col">
@@ -121,7 +120,7 @@ function StudentChatContent({ params }: PageProps) {
               studentName={studentName}
               grade={effectiveGrade}
               subject={subject}
-              language={language}
+              language={resolveTeachingLanguage({ subject, grade: effectiveGrade, requestedLanguage: language })}
                 mode={chatMode}
                 competencyCode={competencyCode}
             />
