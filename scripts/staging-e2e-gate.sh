@@ -50,14 +50,23 @@ pass "service health endpoint"
 # Authenticated role probes are opt-in because tokens must come from the
 # staging secret manager or a user-authenticated session, never from source.
 if [[ "$REQUIRE_AUTH_PROBES" == "true" ]]; then
+  missing=()
   for role in STUDENT TEACHER HEAD PARENT; do
-    var="${role}_HEALTH_URL"
-    url="${!var:-}"
-    [[ -n "$url" ]] || fail "$var is required when REQUIRE_AUTH_PROBES=true"
+    url_var="${role}_HEALTH_URL"
     token_var="${role}_TOKEN"
-    token="${!token_var:-}"
-    [[ -n "$token" ]] || fail "$token_var is required when REQUIRE_AUTH_PROBES=true"
-    status="$(curl --fail --silent --show-error --max-time 10 -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $token" "$url")" || fail "$role authenticated probe failed"
+    [[ -n "${!url_var:-}" ]] || missing+=("$url_var")
+    [[ -n "${!token_var:-}" ]] || missing+=("$token_var")
+  done
+  if (( ${#missing[@]} > 0 )); then
+    fail "authenticated probes require these non-secret environment variables: ${missing[*]}"
+  fi
+
+  for role in STUDENT TEACHER HEAD PARENT; do
+    url_var="${role}_HEALTH_URL"
+    token_var="${role}_TOKEN"
+    url="${!url_var}"
+    token="${!token_var}"
+    status="$(curl --fail --silent --show-error --max-time 10 -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $token" "$url")" || fail "$role authenticated probe request failed (check URL/network; token value was not printed)"
     [[ "$status" == "200" ]] || fail "$role authenticated probe returned HTTP $status"
     pass "$role authenticated probe"
   done

@@ -141,13 +141,23 @@ export default function StudentDashboardPage() {
     loadPersonalizedLearningData();
   }, [router]);
 
+  const fetchWithTimeout = async (input: RequestInfo | URL, init: RequestInit = {}, timeoutMs = 8000) => {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      return await fetch(input, { ...init, signal: controller.signal });
+    } finally {
+      window.clearTimeout(timeout);
+    }
+  };
+
   const loadPersonalizedLearningData = async () => {
     try {
       setIsLoading(true);
       setLoadError(null);
       
       // Get student profile
-      const profileResponse = await fetch('/api/test-personalization?action=profile&userId=user1');
+      const profileResponse = await fetchWithTimeout('/api/test-personalization?action=profile&userId=user1');
       if (!profileResponse.ok) throw new Error('profile request failed');
       const profileData = await profileResponse.json();
       
@@ -160,7 +170,7 @@ export default function StudentDashboardPage() {
       // Get learning progress for main subjects
       const subjects = ['Mathematics', 'English', 'Science'];
       const progressPromises = subjects.map(async (subject) => {
-        const response = await fetch(`/api/test-personalization?action=progress&userId=user1&subject=${subject}`);
+        const response = await fetchWithTimeout(`/api/test-personalization?action=progress&userId=user1&subject=${subject}`);
         if (!response.ok) return null;
         const data = await response.json();
         return data.success && data.progress ? { subject, ...data.progress } : null;
@@ -170,7 +180,8 @@ export default function StudentDashboardPage() {
       setLearningProgress(progressResults.filter(Boolean) as LearningProgress[]);
       
     } catch (error) {
-      console.error('Failed to load personalized data:', error);
+      const reason = error instanceof DOMException && error.name === 'AbortError' ? 'The learning service took too long to respond.' : 'The learning service is temporarily unavailable.';
+      console.error('Failed to load personalized data:', { reason, error });
       setLoadError('We could not load your learning path right now. Your progress is safe.');
     } finally {
       setIsLoading(false);
