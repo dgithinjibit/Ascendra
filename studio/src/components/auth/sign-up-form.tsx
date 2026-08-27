@@ -7,9 +7,10 @@
 
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
+import { supabase } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -34,19 +35,78 @@ function deriveLevelFromGrade(grade: string): string | null {
   return null;
 }
 
+type SignupRole = 'student' | 'teacher' | 'parent' | 'admin';
+
+type SchoolOption = { id: string; name: string; county: string | null };
+type ClassOption = { id: string; name: string; grade: string };
+
+function roleFromQuery(value: string | null): SignupRole {
+  if (value === 'teacher' || value === 'parent' || value === 'head') return value === 'head' ? 'admin' : value;
+  return 'student';
+}
+
 export function SignUpForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { signUp, signInWithGoogle } = useAuth();
+  const [schools, setSchools] = useState<SchoolOption[]>([]);
+  const [classes, setClasses] = useState<ClassOption[]>([]);
+  const [catalogError, setCatalogError] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     confirmPassword: '',
     fullName: '',
-    role: 'student' as 'student' | 'teacher' | 'parent',
+    role: roleFromQuery(searchParams.get('role')),
     grade: '',
+    schoolId: '',
     schoolName: '',
+    classroomId: '',
+    className: '',
   });
+
+  useEffect(() => {
+    const role = roleFromQuery(searchParams.get('role'));
+    setFormData((current) => ({ ...current, role }));
+  }, [searchParams]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadSchools() {
+      const { data, error } = await (supabase as any)
+        .from('schools')
+        .select('id,name,county')
+        .eq('status', 'active')
+        .order('name')
+        .limit(200);
+      if (cancelled) return;
+      if (error) setCatalogError('School directory is temporarily unavailable. Please try again later.');
+      else setSchools((data ?? []) as SchoolOption[]);
+    }
+    loadSchools();
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadClasses() {
+      if (!formData.schoolId) { setClasses([]); return; }
+      const { data, error } = await (supabase as any)
+        .from('school_classes')
+        .select('id,name,grade')
+        .eq('school_id', formData.schoolId)
+        .eq('status', 'active')
+        .order('grade')
+        .order('name')
+        .limit(100);
+      if (cancelled) return;
+      if (error) setCatalogError('Class directory is temporarily unavailable.');
+      else setClasses((data ?? []) as ClassOption[]);
+    }
+    loadClasses();
+    return () => { cancelled = true; };
+  }, [formData.schoolId]);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -66,8 +126,13 @@ export function SignUpForm() {
       return;
     }
 
-    if (formData.role === 'student' && !formData.grade) {
-      setError('Please select your grade');
+    if (formData.role === 'student' && (!formData.schoolId || !formData.classroomId)) {
+      setError('Please select your school and class');
+      return;
+    }
+
+    if (formData.role === 'admin' && !formData.schoolId) {
+      setError('Heads of School must select their school');
       return;
     }
 
@@ -78,7 +143,15 @@ export function SignUpForm() {
         full_name: formData.fullName,
         role: formData.role,
         grade: formData.role === 'student' ? formData.grade : null,
+        school_id: formData.schoolId || null,
+        classroom_id: formData.classroomId || null,
         school_name: formData.schoolName || null,
+        studentPlacement: formData.role === 'student' ? {
+          schoolId: formData.schoolId,
+          schoolName: formData.schoolName,
+          classroomId: formData.classroomId,
+          className: formData.className,
+        } : undefined,
         language_preference: 'mixed',
         subscription_tier: 'free',
         subscription_status: 'active',
@@ -189,6 +262,10 @@ export function SignUpForm() {
             />
           </div>
 
+          {catalogError && (
+            <p className="text-sm text-destructive" role="alert">{catalogError}</p>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="role">I am a...</Label>
             <Select
@@ -202,17 +279,35 @@ export function SignUpForm() {
               <SelectContent>
                 <SelectItem value="student">Student</SelectItem>
                 <SelectItem value="teacher">Teacher</SelectItem>
-                <SelectItem value="parent">Parent</SelectItem>
+                <SelectItem value="parent">Parent or Guardian</SelectItem>
+                <SelectItem value="admin">Head of School</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           {formData.role === 'student' && (
-            <div className="space-y-2">
-              <Label htmlFor="grade">Grade</Label>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="school">School</Label>
+                <Select
+                  value={formData.schoolId}
+                  onValueChange={(value) => {
+                    const school = schools.find((item) => item.id === value);
+                    setFormData({ ...formData, schoolId: value, schoolName: school?.name ?? '', classroomId: '', className: '' });
+                  }}
+                  disabled={loading}
+                >
+                  <SelectTrigger id="school"><SelectValue placeholder="Select your school" /></SelectTrigger>
+                  <SelectContent>
+                    {schools.map((school) => <SelectItem key={school.id} value={school.id}>{school.name}{school.county ? ` — ${school.county}` : ''}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="grade">Grade</Label>
               <Select
                 value={formData.grade}
-                onValueChange={(value) => setFormData({ ...formData, grade: value })}
+                onValueChange={(value) => setFormData({ ...formData, grade: value, classroomId: '', className: '' })}
                 disabled={loading}
               >
                 <SelectTrigger id="grade">
@@ -226,11 +321,48 @@ export function SignUpForm() {
                   ))}
                 </SelectContent>
               </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="classroom">Class</Label>
+                <Select
+                  value={formData.classroomId}
+                  onValueChange={(value) => {
+                    const classroom = classes.find((item) => item.id === value);
+                    setFormData({ ...formData, classroomId: value, className: classroom?.name ?? '' });
+                  }}
+                  disabled={loading || !formData.schoolId || !formData.grade}
+                >
+                  <SelectTrigger id="classroom"><SelectValue placeholder="Select your class" /></SelectTrigger>
+                  <SelectContent>
+                    {classes.filter((item) => item.grade === formData.grade).map((item) => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           )}
 
-          <div className="space-y-2">
-            <Label htmlFor="schoolName">School Name (Optional)</Label>
+          {formData.role === 'admin' && (
+            <div className="space-y-2">
+              <Label htmlFor="school">School</Label>
+              <Select
+                value={formData.schoolId}
+                onValueChange={(value) => {
+                  const school = schools.find((item) => item.id === value);
+                  setFormData({ ...formData, schoolId: value, schoolName: school?.name ?? '' });
+                }}
+                disabled={loading}
+              >
+                <SelectTrigger id="school"><SelectValue placeholder="Select your school" /></SelectTrigger>
+                <SelectContent>
+                  {schools.map((school) => <SelectItem key={school.id} value={school.id}>{school.name}{school.county ? ` — ${school.county}` : ''}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {formData.role !== 'student' && formData.role !== 'admin' && (
+            <div className="space-y-2">
+              <Label htmlFor="schoolName">School Name (Optional)</Label>
             <Input
               id="schoolName"
               type="text"
@@ -239,7 +371,8 @@ export function SignUpForm() {
               onChange={(e) => setFormData({ ...formData, schoolName: e.target.value })}
               disabled={loading}
             />
-          </div>
+            </div>
+          )}
 
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? (

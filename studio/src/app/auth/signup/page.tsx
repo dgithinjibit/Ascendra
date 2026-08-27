@@ -2,7 +2,16 @@
  * Sign Up Page
  */
 
+import { Suspense } from 'react';
 import { SignUpForm } from '@/components/auth/sign-up-form';
+
+function SignupFormFallback() {
+  return (
+    <div className="rounded-xl border border-border/80 bg-card p-6 text-center text-sm text-muted-foreground">
+      Loading secure signup…
+    </div>
+  );
+}
 
 export default function SignUpPage() {
   return (
@@ -15,7 +24,9 @@ export default function SignUpPage() {
             Your personal AI tutor for CBC curriculum
           </p>
         </div>
-        <SignUpForm />
+        <Suspense fallback={<SignupFormFallback />}>
+          <SignUpForm />
+        </Suspense>
       </div>
     </main>
   );

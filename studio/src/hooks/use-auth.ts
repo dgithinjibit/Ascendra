@@ -17,6 +17,12 @@ type ProfileInsert = Database['public']['Tables']['profiles']['Insert'];
 type ProfileUpdate = Database['public']['Tables']['profiles']['Update'];
 type ProfileSignup = Omit<ProfileInsert, 'id' | 'role' | 'email'> & {
   role?: ProfileInsert['role'];
+  studentPlacement?: {
+    schoolId: string;
+    schoolName: string;
+    classroomId: string;
+    className: string;
+  };
 };
 
 export interface AuthState {
@@ -109,7 +115,7 @@ export function useAuth(): AuthState & AuthActions {
       if (!data.user) throw new Error('No user returned from sign up');
 
       // Create profile
-      const { role = 'student', ...profileFields } = profileData;
+      const { role = 'student', studentPlacement, ...profileFields } = profileData;
       const { error: profileError } = await supabase.from('profiles').insert({
         id: data.user.id,
         email,
@@ -118,6 +124,21 @@ export function useAuth(): AuthState & AuthActions {
       });
 
       if (profileError) throw profileError;
+
+      if (role === 'student' && studentPlacement) {
+        const { error: studentError } = await (supabase as any).from('students').insert({
+          user_id: data.user.id,
+          student_name: profileFields.full_name ?? email,
+          student_id: null,
+          grade: profileFields.grade,
+          class_name: studentPlacement.className,
+          school_name: studentPlacement.schoolName,
+          school_id: studentPlacement.schoolId,
+          classroom_id: studentPlacement.classroomId,
+          status: 'active',
+        });
+        if (studentError) throw studentError;
+      }
 
       // Fetch the created profile
       await fetchProfile(data.user.id);
