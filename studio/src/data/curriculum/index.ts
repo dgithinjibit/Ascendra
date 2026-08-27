@@ -30,6 +30,7 @@ export { grade6SocialStudies } from "./upper-primary/social-studies-grade6";
 export { grade5Mathematics } from "./upper-primary/mathematics-grade5";
 export { grade6Mathematics } from "./upper-primary/mathematics-grade6";
 export { grade4Kiswahili } from "./upper-primary/kiswahili";
+export { grade5Kiswahili } from "./upper-primary/kiswahili-grade5";
 export { grade6Kiswahili } from "./upper-primary/kiswahili-grade6";
 export { grade1IRE, grade2IRE, grade3IRE } from "./lower-primary/ire";
 
@@ -64,6 +65,7 @@ import { grade6SocialStudies } from "./upper-primary/social-studies-grade6";
 import { grade5Mathematics } from "./upper-primary/mathematics-grade5";
 import { grade6Mathematics } from "./upper-primary/mathematics-grade6";
 import { grade4Kiswahili } from "./upper-primary/kiswahili";
+import { grade5Kiswahili } from "./upper-primary/kiswahili-grade5";
 import { grade6Kiswahili } from "./upper-primary/kiswahili-grade6";
 
 // ─── Strand registry keyed by "Grade X|Subject" ───
@@ -119,6 +121,7 @@ const hardcodedStrands: Record<CurriculumKey, StrandInfo[]> = {
   "Grade 6|Agriculture": grade6Agriculture,
   "Grade 4|Science & Technology": grade4ScienceTechnology,
   "Grade 4|Kiswahili": grade4Kiswahili,
+  "Grade 5|Kiswahili": grade5Kiswahili,
   "Grade 6|Kiswahili": grade6Kiswahili,
   "Grade 5|Mathematics": grade5Mathematics,
   "Grade 6|Mathematics": grade6Mathematics,
