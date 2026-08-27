@@ -6,6 +6,126 @@ export interface LearnerAdaptiveProfile {
   guidance: 'simple' | 'guided' | 'analytical';
 }
 
+export type LearnerInterestTag =
+  | 'octopus'
+  | 'animals'
+  | 'ocean'
+  | 'nature'
+  | 'space'
+  | 'sports'
+  | 'music'
+  | 'unknown';
+
+export interface LearnerInterestSignal {
+  raw: string;
+  tags: LearnerInterestTag[];
+  confidence: number;
+  source: 'learner_text';
+}
+
+export interface AdaptiveLearningStep {
+  prompt: string;
+  explanation: string;
+  hint: string;
+  interestSignal: LearnerInterestSignal;
+  mettaFacts: string[];
+  media: {
+    kind: 'video';
+    status: 'not_connected';
+    prompt: string;
+  };
+}
+
+const INTEREST_KEYWORDS: Record<Exclude<LearnerInterestTag, 'unknown'>, string[]> = {
+  octopus: ['octopus', 'octopuses', 'octopi'],
+  animals: ['animal', 'animals', 'lion', 'elephant', 'giraffe', 'fish', 'bird'],
+  ocean: ['ocean', 'sea', 'marine', 'coral', 'underwater'],
+  nature: ['nature', 'tree', 'plant', 'forest', 'garden'],
+  space: ['space', 'planet', 'star', 'moon', 'rocket'],
+  sports: ['football', 'soccer', 'sport', 'running', 'athletics'],
+  music: ['music', 'song', 'singing', 'drum', 'dance'],
+};
+
+export function inferLearnerInterest(text: string): LearnerInterestSignal {
+  const raw = text.trim().slice(0, 240);
+  const normalized = raw.toLowerCase();
+  const tags = (Object.entries(INTEREST_KEYWORDS) as [Exclude<LearnerInterestTag, 'unknown'>, string[]][])
+    .filter(([, keywords]) => keywords.some((keyword) => normalized.includes(keyword)))
+    .map(([tag]) => tag);
+
+  return {
+    raw,
+    tags: tags.length > 0 ? tags : ['unknown'],
+    confidence: tags.length > 0 ? 0.95 : raw.length > 0 ? 0.25 : 0,
+    source: 'learner_text',
+  };
+}
+
+export function buildAdaptiveLearningStep(input: {
+  baseQuestion: string;
+  subject: string;
+  grade: string;
+  competency: string;
+  interestText?: string;
+  feedbackText?: string;
+  profile?: LearnerAdaptiveProfile;
+  difficulty?: number;
+}): AdaptiveLearningStep {
+  const interestSignal = inferLearnerInterest(input.interestText ?? '');
+  const profile = input.profile ?? inferAdaptiveProfile(input.grade, input.difficulty ?? 1, 0, 0.5);
+  const feedback = (input.feedbackText ?? '').toLowerCase();
+  const hasOctopusBridge =
+    input.subject.toLowerCase() === 'mathematics' &&
+    /fraction|part|whole|denominator/.test(`${input.baseQuestion} ${input.competency}`.toLowerCase()) &&
+    interestSignal.tags.includes('octopus');
+
+  if (hasOctopusBridge) {
+    const support = feedback.includes('try again') || profile.level === 'support';
+    const prompt = support
+      ? 'An octopus has 8 equal arms. What fraction of its arms is 2 arms?'
+      : 'An octopus has 8 equal arms. If 4 arms are in view, what fraction of the arms is that?';
+    const explanation = support
+      ? 'The whole is 8 arms. The numerator is the 2 arms we are considering, so the fraction is 2/8, which is equal to 1/4.'
+      : 'The whole is 8 arms and 4 are being considered, so the fraction is 4/8, which is equal to 1/2.';
+    return {
+      prompt,
+      explanation,
+      hint: 'Count all 8 arms first. Then count the arms in the part being described.',
+      interestSignal,
+      mettaFacts: [
+        `(learner-interest octopus)`,
+        `(concept fractions)`,
+        `(bridge octopus-legs 8)`,
+        `(policy use-interest-example-within-curriculum)`,
+        `(policy keep-grade-and-competency-fixed ${input.grade} ${input.competency})`,
+        `(feedback-state ${feedback.includes('try again') ? 'support' : 'continue'})`,
+      ],
+      media: {
+        kind: 'video',
+        status: 'not_connected',
+        prompt: 'Optional future asset: an age-appropriate animation showing 8 octopus arms and highlighting 2 or 4 equal parts; no learner image or biometric data is required.',
+      },
+    };
+  }
+
+  return {
+    prompt: personalizePrompt(input.baseQuestion, input.subject, input.grade, input.difficulty ?? 1, profile),
+    explanation: 'The next step stays aligned to the current curriculum competency and learner level.',
+    hint: buildFallbackHint(input.subject, input.baseQuestion),
+    interestSignal,
+    mettaFacts: [
+      `(concept ${input.competency})`,
+      `(policy preserve-curriculum-objective)`,
+      `(policy adapt-level ${profile.level})`,
+    ],
+    media: {
+      kind: 'video',
+      status: 'not_connected',
+      prompt: 'Optional future asset: a curriculum-aligned explanatory video generated or selected with teacher approval.',
+    },
+  };
+}
+
 export function inferAdaptiveProfile(
   grade: string,
   difficulty: number,

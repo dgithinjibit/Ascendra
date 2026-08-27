@@ -46,6 +46,7 @@ import {
   type LearningEvent,
   type LearningLoopState,
 } from '@/lib/student-learning-loop'
+import { buildAdaptiveLearningStep } from '@/lib/sandbox-personalization'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -267,6 +268,7 @@ export function InteractiveSandbox({
   )
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [feedback, setFeedback] = useState<string | null>(null)
+  const [interestText, setInterestText] = useState('')
   // Drag state — held in a ref because we don't want to re-render on
   // every pointer-move; canvas redraws are driven directly.
   const drag = useRef<{
@@ -297,6 +299,20 @@ export function InteractiveSandbox({
     studentId ||
     (typeof window !== 'undefined' && (localStorage.getItem('studentId') || localStorage.getItem('userId'))) ||
     'student_demo'
+
+  const adaptiveStep = useMemo(
+    () =>
+      buildAdaptiveLearningStep({
+        baseQuestion: activeQuestion,
+        subject,
+        grade,
+        competency,
+        interestText,
+        feedbackText: feedback ?? '',
+        difficulty: 1,
+      }),
+    [activeQuestion, subject, grade, competency, interestText, feedback],
+  )
 
   // ----- Event helpers -----------------------------------------------------
 
@@ -369,7 +385,7 @@ export function InteractiveSandbox({
     [tokens],
   )
 
-  const inDropZone = (token: DraggableToken) => {
+  function inDropZone(token: DraggableToken) {
     const cx = token.x + token.w / 2
     const cy = token.y + token.h / 2
     return (
@@ -684,7 +700,7 @@ export function InteractiveSandbox({
       <CardHeader>
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
-            <CardTitle className="text-lg">{activeQuestion}</CardTitle>
+            <CardTitle className="text-lg">{adaptiveStep.prompt}</CardTitle>
             <p className="text-sm text-muted-foreground mt-1">
               {grade} • {subject} • {competency}
             </p>
@@ -711,19 +727,63 @@ export function InteractiveSandbox({
           Drag tokens from the canvas into the answer box on the right. The sandbox checks the sum of tokens inside the drop zone and grades your answer when you submit.
         </div>
 
+        <div className="grid gap-3 rounded-2xl border border-border bg-background p-4 md:grid-cols-[1fr_auto] md:items-end">
+          <label className="text-sm">
+            <span className="font-medium text-foreground">Connect this lesson to something you like</span>
+            <span className="mt-1 block text-xs text-muted-foreground">
+              For example: “I am interested in octopus.” This stays a short learning signal; it is not a profile or biometric record.
+            </span>
+            <input
+              value={interestText}
+              onChange={(event) => setInterestText(event.target.value.slice(0, 240))}
+              onBlur={() => {
+                if (interestText.trim()) {
+                  captureEvent({
+                    timestamp: Date.now(),
+                    event_type: 'input',
+                    target: 'learner_interest',
+                    metadata: { signal: 'interest_text', length: interestText.trim().length },
+                  })
+                }
+              }}
+              placeholder="I am interested in octopus"
+              className="mt-2 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/40"
+              aria-label="A topic or interest to connect to this lesson"
+            />
+          </label>
+          <Badge variant="outline" className="w-fit">
+            {adaptiveStep.interestSignal.tags.includes('unknown') ? 'No interest selected' : `Using: ${adaptiveStep.interestSignal.tags.join(', ')}`}
+          </Badge>
+        </div>
+
+        {interestText.trim() && !adaptiveStep.interestSignal.tags.includes('unknown') && (
+          <div className="grid gap-3 rounded-xl border border-primary/20 bg-primary/5 p-4 md:grid-cols-2" aria-live="polite">
+            <div>
+              <p className="text-xs uppercase tracking-[0.12em] text-primary">Personalised connection</p>
+              <p className="mt-2 text-sm text-foreground">{adaptiveStep.explanation}</p>
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-[0.12em] text-primary">Media status</p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Video is not connected in this build. The lesson can still adapt safely with text, canvas, and speech guidance.
+              </p>
+            </div>
+          </div>
+        )}
+
         <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3" aria-live="polite">
           <div className="flex items-center justify-between gap-3">
             <p className="text-xs uppercase tracking-[0.12em] text-primary">Tutor guidance</p>
             <Badge variant="outline">Hint level {learningLoop.hintLevel}</Badge>
           </div>
-          <p className="mt-2 text-sm text-foreground">{getNextHint(learningLoop)}</p>
+          <p className="mt-2 text-sm text-foreground">{feedback ? adaptiveStep.hint : getNextHint(learningLoop)}</p>
           {typeof window !== 'undefined' && 'speechSynthesis' in window && (
             <Button
               type="button"
               variant="ghost"
               size="sm"
               className="mt-2 px-0"
-              onClick={() => window.speechSynthesis.speak(new SpeechSynthesisUtterance(getNextHint(learningLoop)))}
+              onClick={() => window.speechSynthesis.speak(new SpeechSynthesisUtterance(feedback ? adaptiveStep.hint : getNextHint(learningLoop)))}
             >
               Read guidance aloud
             </Button>
