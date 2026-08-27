@@ -267,12 +267,18 @@ export function InteractiveSandbox({
   // `behavioral_profiles`, so re-using a single id across variations
   // would silently overwrite the earlier variation's profile. We tie
   // variations together via `lesson_id` in `activity_data`.
-  const [sessionId, setSessionId] = useState(
-    () => `sess_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-  )
+  // Keep the server/client render identical; generate a unique telemetry
+  // session only after hydration to avoid visible hydration mismatches.
+  const [sessionId, setSessionId] = useState('pending')
+  const [canSpeak, setCanSpeak] = useState(false)
+  useEffect(() => {
+    setSessionId(`sess_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`)
+    setCanSpeak('speechSynthesis' in window)
+  }, [])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [feedback, setFeedback] = useState<string | null>(null)
   const [interestText, setInterestText] = useState('')
+  const interestInputRef = useRef<HTMLInputElement>(null)
   // Drag state — held in a ref because we don't want to re-render on
   // every pointer-move; canvas redraws are driven directly.
   const drag = useRef<{
@@ -726,7 +732,7 @@ export function InteractiveSandbox({
               {eventCount} signals
             </Badge>
             <span className="text-xs text-muted-foreground">
-              Session {sessionId.slice(-8)}
+              Session active
             </span>
           </div>
         </div>
@@ -743,10 +749,14 @@ export function InteractiveSandbox({
               For example: “I am interested in octopus.” This stays a short learning signal; it is not a profile or biometric record.
             </span>
             <input
-              value={interestText}
-              onChange={(event) => setInterestText(event.target.value.slice(0, 240))}
-              onBlur={() => {
-                if (interestText.trim()) {
+              ref={interestInputRef}
+              defaultValue=""
+              onInput={(event) => setInterestText(event.currentTarget.value.slice(0, 240))}
+              onChange={(event) => setInterestText(event.currentTarget.value.slice(0, 240))}
+              onKeyUp={(event) => setInterestText(event.currentTarget.value.slice(0, 240))}
+              onBlur={(event) => {
+                setInterestText(event.currentTarget.value.slice(0, 240))
+                if (event.currentTarget.value.trim()) {
                   captureEvent({
                     timestamp: Date.now(),
                     event_type: 'input',
@@ -760,6 +770,26 @@ export function InteractiveSandbox({
               aria-label="A topic or interest to connect to this lesson"
             />
           </label>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="mt-2 w-fit"
+            onClick={() => {
+              const value = interestInputRef.current?.value.slice(0, 240) ?? ''
+              setInterestText(value)
+              if (value.trim()) {
+                captureEvent({
+                  timestamp: Date.now(),
+                  event_type: 'input',
+                  target: 'learner_interest',
+                  metadata: { signal: 'interest_text', length: value.trim().length },
+                })
+              }
+            }}
+          >
+            Use this interest
+          </Button>
           <Badge variant="outline" className="w-fit">
             {adaptiveStep.interestSignal.tags.includes('unknown') ? 'No interest selected' : `Using: ${adaptiveStep.interestSignal.tags.join(', ')}`}
           </Badge>
@@ -786,7 +816,7 @@ export function InteractiveSandbox({
             <Badge variant="outline">Hint level {learningLoop.hintLevel}</Badge>
           </div>
           <p className="mt-2 text-sm text-foreground">{feedback ? adaptiveStep.hint : getNextHint(learningLoop)}</p>
-          {typeof window !== 'undefined' && 'speechSynthesis' in window && (
+          {canSpeak && (
             <Button
               type="button"
               variant="ghost"
