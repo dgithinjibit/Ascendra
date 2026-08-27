@@ -44,6 +44,9 @@ import { getStudentId } from '@/lib/auth/student-id';
 import { CompetencyMap } from '@/components/student/competency-map';
 import { FloatingConceptChat } from '@/components/student/floating-concept-chat';
 import { GuardianLinkCodeCard } from '@/components/student/guardian-link-code-card';
+import { getActivitiesForGradeSubject } from '@/lib/sandbox-activities';
+import { gradeNameToId } from '@/lib/grade-id';
+import type { GradeId, SubjectId } from '@/lib/sandbox-types';
 
 interface StudentProfile {
   id: string;
@@ -196,17 +199,35 @@ export default function StudentDashboardPage() {
     router.push(target);
   };
 
-  const goToChat = (subject: string) => {
+  const goToSandbox = (subject?: string) => {
     const savedGrade = sessionStorage.getItem('learningJourney.grade') || localStorage.getItem('learningJourney.grade');
     if (!savedGrade) {
       router.push('/student/journey');
       return;
     }
 
-    // Save subject durably and go directly to chat
-    sessionStorage.setItem('learningJourney.subject', subject);
-    localStorage.setItem('learningJourney.subject', subject);
-    router.push(`/student/chat/${encodeURIComponent(subject)}?grade=${encodeURIComponent(savedGrade)}`);
+    const resolvedSubject = subject || localStorage.getItem('learningJourney.subject') || sessionStorage.getItem('learningJourney.subject') || 'Mathematics';
+    const subjectId = resolvedSubject.toLowerCase().includes('math')
+      ? 'mathematics'
+      : resolvedSubject.toLowerCase().includes('kiswahili')
+        ? 'kiswahili'
+        : resolvedSubject.toLowerCase().includes('environment')
+          ? 'environmental'
+          : resolvedSubject.toLowerCase().includes('creative')
+            ? 'creative'
+            : resolvedSubject.toLowerCase().includes('english')
+              ? 'english'
+              : 'mathematics';
+    const gradeId = gradeNameToId(savedGrade) as GradeId;
+    const firstActivity = getActivitiesForGradeSubject(gradeId, subjectId as SubjectId)[0];
+
+    sessionStorage.setItem('learningJourney.subject', resolvedSubject);
+    localStorage.setItem('learningJourney.subject', resolvedSubject);
+    if (!firstActivity) {
+      router.push(`/student/sandbox?grade=${encodeURIComponent(gradeId)}&subject=${encodeURIComponent(subjectId)}`);
+      return;
+    }
+    router.push(`/student/sandbox/${encodeURIComponent(gradeId)}/${encodeURIComponent(subjectId)}/${encodeURIComponent(firstActivity.id)}`);
   };
 
   const getPersonalizedGreeting = () => {
@@ -320,7 +341,7 @@ export default function StudentDashboardPage() {
                 <p className="text-xs font-semibold uppercase tracking-wide text-teal-700">Your next step</p>
                 <h2 className="mt-1 text-xl md:text-2xl font-bold">Ask SyncSenta, practise a strand, or check in privately.</h2>
                 <p className="mt-2 text-sm text-slate-600">Your guide uses your selected grade, subject, language, and learning progress. You choose what wellbeing information to share.</p>
-                <div className="mt-4 flex flex-wrap gap-2"><Button onClick={() => goToChat(learningProgress[0]?.subject || 'Mathematics')} className="gap-2"><Brain className="h-4 w-4" />Start learning</Button><Button variant="outline" onClick={() => setActiveTab('competency')} className="gap-2"><Map className="h-4 w-4" />View learning map</Button></div>
+                <div className="mt-4 flex flex-wrap gap-2"><Button onClick={() => goToSandbox(learningProgress[0]?.subject || 'Mathematics')} className="gap-2"><Brain className="h-4 w-4" />Start learning</Button><Button variant="outline" onClick={() => setActiveTab('competency')} className="gap-2"><Map className="h-4 w-4" />View learning map</Button></div>
               </div>
               <img src="/images/learning-catalog/ai.png" alt="Illustration for SyncSenta learning support" className="h-28 w-28 object-contain self-center md:h-36 md:w-36" />
             </div>
@@ -425,7 +446,7 @@ export default function StudentDashboardPage() {
                   learningProgress.map((progress) => (
                     <button
                       key={progress.subject}
-                      onClick={() => goToChat(progress.subject)}
+                      onClick={() => goToSandbox(progress.subject)}
                       className="w-full text-left rounded-lg p-4 border hover:bg-muted transition-colors"
                     >
                       <div className="flex justify-between items-start mb-2">
@@ -483,7 +504,7 @@ export default function StudentDashboardPage() {
                   {learningPath.map((p) => (
                     <button
                       key={p.subject}
-                      onClick={() => goToChat(p.subject)}
+                      onClick={() => goToSandbox(p.subject)}
                       className="w-full text-left rounded-lg p-2 -mx-2 hover:bg-muted transition-colors"
                     >
                       <div className="flex justify-between text-sm mb-2">
@@ -514,12 +535,12 @@ export default function StudentDashboardPage() {
                     className="w-full"
                     onClick={() => {
                       const savedSubject = localStorage.getItem('learningJourney.subject') || sessionStorage.getItem('learningJourney.subject');
-                      if (savedSubject) goToChat(savedSubject);
+                      if (savedSubject) goToSandbox(savedSubject);
                       else router.push('/student/journey');
                     }}
                   >
                     <MessageCircle className="mr-2 h-4 w-4" />
-                    Start Chat Session
+                    Open learning sandbox
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                   <Button
@@ -527,11 +548,11 @@ export default function StudentDashboardPage() {
                     className="w-full"
                     onClick={() => {
                       const savedSubject = localStorage.getItem('learningJourney.subject') || sessionStorage.getItem('learningJourney.subject');
-                      if (savedSubject) goToChat(savedSubject);
+                      if (savedSubject) goToSandbox(savedSubject);
                       else router.push('/student/journey');
                     }}
                   >
-                    Learning Journey
+                    Learning sandbox
                   </Button>
                 </CardContent>
               </Card>
