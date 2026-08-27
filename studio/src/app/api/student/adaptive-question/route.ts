@@ -30,6 +30,14 @@ const adaptiveInputSchema = z.object({
 })
 
 const bridge = createAdaptiveQuestionBridge()
+const rustDecisionSchema = z.object({
+  action: z.enum(['retry', 'advance', 'complete']),
+  nextIndex: z.number().int().min(0).max(1000),
+  difficultyDelta: z.number().int().min(-1).max(0),
+  interestAnchorPresent: z.boolean(),
+  mettaQuery: z.string().max(1000),
+  source: z.literal('rust'),
+})
 
 function timeout<T>(promise: Promise<T>, milliseconds: number): Promise<T> {
   return Promise.race([
@@ -75,6 +83,27 @@ export async function POST(request: Request) {
   })
 
   try {
+    const rustUrl = process.env.SYNC_SENTA_RUST_ADAPTIVE_URL?.trim().replace(/\/$/, '')
+    if (rustUrl) {
+      try {
+        const rustResponse = await timeout(fetch(`${rustUrl}/v1/adaptive-question`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(input),
+          cache: 'no-store',
+        }), DECISION_TIMEOUT_MS)
+        if (rustResponse.ok) {
+          const rustDecision = rustDecisionSchema.safeParse(await rustResponse.json())
+          if (rustDecision.success) {
+            return NextResponse.json({ ...rustDecision.data, route: 'rust' }, {
+              headers: { 'Cache-Control': 'no-store' },
+            })
+          }
+        }
+      } catch {
+        // Rust service is optional; preserve the local server policy fallback.
+      }
+    }
     const decision = await timeout(bridge.decide(decisionRequest), DECISION_TIMEOUT_MS)
     return NextResponse.json({ ...decision, route: 'server-fallback' }, {
       headers: { 'Cache-Control': 'no-store' },
