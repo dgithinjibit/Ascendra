@@ -6,8 +6,18 @@ The bridge is not used by `rust-core`, `rust-service`, or the Next.js applicatio
 
 ## Verification
 
+Run the complete Rust and policy-query verification from the repository root:
+
+```bash
+scripts/verify-hyperon-bridge.sh
+```
+
+To run only the bridge tests:
+
 ```bash
 cargo test --manifest-path rust-hyperon-bridge/Cargo.toml
 ```
+
+The example at `examples/policy_queries.rs` executes representative safeguarding, offline-assessment, attendance-approval, and replay-protection queries through the policy-only API.
 
 The prototype is pinned to the MIT-licensed Hyperon Experimental v0.2.10 release. Hyperon is an active pre-alpha reference implementation, so SyncSenta should keep its current Rust-enforced MeTTa verdict contract as the production fallback until the embedding boundary is independently reviewed.
