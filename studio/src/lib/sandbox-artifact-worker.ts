@@ -36,6 +36,7 @@ export interface WorkerDecision {
 
 export interface WorkerOptions {
   now?: Date;
+  env?: Record<string, string | undefined>;
   dailyQuotaUsed?: number;
   dailyQuotaLimit?: number;
   timeoutMs?: number;
@@ -93,7 +94,7 @@ export async function processSandboxArtifact(
   if (job.moderationStatus === 'rejected') return decision('failed', 'none', 'moderation_rejected', plan.provider);
   if (job.moderationStatus !== 'approved') return decision('queued', 'human_review', 'moderation_required', plan.provider);
   if (quotaUsed >= quotaLimit) return decision('failed', 'none', 'daily_quota_exceeded', plan.provider);
-  if (!provider || !plan.enabled || !providerIsAllowedForChildFacing(job.artifactType, plan)) {
+  if (!provider || !plan.enabled || !providerIsAllowedForChildFacing(job.artifactType, plan, options.env)) {
     return decision('queued', 'provider_retry', 'provider_not_ready', plan.provider);
   }
 

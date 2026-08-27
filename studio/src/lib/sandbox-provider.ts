@@ -39,10 +39,14 @@ export function selectSandboxProvider(
   return { provider: 'gemini', model, enabled: true, reason: 'configured' };
 }
 
-export function providerIsAllowedForChildFacing(kind: SandboxArtifactKind, plan: SandboxProviderPlan): boolean {
+export function providerIsAllowedForChildFacing(
+  kind: SandboxArtifactKind,
+  plan: SandboxProviderPlan,
+  env: Record<string, string | undefined> = process.env,
+): boolean {
   if (!plan.enabled) return false;
   if (kind === 'video' && plan.provider === 'gemini') {
-    return enabledFlag(process.env.SYNC_SENTA_ENABLE_CHILD_VIDEO);
+    return enabledFlag(env.SYNC_SENTA_ENABLE_CHILD_VIDEO);
   }
   return kind === 'image' && plan.provider === 'gemini' || kind === 'presentation' && plan.provider === 'local_template';
 }

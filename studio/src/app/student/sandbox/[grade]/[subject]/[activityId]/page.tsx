@@ -1,7 +1,6 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { StudentHeader } from '@/components/layout/student-header';
 import { FloatingConceptChat } from '@/components/student/floating-concept-chat';
@@ -55,16 +54,9 @@ export default function ActivityPage() {
   const grade = params.grade as string;
   const subject = params.subject as string;
 
-  const [activity, setActivity] = useState<Activity | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const foundActivity = getActivityById(activityId);
-    if (foundActivity) {
-      setActivity(foundActivity);
-    }
-    setLoading(false);
-  }, [activityId]);
+  // The catalogue is local and synchronous; derive it directly so a browser
+  // hydration/HMR hiccup cannot leave the learner on an infinite loading state.
+  const activity = getActivityById(activityId) ?? null;
 
   const handleBack = () => {
     router.push(`/student/sandbox/${grade}/${subject}`);
@@ -125,17 +117,6 @@ export default function ActivityPage() {
     if (!result.mastered) return; // only count mastered lessons
     persistCompletion(result.score * 10);
   };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p>Loading activity...</p>
-        </div>
-      </div>
-    );
-  }
 
   if (!activity) {
     return (

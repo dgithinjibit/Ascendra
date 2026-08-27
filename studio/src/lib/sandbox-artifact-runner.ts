@@ -1,6 +1,7 @@
 import { getSupabaseServerClient } from './supabase/server';
 import { processSandboxArtifact, type SandboxArtifactProvider, type WorkerArtifactJob } from './sandbox-artifact-worker';
 import { selectSandboxProvider } from './sandbox-provider';
+import { createSandboxProvider, type SandboxProviderRuntimeDependencies } from './sandbox-provider-runtime';
 
 export interface RunnerResult {
   state: 'disabled' | 'idle' | 'processed';
@@ -41,6 +42,7 @@ export async function runSandboxArtifactWorkerOnce(options: {
   timeoutMs?: number;
   env?: Record<string, string | undefined>;
   supabase?: ReturnType<typeof getSupabaseServerClient>;
+  providerRuntime?: SandboxProviderRuntimeDependencies;
 } = {}): Promise<RunnerResult> {
   if (!isEnabled(options.env)) return { state: 'disabled' };
 
@@ -55,10 +57,15 @@ export async function runSandboxArtifactWorkerOnce(options: {
 
   const job = jobFromClaim(claimed);
   const plan = selectSandboxProvider(job.artifactType, options.env);
-  const decision = await processSandboxArtifact(job, plan, options.provider ?? null, {
+  const runtimeProvider = options.provider ?? createSandboxProvider(job, {
+    ...(options.providerRuntime ?? {}),
+    env: options.env,
+  });
+  const decision = await processSandboxArtifact(job, plan, runtimeProvider, {
     dailyQuotaUsed: options.dailyQuotaUsed,
     dailyQuotaLimit: options.dailyQuotaLimit,
     timeoutMs: options.timeoutMs,
+    env: options.env,
   });
 
   const patch = decision.status === 'ready'
