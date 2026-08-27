@@ -47,6 +47,7 @@ import {
   type LearningLoopState,
 } from '@/lib/student-learning-loop'
 import { buildAdaptiveLearningStep } from '@/lib/sandbox-personalization'
+import { resolveTeacherApprovedMedia, type TeacherApprovedSandboxMedia } from '@/lib/sandbox-media'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -158,6 +159,8 @@ interface InteractiveSandboxProps {
    * in `activity_data` so the misconception pipeline can group them.
    */
   lessonId?: string
+  /** Optional teacher-approved video; unsafe or mismatched assets never render. */
+  media?: TeacherApprovedSandboxMedia
   onComplete?: (result: SandboxCompletionResult) => void
 }
 
@@ -216,6 +219,7 @@ export function InteractiveSandbox({
   variations,
   masteryThreshold,
   lessonId,
+  media,
   onComplete,
 }: InteractiveSandboxProps) {
   // ----- Variation / lesson state -----------------------------------------
@@ -299,6 +303,11 @@ export function InteractiveSandbox({
     studentId ||
     (typeof window !== 'undefined' && (localStorage.getItem('studentId') || localStorage.getItem('userId'))) ||
     'student_demo'
+
+  const resolvedMedia = useMemo(
+    () => resolveTeacherApprovedMedia({ media, competency }),
+    [media, competency],
+  )
 
   const adaptiveStep = useMemo(
     () =>
@@ -789,6 +798,27 @@ export function InteractiveSandbox({
             </Button>
           )}
         </div>
+
+        {resolvedMedia && (
+          <div className="rounded-2xl border border-border bg-background p-4">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs uppercase tracking-[0.12em] text-primary">Teacher-approved visual lesson</p>
+              <Badge variant="outline">Curriculum matched</Badge>
+            </div>
+            <p className="mt-2 text-sm font-medium text-foreground">{resolvedMedia.title}</p>
+            <video
+              className="mt-3 aspect-video w-full rounded-xl bg-black object-contain"
+              controls
+              playsInline
+              preload="metadata"
+              poster={resolvedMedia.posterUrl}
+              aria-label={resolvedMedia.title}
+            >
+              <source src={resolvedMedia.videoUrl} type="video/mp4" />
+              Your browser does not support embedded video.
+            </video>
+          </div>
+        )}
 
         <div className="grid gap-4 xl:grid-cols-[1.7fr_0.9fr]">
           <div className="relative">

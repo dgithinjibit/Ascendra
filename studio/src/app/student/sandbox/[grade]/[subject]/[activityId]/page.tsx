@@ -181,6 +181,7 @@ export default function ActivityPage() {
               Math.min(2, sandboxVariations.length)
             }
             lessonId={activity.id}
+            media={activity.media}
             onComplete={handleSandboxComplete}
           />
         ) : (

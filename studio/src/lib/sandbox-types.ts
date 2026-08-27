@@ -56,6 +56,17 @@ export interface ActivityVariation {
   targetLabel: string
 }
 
+export interface ActivityMedia {
+  kind: 'video'
+  videoUrl: string
+  posterUrl?: string
+  title: string
+  competency: string
+  approved: boolean
+  childSafe: boolean
+  containsLearnerData: boolean
+}
+
 export interface Activity {
   // ---- Identity & routing -----------------------------------------------
   id: string
@@ -96,4 +107,7 @@ export interface Activity {
   variations?: ActivityVariation[]
   /** Default: 1 (single-shot) when no variations, else 2 of 3. */
   masteryThreshold?: number
+
+  /** Optional teacher-approved media. Unsafe or mismatched media is ignored. */
+  media?: ActivityMedia
 }
