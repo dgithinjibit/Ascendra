@@ -12,6 +12,7 @@ export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get('code');
   const next = requestUrl.searchParams.get('next') || '/';
+  const flow = requestUrl.searchParams.get('flow');
 
   if (code) {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -25,6 +26,12 @@ export async function GET(request: NextRequest) {
     if (error) {
       console.error('Error exchanging code for session:', error);
       return NextResponse.redirect(new URL('/auth/error', requestUrl.origin));
+    }
+
+    if (data.user && flow === 'signup') {
+      const setupUrl = new URL('/auth/set-password', requestUrl.origin);
+      setupUrl.searchParams.set('next', next);
+      return NextResponse.redirect(setupUrl);
     }
 
     // Check if profile exists

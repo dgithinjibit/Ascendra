@@ -36,7 +36,7 @@ export interface AuthState {
 export interface AuthActions {
   signUp: (email: string, password: string, profile: ProfileSignup) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
-  signInWithGoogle: () => Promise<void>;
+  signInWithGoogle: (options?: { next?: string; flow?: 'signup' | 'signin' }) => Promise<void>;
   signOut: () => Promise<void>;
   updateProfile: (updates: ProfileUpdate) => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -176,7 +176,7 @@ export function useAuth(): AuthState & AuthActions {
   };
 
   // Sign in with Google OAuth
-  const signInWithGoogle = async () => {
+  const signInWithGoogle = async (options?: { next?: string; flow?: 'signup' | 'signin' }) => {
     try {
       setLoading(true);
       setError(null);
@@ -184,7 +184,12 @@ export function useAuth(): AuthState & AuthActions {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: (() => {
+            const callback = new URL('/auth/callback', window.location.origin);
+            if (options?.next) callback.searchParams.set('next', options.next);
+            if (options?.flow) callback.searchParams.set('flow', options.flow);
+            return callback.toString();
+          })(),
         },
       });
 

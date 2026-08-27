@@ -187,7 +187,9 @@ export function SignUpForm() {
     setError(null);
 
     try {
-      await signInWithGoogle();
+      const role = formData.role;
+      const next = `/auth/onboarding?role=${encodeURIComponent(role)}`;
+      await signInWithGoogle({ next, flow: 'signup' });
     } catch (err: any) {
       setError(err.message || 'Failed to sign in with Google');
       setLoading(false);
