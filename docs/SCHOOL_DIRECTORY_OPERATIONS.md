@@ -36,6 +36,10 @@ Do not seed placeholder schools, use mock classes, bypass RLS with a browser key
 
 If the schema is unavailable, signup reports that the directory service is temporarily unavailable. If the schema is present but empty, signup reports that no approved schools are available and asks the user to contact a school administrator. This distinction prevents an empty production directory from being mistaken for a client failure.
 
-## Required future operator capability
+## Manual onboarding route
 
-The smallest production-safe operational addition is a Head-of-School or platform-admin directory workflow that authenticates the operator, verifies the operator’s school authority, writes through a server-side service boundary, records who approved each change, and supports deactivation without deleting historical relationships. Until that workflow or a controlled import is available, the project is not ready for real student onboarding.
+Schools can now submit a registration request at `/schools/register`. The form collects only an authorized contact name, work email, school name, county, optional school code, school type, and class or grade names. It must not collect learner names, learner identifiers, passwords, biometric information, or assessment data.
+
+The form writes to `public.school_onboarding_requests` with `status = 'pending'`. Public and authenticated clients may create pending requests, but they cannot read, approve, reject, or activate requests. Students never query this table. A trusted service-role workflow must review the contact and school information before creating or updating a row in `public.schools` and related `public.school_classes` records with `status = 'active'`.
+
+The smallest remaining production-safe addition is the reviewer interface or controlled import that authenticates the reviewer, verifies school authority, records the review decision, and supports deactivation without deleting historical relationships. Until a request is approved, it does not unblock student school selection.
