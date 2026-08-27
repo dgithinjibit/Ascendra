@@ -38,9 +38,6 @@ export async function POST(request: NextRequest) {
   if (!authorized(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const contentLength = Number(request.headers.get('content-length') || 0);
   if (contentLength > MAX_BODY_BYTES) return NextResponse.json({ error: 'Request is too large.' }, { status: 413 });
-  const supabase = internalClient();
-  if (!supabase) return NextResponse.json({ error: 'Reviewer service is not configured.' }, { status: 503 });
-
   try {
     const body = await request.json();
     const requestId = typeof body.requestId === 'string' ? body.requestId : '';
@@ -48,6 +45,9 @@ export async function POST(request: NextRequest) {
     if (!/^[0-9a-f-]{36}$/i.test(requestId) || !action) {
       return NextResponse.json({ error: 'requestId and action are required.' }, { status: 400 });
     }
+
+    const supabase = internalClient();
+    if (!supabase) return NextResponse.json({ error: 'Reviewer service is not configured.' }, { status: 503 });
 
     const { data: registration, error: fetchError } = await supabase
       .from('school_onboarding_requests')
