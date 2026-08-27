@@ -13,6 +13,15 @@ describe('sandbox artifact runner', () => {
     expect(fakeClient.rpc).not.toHaveBeenCalled();
   });
 
+  it('blocks the claim when production synthetic configuration is present', async () => {
+    const result = await runSandboxArtifactWorkerOnce({
+      env: { NODE_ENV: 'production', SYNC_SENTA_ENABLE_ARTIFACT_WORKER: 'true', SYNC_SENTA_ALLOW_SYNTHETIC_DATA: 'true' },
+      supabase: fakeClient,
+    });
+    expect(result).toEqual({ state: 'disabled', errorCode: 'production_configuration_blocked' });
+    expect(fakeClient.rpc).not.toHaveBeenCalled();
+  });
+
   it('returns idle when the atomic claim finds no job', async () => {
     const result = await runSandboxArtifactWorkerOnce({
       env: { SYNC_SENTA_ENABLE_ARTIFACT_WORKER: 'true' },

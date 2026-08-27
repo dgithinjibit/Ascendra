@@ -19,7 +19,7 @@ export type ProductionFixtureGuardResult =
   | { allowed: false; reason: 'synthetic_data_enabled' | 'mock_auth_enabled' | 'placeholder_configuration' | 'local_rust_endpoint' }
 
 export function checkProductionFixtureGuard(
-  environment: NodeJS.ProcessEnv = process.env,
+  environment: Record<string, string | undefined> = process.env,
 ): ProductionFixtureGuardResult {
   if (environment.NODE_ENV !== 'production') return { allowed: true }
   if (environment.SYNC_SENTA_ALLOW_SYNTHETIC_DATA === 'true') return { allowed: false, reason: 'synthetic_data_enabled' }

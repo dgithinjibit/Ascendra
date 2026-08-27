@@ -2,6 +2,7 @@ import { getSupabaseServerClient } from './supabase/server';
 import { processSandboxArtifact, type SandboxArtifactProvider, type WorkerArtifactJob } from './sandbox-artifact-worker';
 import { selectSandboxProvider } from './sandbox-provider';
 import { createSandboxProvider, type SandboxProviderRuntimeDependencies } from './sandbox-provider-runtime';
+import { checkProductionFixtureGuard } from './production-fixture-guard';
 
 export interface RunnerResult {
   state: 'disabled' | 'idle' | 'processed';
@@ -45,6 +46,8 @@ export async function runSandboxArtifactWorkerOnce(options: {
   providerRuntime?: SandboxProviderRuntimeDependencies;
 } = {}): Promise<RunnerResult> {
   if (!isEnabled(options.env)) return { state: 'disabled' };
+  const productionGuard = checkProductionFixtureGuard(options.env);
+  if (!productionGuard.allowed) return { state: 'disabled', errorCode: 'production_configuration_blocked' };
 
   const workerId = options.workerId ?? `sandbox-worker-${process.pid}`;
   const supabase = options.supabase ?? getSupabaseServerClient();
