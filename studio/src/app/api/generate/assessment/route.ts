@@ -3,6 +3,9 @@ import { buildApiUrl } from '@/lib/api-config';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
+export const maxDuration = 10;
+
+const AUTH_LOOKUP_TIMEOUT_MS = 1_500;
 
 type AssessmentRequest = {
   message?: string;
@@ -40,7 +43,10 @@ export async function POST(req: NextRequest) {
   }
 
   const supabase = getSupabaseServerClient();
-  const authResult = await supabase.auth.getUser().catch(() => null);
+  const authResult = await Promise.race([
+    supabase.auth.getUser().catch(() => null),
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), AUTH_LOOKUP_TIMEOUT_MS)),
+  ]);
   const user = authResult?.data?.user ?? null;
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (user?.id) headers['X-Forwarded-User'] = user.id;
