@@ -76,23 +76,33 @@ export async function POST(req: NextRequest) {
   // ---- Authentication -------------------------------------------------------
   const supabase = getSupabaseServerClient();
   const {
-    data: { user },
+    data: { user: authenticatedUser },
     error: authError,
   } = await supabase.auth.getUser();
+  const allowDevelopmentChat = process.env.NODE_ENV !== 'production' && process.env.SYNCSENTA_ALLOW_DEV_CHAT === 'true';
+  const isDevelopmentChat = !authenticatedUser && allowDevelopmentChat;
+  const user = authenticatedUser ?? (isDevelopmentChat ? { id: 'dev-local-student' } : null);
 
-  if (authError || !user) {
+  if (authError && !isDevelopmentChat) {
+    return Response.json(
+      { error: 'Unauthorized', detail: 'Please sign in to continue' },
+      { status: 401 }
+    );
+  }
+  if (!user) {
     return Response.json(
       { error: 'Unauthorized', detail: 'Please sign in to continue' },
       { status: 401 }
     );
   }
 
-  // Get user profile for subscription tier
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('subscription_tier, grade, full_name')
-    .eq('id', user.id)
-    .single();
+  const profile = authenticatedUser
+    ? (await supabase
+        .from('profiles')
+        .select('subscription_tier, grade, full_name')
+        .eq('id', authenticatedUser.id)
+        .single()).data
+    : { subscription_tier: 'free', grade: null, full_name: 'Development learner' };
 
   if (!profile) {
     return Response.json(
@@ -102,10 +112,12 @@ export async function POST(req: NextRequest) {
   }
 
   // ---- Rate limiting --------------------------------------------------------
-  const rateLimitResult = await checkChatRateLimit(
-    user.id,
-    profile.subscription_tier as 'free' | 'premium' | 'school'
-  );
+  const rateLimitResult = isDevelopmentChat
+    ? { success: true, remaining: 1, limit: 1, reset: 0 }
+    : await checkChatRateLimit(
+        user.id,
+        profile.subscription_tier as 'free' | 'premium' | 'school'
+      );
 
   if (!rateLimitResult.success) {
     return Response.json(
@@ -169,8 +181,8 @@ export async function POST(req: NextRequest) {
     : process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
 
   // ---- Create or get session ------------------------------------------------
-  let sessionId = body.sessionId;
-  if (!sessionId) {
+  let sessionId = isDevelopmentChat ? undefined : body.sessionId;
+  if (!isDevelopmentChat && !sessionId) {
     try {
       sessionId = await createChatSession(
         user.id,
@@ -186,7 +198,7 @@ export async function POST(req: NextRequest) {
   }
 
   // ---- Save user message ----------------------------------------------------
-  if (sessionId) {
+  if (sessionId && !isDevelopmentChat) {
     try {
       await addChatMessage(sessionId, user.id, 'user', body.message);
     } catch (error) {
@@ -268,8 +280,8 @@ export async function POST(req: NextRequest) {
     const detail = err instanceof Error ? err.message : `Unknown ${provider} error`;
     console.error(`[/api/chat] ${provider} request failed:`, detail);
 
-    // Log API usage (failed)
-    await supabase.from('api_usage').insert({
+    // Development chat never writes synthetic usage or telemetry rows.
+    if (!isDevelopmentChat) await supabase.from('api_usage').insert({
       user_id: user.id,
       endpoint: '/api/chat',
       method: 'POST',
@@ -314,7 +326,7 @@ export async function POST(req: NextRequest) {
         const latencyMs = Date.now() - startTime;
 
         // Save assistant message
-        if (sessionId) {
+        if (sessionId && !isDevelopmentChat) {
           try {
             await addChatMessage(sessionId, user.id, 'assistant', fullResponse, {
               tokensUsed,
@@ -326,8 +338,8 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        // Update daily activity
-        try {
+        // Update daily activity only for authenticated learners.
+        if (!isDevelopmentChat) try {
           await updateDailyActivity(user.id, {
             messagesSent: 1,
             sessionsStarted: body.sessionId ? 0 : 1,
@@ -339,7 +351,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Update learning progress if competency provided
-        if (body.competencyCode) {
+        if (body.competencyCode && !isDevelopmentChat) {
           try {
             await updateLearningProgress(user.id, body.competencyCode, {
               competencyName: body.competencyCode, // Should be passed from client
@@ -353,8 +365,8 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        // Log API usage
-        await supabase.from('api_usage').insert({
+        // Log API usage only for authenticated requests.
+        if (!isDevelopmentChat) await supabase.from('api_usage').insert({
           user_id: user.id,
           endpoint: '/api/chat',
           method: 'POST',
@@ -363,8 +375,8 @@ export async function POST(req: NextRequest) {
           latency_ms: latencyMs,
         });
 
-        // Increment daily quota
-        await supabase.rpc('increment_daily_quota', { p_user_id: user.id });
+        // Increment daily quota only for authenticated requests.
+        if (!isDevelopmentChat) await supabase.rpc('increment_daily_quota', { p_user_id: user.id });
       } catch (err) {
         const detail = err instanceof Error ? err.message : 'Stream interrupted';
         console.error('[/api/chat] Stream error:', detail);

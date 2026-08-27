@@ -12,8 +12,9 @@
  * On subject click → persist {level, grade, subject} to sessionStorage and navigate to
  *   /student/chat/[subject]?grade=...
  *
- * Persistence is sessionStorage (not localStorage) so the canvas reappears every
- * fresh tab — important for shared devices and term-to-term progression.
+ * Persistence uses sessionStorage first and localStorage as a durable fallback,
+ * so an authenticated learner keeps their selected CBC context across tabs while
+ * still allowing a shared-device session to be cleared explicitly.
  *
  * Curriculum data: studio/src/data/curriculum/index.ts (getAllGrades, getSubjectsForGrade).
  * Grades present in the level mapping but not in getAllGrades() are rendered as
@@ -112,8 +113,8 @@ export default function JourneyPage() {
   // within the same tab session. sessionStorage clears on tab close.
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const savedLevel = window.sessionStorage.getItem(STORAGE_LEVEL) as LevelId | null;
-    const savedGrade = window.sessionStorage.getItem(STORAGE_GRADE);
+    const savedLevel = (window.sessionStorage.getItem(STORAGE_LEVEL) || window.localStorage.getItem(STORAGE_LEVEL)) as LevelId | null;
+    const savedGrade = window.sessionStorage.getItem(STORAGE_GRADE) || window.localStorage.getItem(STORAGE_GRADE);
     if (savedLevel && LEVELS_BY_ID[savedLevel]) {
       setLevel(savedLevel);
       if (savedGrade && LEVELS_BY_ID[savedLevel].grades.includes(savedGrade)) {
@@ -134,8 +135,11 @@ export default function JourneyPage() {
     setGrade(null);
     if (typeof window !== 'undefined') {
       window.sessionStorage.setItem(STORAGE_LEVEL, id);
+      window.localStorage.setItem(STORAGE_LEVEL, id);
       window.sessionStorage.removeItem(STORAGE_GRADE);
+      window.localStorage.removeItem(STORAGE_GRADE);
       window.sessionStorage.removeItem(STORAGE_SUBJECT);
+      window.localStorage.removeItem(STORAGE_SUBJECT);
     }
     setStep('grade');
   };
@@ -145,8 +149,8 @@ export default function JourneyPage() {
     setGrade(g);
     if (typeof window !== 'undefined') {
       window.sessionStorage.setItem(STORAGE_GRADE, g);
+      window.localStorage.setItem(STORAGE_GRADE, g);
     }
-    // Redirect to dashboard after grade selection
     router.push('/student');
   };
 
@@ -154,6 +158,7 @@ export default function JourneyPage() {
     if (!grade) return;
     if (typeof window !== 'undefined') {
       window.sessionStorage.setItem(STORAGE_SUBJECT, subject);
+      window.localStorage.setItem(STORAGE_SUBJECT, subject);
     }
     router.push(
       `/student/chat/${encodeURIComponent(subject)}?grade=${encodeURIComponent(grade)}`

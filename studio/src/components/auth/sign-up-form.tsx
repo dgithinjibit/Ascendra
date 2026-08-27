@@ -164,11 +164,16 @@ export function SignUpForm() {
       if (formData.role === 'student' && formData.grade && typeof window !== 'undefined') {
         const level = deriveLevelFromGrade(formData.grade);
         window.sessionStorage.setItem('learningJourney.grade', formData.grade);
-        if (level) window.sessionStorage.setItem('learningJourney.level', level);
+        window.localStorage.setItem('learningJourney.grade', formData.grade);
+        if (level) {
+          window.sessionStorage.setItem('learningJourney.level', level);
+          window.localStorage.setItem('learningJourney.level', level);
+        }
       }
 
-      // Redirect to dashboard
-      router.push('/dashboard');
+      // Students continue into their personalized workspace with the saved
+      // CBC context; school staff and guardians use the role-aware dashboard.
+      router.push(formData.role === 'student' ? '/student' : '/dashboard');
     } catch (err: any) {
       setError(err.message || 'Failed to sign up. Please try again.');
     } finally {

@@ -124,10 +124,13 @@ export default function StudentDashboardPage() {
       sessionStorage.setItem('learningJourney.level', 'lower-primary');
     }
 
-    // Check if grade is set - if not, redirect to journey for grade selection.
-    // sessionStorage (not localStorage) so the journey re-appears each fresh tab —
-    // important for shared devices and term-to-term progression.
-    const savedGrade = sessionStorage.getItem('learningJourney.grade');
+    // Restore the authenticated learner's durable CBC context. Session storage
+    // wins for the current tab; local storage preserves the selected context
+    // across tabs and reloads until the learner explicitly changes it.
+    const savedGrade = sessionStorage.getItem('learningJourney.grade') || localStorage.getItem('learningJourney.grade');
+    const savedLevel = sessionStorage.getItem('learningJourney.level') || localStorage.getItem('learningJourney.level');
+    if (savedGrade && !sessionStorage.getItem('learningJourney.grade')) sessionStorage.setItem('learningJourney.grade', savedGrade);
+    if (savedLevel && !sessionStorage.getItem('learningJourney.level')) sessionStorage.setItem('learningJourney.level', savedLevel);
     if (!savedGrade) {
       router.push('/student/journey');
       return;
@@ -176,14 +179,15 @@ export default function StudentDashboardPage() {
   };
 
   const goToChat = (subject: string) => {
-    const savedGrade = sessionStorage.getItem('learningJourney.grade');
+    const savedGrade = sessionStorage.getItem('learningJourney.grade') || localStorage.getItem('learningJourney.grade');
     if (!savedGrade) {
       router.push('/student/journey');
       return;
     }
 
-    // Save subject and go directly to chat
+    // Save subject durably and go directly to chat
     sessionStorage.setItem('learningJourney.subject', subject);
+    localStorage.setItem('learningJourney.subject', subject);
     router.push(`/student/chat/${encodeURIComponent(subject)}?grade=${encodeURIComponent(savedGrade)}`);
   };
 
@@ -459,7 +463,11 @@ export default function StudentDashboardPage() {
                 <CardContent className="space-y-2">
                   <Button
                     className="w-full"
-                    onClick={() => router.push('/student/journey')}
+                    onClick={() => {
+                      const savedSubject = localStorage.getItem('learningJourney.subject') || sessionStorage.getItem('learningJourney.subject');
+                      if (savedSubject) goToChat(savedSubject);
+                      else router.push('/student/journey');
+                    }}
                   >
                     <MessageCircle className="mr-2 h-4 w-4" />
                     Start Chat Session
@@ -468,7 +476,11 @@ export default function StudentDashboardPage() {
                   <Button
                     variant="outline"
                     className="w-full"
-                    onClick={() => router.push('/student/journey')}
+                    onClick={() => {
+                      const savedSubject = localStorage.getItem('learningJourney.subject') || sessionStorage.getItem('learningJourney.subject');
+                      if (savedSubject) goToChat(savedSubject);
+                      else router.push('/student/journey');
+                    }}
                   >
                     Learning Journey
                   </Button>

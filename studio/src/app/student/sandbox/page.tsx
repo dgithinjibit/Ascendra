@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Check, ChevronRight, Sparkles } from 'lucide-react'
 import { StudentHeader } from '@/components/layout/student-header'
@@ -92,6 +92,15 @@ function ImageCard({
 export default function SandboxPage() {
   const router = useRouter()
   const [notice, setNotice] = useState<string | null>(null)
+  const [grade, setGrade] = useState('Grade 2')
+  const [studentName, setStudentName] = useState('Student')
+
+  useEffect(() => {
+    const storedGrade = window.sessionStorage.getItem('learningJourney.grade') || window.localStorage.getItem('learningJourney.grade')
+    const storedName = window.localStorage.getItem('studentName') || window.localStorage.getItem('userName')
+    if (storedGrade) setGrade(storedGrade)
+    if (storedName) setStudentName(storedName)
+  }, [])
 
   const openSubject = (card: SubjectCard) => {
     if (!card.subject) {
@@ -99,7 +108,8 @@ export default function SandboxPage() {
       return
     }
 
-    router.push(`/student/sandbox/g2/${card.subject}`)
+    const gradeSlug = grade.toLowerCase().replace(/[^a-z0-9]+/g, '-')
+    router.push(`/student/sandbox/${gradeSlug}/${card.subject}`)
   }
 
   return (
@@ -109,6 +119,17 @@ export default function SandboxPage() {
 
         <main className="px-5 pb-16 pt-2 sm:px-8 lg:px-14">
           <div className="mx-auto max-w-7xl">
+            <div className="mb-8 flex flex-col justify-between gap-4 border-b border-teal-100 pb-6 sm:flex-row sm:items-end">
+              <div>
+                <p className="text-sm font-bold uppercase tracking-[0.18em] text-orange-600">Canvas studio</p>
+                <h1 className="mt-2 text-3xl font-black tracking-tight text-teal-950 sm:text-5xl">Learn by making</h1>
+                <p className="mt-2 max-w-2xl text-base leading-7 text-teal-900/70">Choose a subject to open an interactive canvas for <strong>{grade}</strong>. Your attempts, hints, and progress stay connected to this learning context.</p>
+              </div>
+              <div className="rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm font-semibold text-orange-900">
+                Current pathway<br /><span className="text-lg">{grade}</span>
+              </div>
+            </div>
+
             <LearningProgress />
 
             <section aria-labelledby="core-subjects-heading">
@@ -118,7 +139,7 @@ export default function SandboxPage() {
                   Core Subjects
                 </h2>
               </div>
-              <div className="grid grid-cols-1 gap-4 min-[430px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
+              <div className="grid grid-cols-1 gap-4 min-[430px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                 {CORE_SUBJECTS.map((card) => (
                   <ImageCard key={card.label} {...card} onClick={() => openSubject(card)} />
                 ))}
@@ -148,7 +169,7 @@ export default function SandboxPage() {
           </div>
         </main>
 
-        <FloatingConceptChat studentName="Student" grade="Grade 2" />
+        <FloatingConceptChat studentName={studentName} grade={grade} />
       </div>
     </div>
   )
