@@ -39,6 +39,50 @@ export function selectSandboxProvider(
   return { provider: 'gemini', model, enabled: true, reason: 'configured' };
 }
 
+export interface SandboxProviderPreflight {
+  workerEnabled: boolean;
+  mediaGenerationEnabled: boolean;
+  childVideoEnabled: boolean;
+  geminiKeyPresent: boolean;
+  imageProviderReady: boolean;
+  videoProviderReady: boolean;
+  presentationProviderReady: boolean;
+  status: 'ready_for_mocked_activation' | 'blocked_missing_secret' | 'blocked_feature_flag' | 'safe_local_only';
+}
+
+/**
+ * Returns a redacted activation report for deployment checks. It deliberately
+ * exposes no key material and does not imply that real provider calls are safe
+ * until authenticated role probes and moderation evidence are complete.
+ */
+export function getSandboxProviderPreflight(
+  env: Record<string, string | undefined> = process.env,
+): SandboxProviderPreflight {
+  const workerEnabled = enabledFlag(env.SYNC_SENTA_ENABLE_ARTIFACT_WORKER);
+  const mediaGenerationEnabled = enabledFlag(env.SYNC_SENTA_ENABLE_MEDIA_GENERATION);
+  const childVideoEnabled = enabledFlag(env.SYNC_SENTA_ENABLE_CHILD_VIDEO);
+  const geminiKeyPresent = Boolean(env.GEMINI_API_KEY);
+  const imageProviderReady = geminiKeyPresent && mediaGenerationEnabled;
+  const videoProviderReady = imageProviderReady && childVideoEnabled;
+  const presentationProviderReady = true;
+
+  let status: SandboxProviderPreflight['status'] = 'safe_local_only';
+  if (imageProviderReady && workerEnabled) status = 'ready_for_mocked_activation';
+  else if (!geminiKeyPresent && mediaGenerationEnabled) status = 'blocked_missing_secret';
+  else if (geminiKeyPresent && !mediaGenerationEnabled) status = 'blocked_feature_flag';
+
+  return {
+    workerEnabled,
+    mediaGenerationEnabled,
+    childVideoEnabled,
+    geminiKeyPresent,
+    imageProviderReady,
+    videoProviderReady,
+    presentationProviderReady,
+    status,
+  };
+}
+
 export function providerIsAllowedForChildFacing(
   kind: SandboxArtifactKind,
   plan: SandboxProviderPlan,

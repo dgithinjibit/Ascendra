@@ -27,6 +27,8 @@ check_command curl
 check_command node
 check_command pnpm
 check_file scripts/staging-e2e-gate.sh
+check_file studio/src/lib/sandbox-provider-runtime.ts
+check_file studio/src/lib/__tests__/sandbox-provider-runtime.test.ts
 check_file scripts/rust-agent-cutover.sh
 check_file supabase/migrations/20260827000014_attendance_integrity_tokens_and_ledger.sql
 check_file supabase/migrations/20260827000020_sandbox_artifact_queue.sql
@@ -46,8 +48,18 @@ else
   warn 'Gemini media generation remains disabled or unconfigured; no provider call is allowed'
 fi
 
+if [[ "${SYNC_SENTA_ENABLE_ARTIFACT_WORKER:-false}" == 'true' ]]; then
+  pass 'artifact worker explicitly enabled for controlled staging processing'
+else
+  warn 'artifact worker is disabled; queued media jobs cannot be claimed'
+fi
+
 if [[ "${SYNC_SENTA_ENABLE_CHILD_VIDEO:-false}" == 'true' ]]; then
-  warn 'child-facing video flag is enabled; activate only after moderation and authenticated staging evidence'
+  if [[ "${REQUIRE_AUTH_PROBES:-false}" == 'true' ]]; then
+    warn 'child-facing video flag is enabled; authenticated evidence is present but moderation approval remains required'
+  else
+    fail 'child-facing video cannot be enabled without authenticated role probes'
+  fi
 else
   pass 'child-facing video remains disabled by default'
 fi
