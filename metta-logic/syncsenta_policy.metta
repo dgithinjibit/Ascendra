@@ -112,3 +112,26 @@
 ; Provider calls must not bypass policy or expose raw learner content to experts.
 (= (expert-input raw-learner-content) (Review privacy))
 (= (expert-input policy-summary) Approved)
+
+; Attendance POC: policy approval is required before a persistence action.
+; The Rust validator supplies these typed atoms after checking the signed token.
+(= (attendance-token-route valid) Approved)
+(= (attendance-token-route missing) (Review attendance-token))
+(= (attendance-token-route expired) (Review attendance-token))
+(= (attendance-token-route revoked) (Review attendance-token))
+(= (attendance-token-route replayed) (Review attendance-replay))
+(= (attendance-token-route wrong-class) (Review attendance-scope))
+(= (attendance-token-route invalid) (Review attendance-token))
+
+(= (attendance-consent-route granted) Approved)
+(= (attendance-consent-route unknown) (Review consent))
+(= (attendance-consent-route guardian-required) (Review consent))
+(= (attendance-consent-route denied) (Review consent))
+
+(= (attendance-action-route valid granted) Approved)
+(= (attendance-action-route $token $consent)
+   (if (not (= $token valid))
+       (Review attendance-token)
+       (if (not (= $consent granted))
+           (Review consent)
+           Approved)))
