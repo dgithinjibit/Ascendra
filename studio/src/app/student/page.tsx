@@ -107,6 +107,7 @@ export default function StudentDashboardPage() {
   const [profile, setProfile] = useState<StudentProfile | null>(null);
   const [learningProgress, setLearningProgress] = useState<LearningProgress[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'gamification' | 'competency'>('overview');
   const [gamificationMode, setGamificationMode] = useState<GamificationMode>('balanced');
 
@@ -143,22 +144,26 @@ export default function StudentDashboardPage() {
   const loadPersonalizedLearningData = async () => {
     try {
       setIsLoading(true);
+      setLoadError(null);
       
       // Get student profile
       const profileResponse = await fetch('/api/test-personalization?action=profile&userId=user1');
+      if (!profileResponse.ok) throw new Error('profile request failed');
       const profileData = await profileResponse.json();
       
-      if (profileData.success) {
-        setProfile(profileData.profile);
-        setStudentName(profileData.profile.name);
+      if (!profileData.success || !profileData.profile) {
+        throw new Error('profile unavailable');
       }
+      setProfile(profileData.profile);
+      setStudentName(profileData.profile.name);
 
       // Get learning progress for main subjects
       const subjects = ['Mathematics', 'English', 'Science'];
       const progressPromises = subjects.map(async (subject) => {
         const response = await fetch(`/api/test-personalization?action=progress&userId=user1&subject=${subject}`);
+        if (!response.ok) return null;
         const data = await response.json();
-        return data.success ? { subject, ...data.progress } : null;
+        return data.success && data.progress ? { subject, ...data.progress } : null;
       });
 
       const progressResults = await Promise.all(progressPromises);
@@ -166,6 +171,7 @@ export default function StudentDashboardPage() {
       
     } catch (error) {
       console.error('Failed to load personalized data:', error);
+      setLoadError('We could not load your learning path right now. Your progress is safe.');
     } finally {
       setIsLoading(false);
     }
@@ -225,10 +231,27 @@ export default function StudentDashboardPage() {
       <div className="flex min-h-screen flex-col bg-[#fffaf0] text-slate-900">
         <StudentHeader showBackButton={false} onBack={() => router.back()} />
         <main className="flex-1 p-6 flex items-center justify-center">
-          <div className="text-center">
-            <Brain className="h-12 w-12 animate-pulse mx-auto mb-4 text-primary" />
-            <p className="text-muted-foreground">Loading your personalized dashboard...</p>
+          <div className="w-full max-w-md text-center">
+            <Brain className="h-12 w-12 animate-pulse mx-auto mb-4 text-primary" aria-hidden="true" />
+            <p className="font-medium">Preparing your learning path</p>
+            <p className="mt-2 text-sm text-muted-foreground">We are checking your grade, progress, and saved preferences.</p>
           </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="flex min-h-screen flex-col bg-[#fffaf0] text-slate-900">
+        <StudentHeader showBackButton={false} onBack={() => router.back()} />
+        <main className="flex flex-1 items-center justify-center p-6">
+          <section className="w-full max-w-md rounded-2xl border border-amber-200 bg-white p-6 text-center shadow-sm" role="alert">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 text-amber-700"><Clock className="h-6 w-6" aria-hidden="true" /></div>
+            <h1 className="mt-4 text-xl font-bold">Your learning path is temporarily unavailable</h1>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">{loadError}</p>
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center"><Button onClick={() => void loadPersonalizedLearningData()}>Try again</Button><Button variant="outline" onClick={() => router.push('/student/journey')}>Review my setup</Button></div>
+          </section>
         </main>
       </div>
     );
