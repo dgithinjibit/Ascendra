@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { buildSandboxArtifactInsert, type SandboxArtifactType } from '@/lib/sandbox-artifact-queue';
+import { selectSandboxProvider } from '@/lib/sandbox-provider';
 import { createSupabaseRouteHandlerClient } from '@/lib/supabase/route-handler';
 
 export const runtime = 'nodejs';
@@ -50,7 +51,10 @@ export async function POST(request: Request) {
       .single();
 
     if (error) return NextResponse.json({ error: 'artifact_enqueue_failed' }, { status: 403 });
-    return NextResponse.json({ artifact: data }, { status: 202 });
+    return NextResponse.json({
+      artifact: data,
+      providerPlan: selectSandboxProvider(insert.artifact_type),
+    }, { status: 202 });
   } catch (error) {
     const code = error instanceof Error ? error.message : 'invalid_artifact_request';
     return NextResponse.json({ error: code }, { status: 400 });
