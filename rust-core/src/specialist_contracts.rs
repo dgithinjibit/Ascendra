@@ -74,6 +74,48 @@ impl SpecialistOutput {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SignalKind {
+    Curriculum,
+    Creativity,
+    Wellbeing,
+    Safety,
+    Privacy,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SpecialistPlan {
+    pub domains: Vec<SpecialistDomain>,
+    pub needs_human_review: bool,
+}
+
+/// Deterministic specialist selection. Sensitive signals never fan out to
+/// content specialists, and privacy signals never reach any specialist.
+pub fn plan_specialists(signal: SignalKind) -> SpecialistPlan {
+    match signal {
+        SignalKind::Curriculum => SpecialistPlan {
+            domains: vec![SpecialistDomain::Curriculum],
+            needs_human_review: false,
+        },
+        SignalKind::Creativity => SpecialistPlan {
+            domains: vec![SpecialistDomain::Creativity],
+            needs_human_review: false,
+        },
+        SignalKind::Wellbeing => SpecialistPlan {
+            domains: vec![SpecialistDomain::Wellbeing],
+            needs_human_review: true,
+        },
+        SignalKind::Safety => SpecialistPlan {
+            domains: vec![SpecialistDomain::Safety],
+            needs_human_review: true,
+        },
+        SignalKind::Privacy => SpecialistPlan {
+            domains: Vec::new(),
+            needs_human_review: true,
+        },
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -116,6 +158,27 @@ mod tests {
             output.validate(),
             Err(SpecialistOutputError::ReviewMetadataMissing)
         );
+    }
+
+    #[test]
+    fn curriculum_signal_selects_only_curriculum_specialist() {
+        let plan = plan_specialists(SignalKind::Curriculum);
+        assert_eq!(plan.domains, vec![SpecialistDomain::Curriculum]);
+        assert!(!plan.needs_human_review);
+    }
+
+    #[test]
+    fn wellbeing_signal_cannot_fan_out_to_content_specialists() {
+        let plan = plan_specialists(SignalKind::Wellbeing);
+        assert_eq!(plan.domains, vec![SpecialistDomain::Wellbeing]);
+        assert!(plan.needs_human_review);
+    }
+
+    #[test]
+    fn privacy_signal_reaches_no_specialist() {
+        let plan = plan_specialists(SignalKind::Privacy);
+        assert!(plan.domains.is_empty());
+        assert!(plan.needs_human_review);
     }
 
     #[test]
