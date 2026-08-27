@@ -82,8 +82,15 @@ export function SignUpForm() {
         .order('name')
         .limit(200);
       if (cancelled) return;
-      if (error) setCatalogError('School directory is temporarily unavailable. Please try again later.');
-      else setSchools((data ?? []) as SchoolOption[]);
+      if (error) {
+        setCatalogError('School directory is temporarily unavailable. Please try again later.');
+      } else {
+        const directory = (data ?? []) as SchoolOption[];
+        setSchools(directory);
+        setCatalogError(directory.length === 0
+          ? 'No approved schools are available yet. Please ask your school administrator to publish the school directory.'
+          : null);
+      }
     }
     loadSchools();
     return () => { cancelled = true; };
@@ -102,8 +109,11 @@ export function SignUpForm() {
         .order('name')
         .limit(100);
       if (cancelled) return;
-      if (error) setCatalogError('Class directory is temporarily unavailable.');
-      else setClasses((data ?? []) as ClassOption[]);
+      if (error) {
+        setCatalogError('Class directory is temporarily unavailable. Please try again later.');
+      } else {
+        setClasses((data ?? []) as ClassOption[]);
+      }
     }
     loadClasses();
     return () => { cancelled = true; };
