@@ -1,8 +1,8 @@
 # SyncSenta Hyperon Rust Bridge (Experimental)
 
-This crate is an isolated experiment on `experiment/hyperon-rust-embedding`. It embeds the official Hyperon Rust library from `trueagi-io/hyperon-experimental` at tag `v0.2.10` and exposes a small bounded `run_metta` API.
+This crate is an isolated experiment on `experiment/hyperon-rust-embedding`. It embeds the official Hyperon Rust library from `trueagi-io/hyperon-experimental` at tag `v0.2.10` and exposes a bounded `run_metta` API and a safer `run_syncsenta_policy` API that loads only the repository policy source and rejects program-definition, variable, quote, comment, and mutable-space syntax.
 
-The bridge is not used by `rust-core`, `rust-service`, or the Next.js application. It creates a fresh interpreter per call, limits program size to 64 KiB, does not expose network access or cross-request mutable state, and converts runtime failures into typed errors. It must not be promoted to production without a policy allowlist, timeout/resource controls, deterministic semantics review, and a maintainer-confirmed support path.
+The bridge is not used by `rust-core`, `rust-service`, or the Next.js application. It creates a fresh interpreter per call, limits program size to 64 KiB, does not expose network access or cross-request mutable state, and converts runtime failures into typed errors. The policy-only API now applies a query-size limit, result-count and result-size limits, and typed fail-closed rejection. It must not be promoted to production without execution timeout/resource controls, deterministic semantics review, and a maintainer-confirmed support path.
 
 ## Verification
 

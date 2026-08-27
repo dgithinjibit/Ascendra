@@ -2,12 +2,19 @@ use hyperon::metta::runner::Metta;
 use hyperon::metta::text::SExprParser;
 
 const MAX_PROGRAM_BYTES: usize = 64 * 1024;
+const MAX_QUERY_BYTES: usize = 1024;
+const MAX_RESULTS: usize = 16;
+const MAX_RESULT_BYTES: usize = 8 * 1024;
+const SYNCSENTA_POLICY: &str = include_str!("../../metta-logic/syncsenta_policy.metta");
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HyperonBridgeError {
     ProgramTooLarge,
     EmptyProgram,
     Runtime(String),
+    UnsafePolicyQuery,
+    TooManyResults,
+    ResultTooLarge,
 }
 
 impl std::fmt::Display for HyperonBridgeError {
@@ -16,6 +23,9 @@ impl std::fmt::Display for HyperonBridgeError {
             Self::ProgramTooLarge => write!(f, "program_too_large"),
             Self::EmptyProgram => write!(f, "empty_program"),
             Self::Runtime(message) => write!(f, "hyperon_runtime:{message}"),
+            Self::UnsafePolicyQuery => write!(f, "unsafe_policy_query"),
+            Self::TooManyResults => write!(f, "too_many_results"),
+            Self::ResultTooLarge => write!(f, "result_too_large"),
         }
     }
 }
@@ -27,6 +37,20 @@ impl std::error::Error for HyperonBridgeError {}
 /// This prototype intentionally does not expose learner content, network access,
 /// or mutable cross-request state. Production integration must add an allowlist
 /// for approved policy programs and preserve the Rust safety gate.
+pub fn run_syncsenta_policy(query: &str) -> Result<Vec<Vec<String>>, HyperonBridgeError> {
+    if query.len() > MAX_QUERY_BYTES
+        || !query.trim_start().starts_with("!(")
+        || query.contains(';')
+        || query.contains('"')
+        || query.contains('=')
+        || query.contains('$')
+        || query.contains('&')
+    {
+        return Err(HyperonBridgeError::UnsafePolicyQuery);
+    }
+    run_metta(&format!("{SYNCSENTA_POLICY} {query}"))
+}
+
 pub fn run_metta(program: &str) -> Result<Vec<Vec<String>>, HyperonBridgeError> {
     if program.trim().is_empty() {
         return Err(HyperonBridgeError::EmptyProgram);
@@ -39,10 +63,18 @@ pub fn run_metta(program: &str) -> Result<Vec<Vec<String>>, HyperonBridgeError> 
     let results = metta
         .run(SExprParser::new(program))
         .map_err(HyperonBridgeError::Runtime)?;
-    Ok(results
+    if results.len() > MAX_RESULTS {
+        return Err(HyperonBridgeError::TooManyResults);
+    }
+    let output: Vec<Vec<String>> = results
         .into_iter()
         .map(|atoms| atoms.into_iter().map(|atom| atom.to_string()).collect())
-        .collect())
+        .collect();
+    let output_bytes = output.iter().flatten().map(String::len).sum::<usize>();
+    if output_bytes > MAX_RESULT_BYTES {
+        return Err(HyperonBridgeError::ResultTooLarge);
+    }
+    Ok(output)
 }
 
 #[cfg(test)]
@@ -71,9 +103,19 @@ mod tests {
 
     #[test]
     fn executes_syncsenta_policy_source() {
-        let policy = include_str!("../../metta-logic/syncsenta_policy.metta");
-        let program = format!("{policy} !(safeguarding-route self-harm)");
-        let result = run_metta(&program).unwrap();
+        let result = run_syncsenta_policy("!(safeguarding-route self-harm)").unwrap();
         assert_eq!(result, vec![vec!["(Review safeguarding)".to_string()]]);
+    }
+
+    #[test]
+    fn rejects_non_policy_queries() {
+        assert_eq!(
+            run_syncsenta_policy("(= (unsafe) Approved)"),
+            Err(HyperonBridgeError::UnsafePolicyQuery)
+        );
+        assert_eq!(
+            run_syncsenta_policy("!(safeguarding-route $raw)"),
+            Err(HyperonBridgeError::UnsafePolicyQuery)
+        );
     }
 }
