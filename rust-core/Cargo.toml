@@ -5,6 +5,9 @@ edition = "2021"
 description = "Rust-first Syncsenta main agent with deterministic MoE planning and MeTTa policy contracts"
 license = "MIT"
 
+[dependencies]
+sha2 = "0.10"
+
 [lib]
 name = "syncsenta_moe_core"
 path = "src/lib.rs"

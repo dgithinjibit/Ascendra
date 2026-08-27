@@ -3,6 +3,7 @@
 
 use std::fmt;
 
+pub mod attendance;
 pub mod agent_runtime;
 pub mod feedback_review;
 pub mod head_progress;
