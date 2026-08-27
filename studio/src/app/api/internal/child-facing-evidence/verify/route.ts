@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
+import { CHILD_FACING_GATES } from '@/lib/child-facing-readiness'
 import { verifyApprovalEvidenceBundle, type ApprovalEvidenceBundle } from '@/lib/child-facing-evidence'
 
 const MAX_BODY_BYTES = 64 * 1024
@@ -21,7 +22,7 @@ const bundle = z.object({
   bundleId: z.string().regex(/^[A-Za-z0-9._:/-]{1,160}$/),
   environment: z.enum(['local', 'staging', 'production']),
   createdAt: z.string().datetime({ offset: true }),
-  records: z.array(record).length(14),
+  records: z.array(record).length(CHILD_FACING_GATES.length + 4),
   digest,
 }).strict()
 
