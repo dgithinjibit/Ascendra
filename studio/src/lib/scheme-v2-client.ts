@@ -30,7 +30,7 @@ export async function saveScheme(
   scheme: Omit<SchemeV2, 'id' | 'created_at' | 'updated_at'>,
   token: string
 ): Promise<SaveSchemeResponse> {
-  const response = await fetch(`${API_BASE}/api/v1/schemes/v2`, {
+  const response = await fetch('/api/schemes/v2', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

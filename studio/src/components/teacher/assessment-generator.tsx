@@ -30,6 +30,8 @@ export function AssessmentGenerator() {
   const [generatedAssessment, setGeneratedAssessment] = useState('')
   const [copied, setCopied] = useState(false)
   const [assessmentType, setAssessmentType] = useState<'quiz' | 'test' | 'rubric' | 'formative'>('quiz')
+  const [formalPaperType, setFormalPaperType] = useState<'midterm' | 'end_of_term'>('midterm')
+  const [term, setTerm] = useState('Term 1')
 
   // Form states
   const [level, setLevel] = useState('')
@@ -171,7 +173,12 @@ ${Array.from({length: Math.ceil(parseInt(numQuestions) * 0.2)}, (_, i) => `${i +
 - Make questions practical and relevant to Kenyan students`
 
       } else if (assessmentType === 'test') {
-        prompt = `Create a comprehensive end-of-term test for a Kenyan CBC classroom.
+        const paperTitle = formalPaperType === 'midterm' ? 'MIDTERM EXAMINATION' : 'END OF TERM EXAMINATION'
+        const paperPeriod = formalPaperType === 'midterm' ? 'midterm' : 'end of term'
+        prompt = `Create a comprehensive ${paperPeriod} formal paper for a Kenyan CBC classroom.
+
+**PAPER PERIOD:** ${paperTitle}
+**TERM:** ${term}
 
 **TEST DETAILS:**
 - Grade: ${grade.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
@@ -182,8 +189,9 @@ ${strand ? `- Strand: ${strand}` : '- Coverage: Full term content'}
 
 Create a formal test with:
 
-# END OF TERM TEST
+# ${paperTitle}
 ## ${subject.toUpperCase()} - ${grade.toUpperCase()}
+**Term:** ${term}
 
 **Name:** _________________________  **Adm No:** __________
 **Class:** _________________________  **Date:** ____________
@@ -324,7 +332,7 @@ Create a comprehensive formative assessment toolkit with:
 - Include Kenyan context examples`
       }
 
-      const response = await fetch(buildApiUrl(API_ENDPOINTS.AGENTS_CHAT), {
+      const response = await fetch('/api/generate/assessment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -333,8 +341,11 @@ Create a comprehensive formative assessment toolkit with:
           session_id: `assessment_${Date.now()}`,
           grade: grade,
           subject: subject,
-          language: 'english',
-          role: 'teacher'
+          language: subject.toLowerCase().includes('kiswahili') ? 'kiswahili' : 'english',
+          role: 'teacher',
+          assessment_type: assessmentType,
+          assessment_period: assessmentType === 'test' ? formalPaperType : undefined,
+          term: assessmentType === 'test' ? term : undefined
         })
       })
 
@@ -499,7 +510,33 @@ Create a comprehensive formative assessment toolkit with:
 
                 {assessmentType !== 'formative' && (
                   <>
-                    {/* Strand */}
+                    {assessmentType === 'test' && (
+                  <>
+                    <div className="space-y-2">
+                      <Label>Formal Paper Type *</Label>
+                      <Select value={formalPaperType} onValueChange={(value) => setFormalPaperType(value as 'midterm' | 'end_of_term')}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="midterm">Midterm Examination</SelectItem>
+                          <SelectItem value="end_of_term">End-of-Term Examination</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Term *</Label>
+                      <Select value={term} onValueChange={setTerm}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Term 1">Term 1</SelectItem>
+                          <SelectItem value="Term 2">Term 2</SelectItem>
+                          <SelectItem value="Term 3">Term 3</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </>
+                )}
+
+                {/* Strand */}
                     <div className="space-y-2">
                       <Label>Strand (Optional)</Label>
                       <Select value={strand} onValueChange={(val) => {

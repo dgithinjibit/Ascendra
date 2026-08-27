@@ -15,6 +15,7 @@ import { exportSchemeToDocx, type SchemeRow } from '@/lib/export-docx';
 import { useToast } from '@/hooks/use-toast';
 import { FeedbackWidget } from '@/components/teacher/feedback-widget';
 import { getSupabaseClient } from '@/lib/supabase/client';
+import { saveScheme } from '@/lib/scheme-v2-client';
 
 // Column headers for CBC scheme of work
 const COLUMN_HEADERS_EN = [
@@ -65,6 +66,10 @@ export function PreviewStep() {
     setGenerating,
     setGeneratedScheme,
     setGenerationError,
+    savedSchemeId,
+    setSaving,
+    setSaveError,
+    setSavedSchemeId,
   } = useSchemeWizardStore();
 
   const { toast } = useToast();
@@ -283,8 +288,46 @@ export function PreviewStep() {
   };
 
   const handleSave = async () => {
-    // TODO: Implement scheme saving in Task 7.1
-    console.log('[PreviewStep] Scheme saving not yet implemented');
+    if (!generatedScheme?.rows?.length || !selectedGrade || !selectedSubject || !selectedTerm) return;
+
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const supabase = getSupabaseClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('Please sign in before saving a scheme to your library.');
+      }
+
+      const response = await saveScheme({
+        teacher_id: session.user.id,
+        grade: selectedGrade,
+        subject: selectedSubject,
+        term: selectedTerm,
+        scheme_rows: generatedScheme.rows as SchemeRow[],
+        teacher_inputs: {
+          keyInquiryQuestions: teacherInputs.keyInquiryQuestions ? [teacherInputs.keyInquiryQuestions] : [],
+          learningOutcomes: teacherInputs.learningOutcomes ? [teacherInputs.learningOutcomes] : [],
+          learningExperiences: teacherInputs.learningExperiences ? [teacherInputs.learningExperiences] : [],
+          learningResources: teacherInputs.learningResources ? [teacherInputs.learningResources] : [],
+          assessmentMethods: teacherInputs.assessmentMethods ? [teacherInputs.assessmentMethods] : [],
+        },
+        curriculum_ref: `${selectedGrade}-${selectedSubject}-${selectedTerm}`,
+        version: 1,
+      }, session.access_token);
+
+      setSavedSchemeId(response.id);
+      toast({
+        title: 'Scheme saved to library',
+        description: `Saved with library ID ${response.id}.`,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to save scheme.';
+      setSaveError(message);
+      toast({ title: 'Save failed', description: message, variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (isGenerating) {
@@ -358,9 +401,9 @@ export function PreviewStep() {
 
       {/* Action buttons */}
       <div className="flex flex-wrap gap-3">
-        <Button onClick={handleSave} size="lg">
+        <Button onClick={handleSave} size="lg" disabled={!!savedSchemeId}>
           <FileText className="mr-2 h-4 w-4" />
-          Save to Library
+          {savedSchemeId ? 'Saved to Library' : 'Save to Library'}
         </Button>
         <Button onClick={handleExportDOCX} variant="outline" disabled={isExporting}>
           {isExporting ? (
