@@ -48,7 +48,7 @@ import {
   type LearningLoopState,
 } from '@/lib/student-learning-loop'
 import { buildAdaptiveLearningStep } from '@/lib/sandbox-personalization'
-import { applyAdaptiveDecision, buildAdaptiveDecisionRequest, createAdaptiveQuestionBridge } from '@/lib/adaptive-question-bridge'
+import { applyAdaptiveDecision, buildAdaptiveDecisionRequest, createAdaptiveQuestionBridge, createServerAdaptiveDecision } from '@/lib/adaptive-question-bridge'
 import { resolveTeacherApprovedMedia, type TeacherApprovedSandboxMedia } from '@/lib/sandbox-media'
 
 // ---------------------------------------------------------------------------
@@ -171,7 +171,7 @@ interface InteractiveSandboxProps {
 // ---------------------------------------------------------------------------
 
 const DROP_ZONE = { x: 360, y: 90, w: 180, h: 110 }
-const adaptiveQuestionBridge = createAdaptiveQuestionBridge()
+const adaptiveQuestionBridge = createAdaptiveQuestionBridge(createServerAdaptiveDecision())
 
 function makeFractionTokens(): DraggableToken[] {
   return [

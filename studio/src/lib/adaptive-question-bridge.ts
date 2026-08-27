@@ -64,6 +64,42 @@ function fallbackDecision(request: AdaptiveDecisionRequest): AdaptiveDecision {
   }
 }
 
+export function createServerAdaptiveDecision(): NativeAdaptiveDecision | undefined {
+  if (process.env.NEXT_PUBLIC_SYNC_SENTA_ADAPTIVE_ROUTE !== 'true') return undefined
+  return async request => {
+    const controller = new AbortController()
+    const timeoutId = window.setTimeout(() => controller.abort(), 120)
+    try {
+      const response = await fetch('/api/student/adaptive-question', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(request),
+        signal: controller.signal,
+      })
+      if (!response.ok) return null
+      const payload = await response.json() as Partial<Omit<AdaptiveDecision, 'source'>>
+      if (
+        (payload.action !== 'retry' && payload.action !== 'advance' && payload.action !== 'complete') ||
+        !Number.isInteger(payload.nextIndex) ||
+        !Number.isInteger(payload.difficultyDelta) ||
+        typeof payload.interestAnchorPresent !== 'boolean' ||
+        typeof payload.mettaQuery !== 'string'
+      ) return null
+      return {
+        action: payload.action,
+        nextIndex: payload.nextIndex as number,
+        difficultyDelta: payload.difficultyDelta as number,
+        interestAnchorPresent: payload.interestAnchorPresent,
+        mettaQuery: payload.mettaQuery,
+      }
+    } catch {
+      return null
+    } finally {
+      window.clearTimeout(timeoutId)
+    }
+  }
+}
+
 export function createAdaptiveQuestionBridge(nativeDecision?: NativeAdaptiveDecision): AdaptiveQuestionBridge {
   return {
     async decide(request) {
