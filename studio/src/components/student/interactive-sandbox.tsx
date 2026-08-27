@@ -41,7 +41,6 @@ import {
   buildTutorContext,
   createLearningLoop,
   enqueueLearningEvent,
-  evaluateAttempt,
   getNextHint,
   restoreLearningLoop,
   serializeLearningLoop,
@@ -49,6 +48,7 @@ import {
   type LearningLoopState,
 } from '@/lib/student-learning-loop'
 import { buildAdaptiveLearningStep } from '@/lib/sandbox-personalization'
+import { applyAdaptiveDecision, buildAdaptiveDecisionRequest, createAdaptiveQuestionBridge } from '@/lib/adaptive-question-bridge'
 import { resolveTeacherApprovedMedia, type TeacherApprovedSandboxMedia } from '@/lib/sandbox-media'
 
 // ---------------------------------------------------------------------------
@@ -171,6 +171,7 @@ interface InteractiveSandboxProps {
 // ---------------------------------------------------------------------------
 
 const DROP_ZONE = { x: 360, y: 90, w: 180, h: 110 }
+const adaptiveQuestionBridge = createAdaptiveQuestionBridge()
 
 function makeFractionTokens(): DraggableToken[] {
   return [
@@ -614,8 +615,20 @@ export function InteractiveSandbox({
     })
 
     const correct = Math.abs(studentAnswerValue - activeCorrectAnswerValue) < 1e-3
-    const nextLoop = evaluateAttempt(learningLoop, {
-      correct,
+    const decision = await adaptiveQuestionBridge.decide(buildAdaptiveDecisionRequest({
+      state: learningLoop,
+      grade,
+      subject,
+      competency,
+      currentIndex: variationIndex,
+      totalQuestions: lessonVariations.length,
+      lastCorrect: correct,
+      interest: interestText,
+      masteryThreshold: masteryGoal,
+      answer: studentAnswerLabel,
+    }))
+    const nextLoop = applyAdaptiveDecision(learningLoop, {
+      lastCorrect: correct,
       answer: studentAnswerLabel,
     })
     setLearningLoop(nextLoop)
@@ -626,7 +639,11 @@ export function InteractiveSandbox({
         correct,
         answer: studentAnswerLabel,
         competency,
-        hintLevel: nextLoop.hintLevel,
+                    hintLevel: nextLoop.hintLevel,
+            adaptive_action: decision.action,
+            adaptive_source: decision.source,
+            metta_query: decision.mettaQuery,
+
       },
     })
 
@@ -681,9 +698,8 @@ export function InteractiveSandbox({
       // analysis pipeline — we surface it to the teacher dashboard,
       // not the student directly.
       const nextCorrectCount = correct ? correctCount + 1 : correctCount
-      const isLastVariation = variationIndex >= lessonVariations.length - 1
       const reachedMastery = nextCorrectCount >= masteryGoal
-      const lessonComplete = reachedMastery || (correct && isLastVariation)
+      const lessonComplete = decision.action === 'complete' || reachedMastery
 
       if (correct) {
         setCorrectCount(nextCorrectCount)
@@ -704,7 +720,7 @@ export function InteractiveSandbox({
           setFeedback(
             `✅ Correct! Next question (${variationIndex + 2} of ${lessonVariations.length})…`,
           )
-          setVariationIndex((i) => i + 1)
+          setVariationIndex(() => decision.nextIndex)
           // Defer the reset by a tick so the student sees the feedback
           // briefly before the canvas wipes.
           setTimeout(resetForNextVariation, 600)
