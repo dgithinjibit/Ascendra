@@ -31,6 +31,7 @@ export interface WorkerDecision {
   nextAction: 'human_review' | 'provider_retry' | 'none';
   errorCode: string | null;
   provider: SandboxProviderPlan['provider'];
+  storagePath?: string;
 }
 
 export interface WorkerOptions {
@@ -101,7 +102,7 @@ export async function processSandboxArtifact(
     if (!result.storagePath || result.containsLearnerData || !result.moderationPassed) {
       return decision('failed', 'none', 'provider_output_rejected', plan.provider);
     }
-    return decision('ready', 'none', null, plan.provider);
+    return { ...decision('ready', 'none', null, plan.provider), storagePath: result.storagePath };
   } catch (error) {
     const errorCode = error instanceof Error ? error.message : 'provider_failed';
     return decision('queued', 'provider_retry', errorCode, plan.provider);

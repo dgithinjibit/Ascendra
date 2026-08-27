@@ -556,6 +556,7 @@ export interface Database {
           moderation_status: 'pending' | 'approved' | 'rejected'; status: 'queued' | 'processing' | 'ready' | 'failed' | 'cancelled';
           provider: string; storage_path: string | null; error_code: string | null;
           cancel_requested_at: string | null; expires_at: string; created_at: string; updated_at: string;
+          claimed_by: string | null; claimed_at: string | null; attempt_count: number; last_error: string | null;
         };
         Insert: {
           id?: string; requester_id: string; student_profile_id?: string | null;
@@ -564,6 +565,7 @@ export interface Database {
           moderation_status?: 'pending' | 'approved' | 'rejected'; status?: 'queued' | 'processing' | 'ready' | 'failed' | 'cancelled';
           provider?: string; storage_path?: string | null; error_code?: string | null;
           cancel_requested_at?: string | null; expires_at?: string; created_at?: string; updated_at?: string;
+          claimed_by?: string | null; claimed_at?: string | null; attempt_count?: number; last_error?: string | null;
         };
         Update: {
           id?: string; requester_id?: string; student_profile_id?: string | null;
@@ -572,6 +574,7 @@ export interface Database {
           moderation_status?: 'pending' | 'approved' | 'rejected'; status?: 'queued' | 'processing' | 'ready' | 'failed' | 'cancelled';
           provider?: string; storage_path?: string | null; error_code?: string | null;
           cancel_requested_at?: string | null; expires_at?: string; created_at?: string; updated_at?: string;
+          claimed_by?: string | null; claimed_at?: string | null; attempt_count?: number; last_error?: string | null;
         };
         Relationships: [];
       };
@@ -597,6 +600,18 @@ export interface Database {
           current_streak: number;
           competencies_mastered: number;
           achievements_earned: number;
+        }[];
+      };
+      claim_sandbox_artifact: {
+        Args: { p_worker_id: string };
+        Returns: {
+          id: string; requester_id: string; student_profile_id: string | null;
+          artifact_type: 'image' | 'video' | 'presentation'; prompt: string; grade: string;
+          subject: string; competency: string | null; consent_version: string; consent_verified: boolean;
+          moderation_status: 'pending' | 'approved' | 'rejected'; status: 'queued' | 'processing' | 'ready' | 'failed' | 'cancelled';
+          provider: string; storage_path: string | null; error_code: string | null;
+          cancel_requested_at: string | null; expires_at: string; created_at: string; updated_at: string;
+          claimed_by: string | null; claimed_at: string | null; attempt_count: number; last_error: string | null;
         }[];
       };
       get_teacher_students: {
