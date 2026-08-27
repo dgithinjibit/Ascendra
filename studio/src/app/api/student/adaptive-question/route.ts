@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createAdaptiveQuestionBridge, type AdaptiveDecisionRequest } from '@/lib/adaptive-question-bridge'
 import { buildAdaptiveDecisionRequest } from '@/lib/adaptive-question-bridge'
+import { checkProductionFixtureGuard } from '@/lib/production-fixture-guard'
 import type { LearningLoopState } from '@/lib/student-learning-loop'
 
 const MAX_BODY_BYTES = 8 * 1024
@@ -47,6 +48,13 @@ function timeout<T>(promise: Promise<T>, milliseconds: number): Promise<T> {
 }
 
 export async function POST(request: Request) {
+  const productionGuard = checkProductionFixtureGuard()
+  if (!productionGuard.allowed) {
+    return NextResponse.json({ error: 'production_configuration_blocked' }, {
+      status: 503,
+      headers: { 'Cache-Control': 'no-store' },
+    })
+  }
   const contentLength = Number(request.headers.get('content-length') || 0)
   if (contentLength > MAX_BODY_BYTES) {
     return NextResponse.json({ error: 'request_too_large' }, { status: 413 })
