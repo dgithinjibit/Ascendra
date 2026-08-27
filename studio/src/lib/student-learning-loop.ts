@@ -17,6 +17,56 @@ export interface LearningEvent {
   payload: Record<string, unknown>;
 }
 
+export interface PersistedLearningLoop {
+  version: 1;
+  state: LearningLoopState;
+  interestText: string;
+  savedAt: number;
+}
+
+export function serializeLearningLoop(input: {
+  state: LearningLoopState;
+  interestText: string;
+  savedAt?: number;
+}): string {
+  const payload: PersistedLearningLoop = {
+    version: 1,
+    state: input.state,
+    interestText: input.interestText.slice(0, 120),
+    savedAt: input.savedAt ?? Date.now(),
+  };
+  return JSON.stringify(payload);
+}
+
+export function restoreLearningLoop(
+  raw: string | null,
+  expected: { lessonId: string; masteryThreshold: number },
+): { state: LearningLoopState; interestText: string } | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as Partial<PersistedLearningLoop>;
+    const state = parsed.state;
+    if (
+      parsed.version !== 1 ||
+      !state ||
+      state.lessonId !== expected.lessonId ||
+      state.masteryThreshold !== Math.max(1, expected.masteryThreshold) ||
+      !Number.isInteger(state.attemptCount) || state.attemptCount < 0 ||
+      !Number.isInteger(state.correctCount) || state.correctCount < 0 ||
+      !Number.isInteger(state.currentIndex) || state.currentIndex < 0 ||
+      !Number.isInteger(state.hintLevel) || state.hintLevel < 0 || state.hintLevel > 3 ||
+      (state.status !== 'active' && state.status !== 'completed') ||
+      typeof state.mastered !== 'boolean'
+    ) return null;
+    return {
+      state,
+      interestText: typeof parsed.interestText === 'string' ? parsed.interestText.slice(0, 120) : '',
+    };
+  } catch {
+    return null;
+  }
+}
+
 export function createLearningLoop(input: {
   lessonId: string;
   masteryThreshold: number;

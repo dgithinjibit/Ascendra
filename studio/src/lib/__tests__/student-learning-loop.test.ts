@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   buildTutorContext,
   createLearningLoop,
+  restoreLearningLoop,
+  serializeLearningLoop,
   enqueueLearningEvent,
   evaluateAttempt,
   getNextHint,
@@ -67,6 +69,29 @@ describe('student learning loop', () => {
     expect(context).toContain('hint_level=1');
     expect(context).toContain('policy:bounded_hint');
     expect(context.length).toBeLessThan(700);
+  });
+
+  it('round-trips a bounded resumable loop and learner interest', () => {
+    const state = evaluateAttempt(
+      createLearningLoop({ lessonId: 'fractions-1', masteryThreshold: 2 }),
+      { correct: false, answer: '1/3' },
+    );
+    const restored = restoreLearningLoop(
+      serializeLearningLoop({ state, interestText: 'octopus'.repeat(80), savedAt: 123 }),
+      { lessonId: 'fractions-1', masteryThreshold: 2 },
+    );
+
+    expect(restored?.state).toEqual(state);
+    expect(restored?.interestText).toHaveLength(120);
+  });
+
+  it('rejects malformed or cross-lesson persisted state', () => {
+    const state = createLearningLoop({ lessonId: 'fractions-1', masteryThreshold: 2 });
+    const payload = serializeLearningLoop({ state, interestText: '' });
+
+    expect(restoreLearningLoop('{"version":1}', { lessonId: 'fractions-1', masteryThreshold: 2 })).toBeNull();
+    expect(restoreLearningLoop(payload, { lessonId: 'other-lesson', masteryThreshold: 2 })).toBeNull();
+    expect(restoreLearningLoop(payload, { lessonId: 'fractions-1', masteryThreshold: 3 })).toBeNull();
   });
 
   it('deduplicates offline learning events by event id', () => {

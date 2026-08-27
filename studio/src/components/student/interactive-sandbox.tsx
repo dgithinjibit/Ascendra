@@ -43,6 +43,8 @@ import {
   enqueueLearningEvent,
   evaluateAttempt,
   getNextHint,
+  restoreLearningLoop,
+  serializeLearningLoop,
   type LearningEvent,
   type LearningLoopState,
 } from '@/lib/student-learning-loop'
@@ -247,8 +249,8 @@ export function InteractiveSandbox({
   const variationStartRef = useRef<number>(Date.now())
   const lessonStartRef = useRef<number>(Date.now())
   const stableLessonId = useMemo(
-    () => lessonId ?? `lesson_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-    [lessonId],
+    () => lessonId ?? `${grade}-${subject}-${question}`.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 120),
+    [grade, lessonId, question, subject],
   )
 
   const currentVariation = lessonVariations[variationIndex] ?? lessonVariations[0]
@@ -309,6 +311,29 @@ export function InteractiveSandbox({
     studentId ||
     (typeof window !== 'undefined' && (localStorage.getItem('studentId') || localStorage.getItem('userId'))) ||
     'student_demo'
+  const loopStorageKey = `syncsenta-learning-loop-${resolvedStudentId}-${stableLessonId}`
+  const [hasRestoredState, setHasRestoredState] = useState(false)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const restored = restoreLearningLoop(
+      window.localStorage.getItem(loopStorageKey),
+      { lessonId: stableLessonId, masteryThreshold: masteryGoal },
+    )
+    if (restored) {
+      setLearningLoop(restored.state)
+      setCorrectCount(restored.state.correctCount)
+      setVariationIndex(Math.min(restored.state.currentIndex, Math.max(lessonVariations.length - 1, 0)))
+      setInterestText(restored.interestText)
+    }
+    setHasRestoredState(true)
+  }, [lessonVariations.length, loopStorageKey, masteryGoal, stableLessonId])
+  useEffect(() => {
+    if (typeof window === 'undefined' || !hasRestoredState) return
+    window.localStorage.setItem(
+      loopStorageKey,
+      serializeLearningLoop({ state: learningLoop, interestText }),
+    )
+  }, [hasRestoredState, interestText, learningLoop, loopStorageKey])
 
   const resolvedMedia = useMemo(
     () => resolveTeacherApprovedMedia({ media, competency }),
