@@ -1,77 +1,85 @@
-
 "use client";
 
 import { Suspense, useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
-// import TeacherDashboard from '@/components/dashboards/teacher-dashboard'; // LEGACY - moved to _legacy/
-// import SchoolHeadDashboard from '@/components/dashboards/school-head-dashboard'; // LEGACY - moved to _legacy/
-// import { CountyOfficerDashboard } from '@/components/dashboards/county-officer-dashboard'; // LEGACY - moved to _legacy/
+import { Button } from '@/components/ui/button';
 import ParentDashboard from '@/components/dashboards/parent-dashboard';
 import SchoolAdminDashboard from '@/components/dashboards/school-admin-dashboard';
 import NationalAdminDashboard from '@/components/dashboards/national-admin-dashboard';
 import { getServerUser } from '@/lib/auth';
 import type { UserRole } from '@/lib/types';
+import { BookOpen, LayoutDashboard, ArrowRight } from 'lucide-react';
 
 const DashboardSkeleton = () => (
-    <div className="space-y-6">
-        <div className="flex items-center justify-between">
-            <div>
-                <Skeleton className="h-8 w-64 mb-2" />
-                <Skeleton className="h-4 w-80" />
-            </div>
-            <Skeleton className="h-10 w-32" />
-        </div>
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            <Skeleton className="h-[350px] w-full" />
-            <Skeleton className="h-[350px] w-full" />
-            <Skeleton className="h-[350px] w-full" />
-        </div>
+  <div className="space-y-5 p-6">
+    <div className="flex items-center justify-between">
+      <div>
+        <Skeleton className="h-6 w-48 mb-2" />
+        <Skeleton className="h-4 w-72" />
+      </div>
+      <Skeleton className="h-9 w-28" />
     </div>
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-24 w-full rounded-xl" />)}
+    </div>
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-64 w-full rounded-xl" />)}
+    </div>
+  </div>
 );
 
+function RoleRedirectCard({ role }: { role: string }) {
+  const router = useRouter();
+  const destinations: Record<string, { label: string; path: string; description: string }> = {
+    teacher: { label: 'Teacher Dashboard', path: '/teacher/dashboard', description: 'Monitor students, manage lessons and view class analytics.' },
+    school_head: { label: 'School Dashboard', path: '/teacher/dashboard', description: 'Oversee school performance and staff activity.' },
+    county_officer: { label: 'County Dashboard', path: '/teacher/dashboard', description: 'View county-wide education metrics and reports.' },
+  };
+  const dest = destinations[role];
+  if (!dest) return null;
+
+  return (
+    <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="max-w-sm w-full rounded-2xl border border-teal-100 bg-white p-8 text-center shadow-sm">
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-teal-50">
+          <LayoutDashboard className="h-6 w-6 text-teal-600" />
+        </div>
+        <h2 className="text-lg font-bold">{dest.label}</h2>
+        <p className="mt-2 text-sm text-muted-foreground">{dest.description}</p>
+        <Button className="mt-6 w-full gap-2" onClick={() => router.push(dest.path)}>
+          Open Dashboard <ArrowRight className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export default function DashboardPage() {
-    const [role, setRole] = useState<UserRole | null>(null);
-    const [loading, setLoading] = useState(true);
+  const [role, setRole] = useState<UserRole | null>(null);
+  const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        const fetchRole = async () => {
-             const user = await getServerUser();
-             setRole(user?.role as UserRole);
-             setLoading(false);
-        }
-        fetchRole();
-    }, []);
+  useEffect(() => {
+    getServerUser().then((user) => {
+      setRole(user?.role as UserRole);
+      setLoading(false);
+    });
+  }, []);
 
-    const renderDashboardByRole = () => {
-        switch (role) {
-            case 'teacher':
-                // return <TeacherDashboard />; // LEGACY - moved to _legacy/
-                return <div className="p-6"><p>Teacher Dashboard (Legacy - under maintenance). Use /teacher for new dashboard.</p></div>;
-            case 'school_head':
-                // return <SchoolHeadDashboard />; // LEGACY - moved to _legacy/
-                return <div className="p-6"><p>School Head Dashboard (Legacy - under maintenance)</p></div>;
-            case 'county_officer':
-                // return <CountyOfficerDashboard />; // LEGACY - moved to _legacy/
-                return <div className="p-6"><p>County Officer Dashboard (Legacy - under maintenance)</p></div>;
-            case 'parent':
-                return <ParentDashboard />;
-            case 'school_admin':
-                return <SchoolAdminDashboard />;
-            case 'national_admin':
-                return <NationalAdminDashboard />;
-            default:
-                // Return a loading state or a generic view if the role is not yet determined or unrecognized.
-                return <DashboardSkeleton />;
-        }
-    };
-    
-    if (loading) {
-        return <DashboardSkeleton />;
-    }
+  if (loading) return <DashboardSkeleton />;
 
-    return (
-        <Suspense fallback={<DashboardSkeleton />}>
-            {renderDashboardByRole()}
-        </Suspense>
-    );
+  switch (role) {
+    case 'teacher':
+    case 'school_head':
+    case 'county_officer':
+      return <RoleRedirectCard role={role} />;
+    case 'parent':
+      return <Suspense fallback={<DashboardSkeleton />}><ParentDashboard /></Suspense>;
+    case 'school_admin':
+      return <Suspense fallback={<DashboardSkeleton />}><SchoolAdminDashboard /></Suspense>;
+    case 'national_admin':
+      return <Suspense fallback={<DashboardSkeleton />}><NationalAdminDashboard /></Suspense>;
+    default:
+      return <DashboardSkeleton />;
+  }
 }

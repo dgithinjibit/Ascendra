@@ -1,15 +1,18 @@
 import type { ReactNode } from "react";
 import Link from 'next/link';
+import { AgeThemeProvider } from '@/lib/theme/age-theme-context';
 
 export default function StudentLayout({ children }: { children: ReactNode }) {
   return (
-      <div className="flex min-h-screen flex-col bg-background">
-          <main className="flex-grow">
-              {children}
-          </main>
-          <footer className="p-4 text-center text-xs text-muted-foreground">
-            © 2025 3D. All rights reserved. | <Link href="/terms" className="hover:underline">Terms & Conditions</Link> | <Link href="https://forms.gle/3vQhgtJbnEaGD6xV8" target="_blank" rel="noopener noreferrer" className="hover:underline">Provide Feedback</Link>
-          </footer>
+    <AgeThemeProvider>
+      <div className="flex min-h-screen flex-col">
+        <main className="flex-grow">
+          {children}
+        </main>
+        <footer className="p-4 text-center text-xs text-muted-foreground">
+          © 2026 Ascendra. All rights reserved. | <Link href="/terms" className="hover:underline">Terms</Link> | <Link href="https://forms.gle/3vQhgtJbnEaGD6xV8" target="_blank" rel="noopener noreferrer" className="hover:underline">Feedback</Link>
+        </footer>
       </div>
+    </AgeThemeProvider>
   );
 }

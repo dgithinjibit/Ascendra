@@ -114,30 +114,26 @@ export function useAuth(): AuthState & AuthActions {
       if (signUpError) throw signUpError;
       if (!data.user) throw new Error('No user returned from sign up');
 
-      // Create profile
+      // Create profile + student record via the server-side API route
+      // (uses service-role client to bypass RLS INSERT restrictions)
       const { role = 'student', studentPlacement, ...profileFields } = profileData;
-      const { error: profileError } = await supabase.from('profiles').insert({
-        id: data.user.id,
-        email,
-        role,
-        ...profileFields,
+      const res = await fetch('/api/auth/complete-profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          role,
+          fullName: profileFields.full_name ?? email,
+          grade: profileFields.grade ?? null,
+          schoolId: studentPlacement?.schoolId ?? profileFields.school_id ?? null,
+          classroomId: studentPlacement?.classroomId ?? profileFields.classroom_id ?? null,
+          schoolName: studentPlacement?.schoolName ?? profileFields.school_name ?? null,
+          next: role === 'student' ? '/student' : '/dashboard',
+        }),
       });
 
-      if (profileError) throw profileError;
-
-      if (role === 'student' && studentPlacement) {
-        const { error: studentError } = await (supabase as any).from('students').insert({
-          user_id: data.user.id,
-          student_name: profileFields.full_name ?? email,
-          student_id: null,
-          grade: profileFields.grade,
-          class_name: studentPlacement.className,
-          school_name: studentPlacement.schoolName,
-          school_id: studentPlacement.schoolId,
-          classroom_id: studentPlacement.classroomId,
-          status: 'active',
-        });
-        if (studentError) throw studentError;
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || 'Failed to create profile. Please try again.');
       }
 
       // Fetch the created profile
