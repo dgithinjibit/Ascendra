@@ -30,6 +30,10 @@ check_file scripts/staging-e2e-gate.sh
 check_file studio/src/lib/sandbox-provider-runtime.ts
 check_file studio/src/lib/__tests__/sandbox-provider-runtime.test.ts
 check_file studio/src/app/api/internal/schools/onboarding/route.test.ts
+check_file studio/src/app/api/auth/complete-profile/route.ts
+check_file studio/src/app/auth/callback/route.ts
+check_file studio/src/app/auth/onboarding/page.tsx
+check_file studio/src/app/auth/error/page.tsx
 check_file studio/src/lib/school-review-audit.ts
 check_file scripts/rust-agent-cutover.sh
 check_file supabase/migrations/20260827000014_attendance_integrity_tokens_and_ledger.sql

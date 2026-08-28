@@ -63,6 +63,7 @@ export function SignUpForm() {
     grade: '',
     schoolId: '',
     schoolName: '',
+    homeLearning: false,
     classroomId: '',
     className: '',
   });
@@ -137,11 +138,6 @@ export function SignUpForm() {
       return;
     }
 
-    if (formData.role === 'student' && (!formData.schoolId || !formData.classroomId)) {
-      setError('Please select your school and class');
-      return;
-    }
-
     if (formData.role === 'admin' && !formData.schoolId) {
       setError('Heads of School must select their school');
       return;
@@ -157,7 +153,7 @@ export function SignUpForm() {
         school_id: formData.schoolId || null,
         classroom_id: formData.classroomId || null,
         school_name: formData.schoolName || null,
-        studentPlacement: formData.role === 'student' ? {
+        studentPlacement: formData.role === 'student' && formData.schoolId && formData.classroomId ? {
           schoolId: formData.schoolId,
           schoolName: formData.schoolName,
           classroomId: formData.classroomId,
@@ -306,17 +302,22 @@ export function SignUpForm() {
           {formData.role === 'student' && (
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="school">School</Label>
+                  <Label htmlFor="school">School (optional for home learners)</Label>
                 <Select
-                  value={formData.schoolId}
+                  value={formData.homeLearning ? 'home-learning' : formData.schoolId}
                   onValueChange={(value) => {
+                    if (value === 'home-learning') {
+                      setFormData({ ...formData, schoolId: '', schoolName: '', homeLearning: true, classroomId: '', className: '' });
+                      return;
+                    }
                     const school = schools.find((item) => item.id === value);
-                    setFormData({ ...formData, schoolId: value, schoolName: school?.name ?? '', classroomId: '', className: '' });
+                    setFormData({ ...formData, schoolId: value, schoolName: school?.name ?? '', homeLearning: false, classroomId: '', className: '' });
                   }}
                   disabled={loading}
                 >
-                  <SelectTrigger id="school"><SelectValue placeholder="Select your school" /></SelectTrigger>
+                  <SelectTrigger id="school"><SelectValue placeholder="Choose a school or home learning" /></SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="home-learning">I learn at home / no school</SelectItem>
                     {schools.map((school) => <SelectItem key={school.id} value={school.id}>{school.name}{school.county ? ` — ${school.county}` : ''}</SelectItem>)}
                   </SelectContent>
                 </Select>
