@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,7 @@ import { AlertCircle, Loader2 } from 'lucide-react';
 
 const MIN_PASSWORD_LENGTH = 8;
 
-export default function SetPasswordPage() {
+function SetPasswordForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [password, setPassword] = useState('');
@@ -121,5 +121,13 @@ export default function SetPasswordPage() {
         </CardContent>
       </Card>
     </main>
+  );
+}
+
+export default function SetPasswordPage() {
+  return (
+    <Suspense fallback={<main className="education-shell flex min-h-screen items-center justify-center p-5"><p className="text-sm text-muted-foreground">Loading secure password setup…</p></main>}>
+      <SetPasswordForm />
+    </Suspense>
   );
 }

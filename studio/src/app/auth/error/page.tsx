@@ -1,12 +1,13 @@
 'use client';
 
 import Link from 'next/link';
+import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
-export default function AuthErrorPage() {
+function AuthErrorContent() {
   const searchParams = useSearchParams();
   const reason = searchParams.get('reason');
   const message = reason === 'profile_lookup_failed'
@@ -27,5 +28,13 @@ export default function AuthErrorPage() {
         </CardContent>
       </Card>
     </main>
+  );
+}
+
+export default function AuthErrorPage() {
+  return (
+    <Suspense fallback={<main className="education-shell flex min-h-screen items-center justify-center p-5"><p className="text-sm text-muted-foreground">Loading sign-in help…</p></main>}>
+      <AuthErrorContent />
+    </Suspense>
   );
 }

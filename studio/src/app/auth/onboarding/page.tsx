@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -26,7 +26,7 @@ function safeNext(value: string | null) {
   return value;
 }
 
-export default function GoogleOnboardingPage() {
+function GoogleOnboardingForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const role = roleFromQuery(searchParams.get('role'));
@@ -201,5 +201,13 @@ export default function GoogleOnboardingPage() {
         </CardContent>
       </Card>
     </main>
+  );
+}
+
+export default function GoogleOnboardingPage() {
+  return (
+    <Suspense fallback={<main className="education-shell flex min-h-screen items-center justify-center p-5"><p className="text-sm text-muted-foreground">Loading your secure profile form…</p></main>}>
+      <GoogleOnboardingForm />
+    </Suspense>
   );
 }
