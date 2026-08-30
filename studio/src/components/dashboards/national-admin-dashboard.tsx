@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Building,
   Users,
@@ -33,10 +33,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { supabase } from '@/lib/supabase/client';
 
 const mockNationalAdmin = {
-  id: 'national_admin_1',
-  name: 'Dr. Catherine Muthoni',
+  name: 'Administrator',
   role: 'National Administrator',
   department: 'Ministry of Education',
 };
@@ -49,7 +49,6 @@ const mockSystemStats = {
   systemUptime: 99.8,
   activeUsers: 12456,
   dataStorageUsed: 2.4,
-  blockchainTransactions: 156789,
 };
 
 const mockCountyPerformance = [
@@ -80,10 +79,10 @@ const mockSystemAlerts = [
   },
   {
     id: 'alert_3',
-    type: 'blockchain',
+    type: 'system',
     severity: 'low',
-    title: 'Blockchain Sync Delay',
-    description: 'Polygon network sync delayed by 2 minutes',
+    title: 'Scheduled Maintenance Window',
+    description: 'Routine database maintenance scheduled for Sunday 02:00–04:00 EAT.',
     timestamp: '2026-04-28 10:45',
     status: 'resolved',
   },
@@ -105,6 +104,23 @@ const mockComplianceMetrics = {
 
 export default function NationalAdminDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
+  const [adminName, setAdminName] = useState(mockNationalAdmin.name);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user) return;
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('id', session.user.id)
+          .maybeSingle();
+        if (profile?.full_name) setAdminName(profile.full_name);
+      } catch { /* fallback to default */ }
+    }
+    load();
+  }, []);
 
   const systemStats = mockSystemStats;
   const countyPerformance = mockCountyPerformance;
@@ -118,7 +134,7 @@ export default function NationalAdminDashboard() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-2 md:space-y-0">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-foreground font-headline">
-            Karibu, {mockNationalAdmin.name}
+            Karibu, {adminName}
           </h1>
           <p className="text-muted-foreground">
             {mockNationalAdmin.role} • {mockNationalAdmin.department}
@@ -250,51 +266,36 @@ export default function NationalAdminDashboard() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Database className="h-5 w-5 text-primary" />
-                  Web4 Infrastructure
+                  Infrastructure Status
                 </CardTitle>
-                <CardDescription>Blockchain and decentralized storage status</CardDescription>
+                <CardDescription>Core system component health</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Blockchain Transactions</span>
-                    <span className="font-semibold">
-                      {systemStats.blockchainTransactions.toLocaleString()}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span>IPFS Storage Used</span>
-                    <span className="font-semibold">{systemStats.dataStorageUsed} TB</span>
-                  </div>
+              <CardContent className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">Database (Supabase)</span>
+                  <Badge variant="default" className="gap-1">
+                    <CheckCircle className="h-3 w-3" />
+                    Online
+                  </Badge>
                 </div>
-
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Polygon Network</span>
-                    <Badge variant="default" className="gap-1">
-                      <CheckCircle className="h-3 w-3" />
-                      Online
-                    </Badge>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">IPFS Gateway</span>
-                    <Badge variant="default" className="gap-1">
-                      <CheckCircle className="h-3 w-3" />
-                      Healthy
-                    </Badge>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">DID Registry</span>
-                    <Badge variant="default" className="gap-1">
-                      <CheckCircle className="h-3 w-3" />
-                      Synced
-                    </Badge>
-                  </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">AI Backend (Render)</span>
+                  <Badge variant="default" className="gap-1">
+                    <CheckCircle className="h-3 w-3" />
+                    Online
+                  </Badge>
                 </div>
-
-                <Button variant="outline" className="w-full">
-                  View Infrastructure Details
-                </Button>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">Redis Cache (Upstash)</span>
+                  <Badge variant="default" className="gap-1">
+                    <CheckCircle className="h-3 w-3" />
+                    Active
+                  </Badge>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">Storage Used</span>
+                  <span className="text-sm font-semibold">{systemStats.dataStorageUsed} TB / 10 TB</span>
+                </div>
               </CardContent>
             </Card>
           </div>

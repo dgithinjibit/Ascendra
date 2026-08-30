@@ -25,7 +25,6 @@ import {
   Target,
   Brain,
   MessageSquare,
-  Lightbulb
 } from "lucide-react";
 import { usePathname } from 'next/navigation';
 import {
@@ -59,16 +58,17 @@ function getClientRole(): UserRole | null {
 
 
 const teacherNavItems = [
-    { href: "/teacher", icon: LayoutDashboard, label: "Dashboard" },
-    { href: "/teacher/scheme-wizard", icon: Calendar, label: "Schemes of Work" },
-    { href: "/teacher/lesson-plans", icon: FileText, label: "Lesson Plans" },
-    { href: "/teacher/assessments", icon: ClipboardList, label: "Assessments" },
-    { href: "/teacher/students", icon: Users, label: "Student Monitoring" },
-    { href: "/teacher/interventions", icon: Target, label: "Interventions" },
-    { href: "/teacher/resources", icon: Library, label: "Resource Library" },
-    { href: "/teacher/differentiation", icon: Brain, label: "Differentiation Tools" },
-    { href: "/teacher/communication", icon: MessageSquare, label: "Communication" },
-    { href: "/teacher/professional-dev", icon: Lightbulb, label: "Professional Dev" },
+    { href: "/teacher",              icon: LayoutDashboard, label: "Dashboard" },
+    { href: "/teacher/scheme-wizard", icon: Calendar,       label: "Schemes of Work" },
+    { href: "/teacher/dashboard",    icon: ClipboardList,   label: "Students & Analytics" },
+    { href: "/teacher/exams",        icon: FileText,        label: "Exams & Assessments" },
+    { href: "/teacher/metta-analytics", icon: Brain,        label: "Learning Analytics" },
+    // The routes below resolve to a graceful "Coming Soon" stub via the
+    // dynamic /teacher/grade/[grade]/[...slug] handler — no 404s.
+    { href: "/teacher/grade/Grade%205/lesson-plans",    icon: FileText,   label: "Lesson Plans" },
+    { href: "/teacher/grade/Grade%205/differentiation", icon: Target,     label: "Differentiation" },
+    { href: "/teacher/grade/Grade%205/resources",       icon: Library,    label: "Resource Library" },
+    { href: "/teacher/grade/Grade%205/communication",   icon: MessageSquare, label: "Communication" },
 ];
 
 const schoolHeadNavItems = [

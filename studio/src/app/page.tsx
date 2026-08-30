@@ -84,14 +84,31 @@ export default function HomePage() {
   const [demoError, setDemoError] = useState<string | null>(null);
 
   const handleContinue = async (role: typeof roles[0]) => {
-    if (!DEMO_MODE) {
-      router.push(role.href);
-      return;
-    }
-
     setLoadingRole(role.demoRole);
     setDemoError(null);
 
+    // --- Non-demo (production) mode ---
+    if (!DEMO_MODE) {
+      try {
+        // Check if there is already an active Supabase session.
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          // User is already signed in — go straight to their dashboard.
+          router.push(role.redirect);
+        } else {
+          // Not signed in — send them to login, preserving the destination.
+          const loginUrl = `/login?next=${encodeURIComponent(role.redirect)}`;
+          router.push(loginUrl);
+        }
+      } catch {
+        setDemoError("Could not check session. Please try again.");
+      } finally {
+        setLoadingRole(null);
+      }
+      return;
+    }
+
+    // --- Demo mode ---
     try {
       const res = await fetch("/api/auth/demo-login", {
         method: "POST",
@@ -105,13 +122,13 @@ export default function HomePage() {
         return;
       }
 
-      // Establish the session in the Supabase browser client
+      // Establish the session in the Supabase browser client.
       await supabase.auth.setSession({
         access_token: data.access_token,
         refresh_token: data.refresh_token,
       });
 
-      // Seed CBC context for student so journey wizard is skipped
+      // Seed CBC context for student so journey wizard is skipped.
       if (data.grade && typeof window !== "undefined") {
         sessionStorage.setItem("learningJourney.grade", data.grade);
         localStorage.setItem("learningJourney.grade", data.grade);

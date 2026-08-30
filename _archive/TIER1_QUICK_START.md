@@ -32,7 +32,7 @@ Same for "Text Leveler" tab and "Scheme of Work" → "Unpack outcome" button.
 To enable persistence (backend saving to database):
 
 ### Quick Method (Supabase Dashboard)
-1. Go to: https://app.supabase.com/project/chsnemyqqvhqwrjzhzwo/sql
+1. Go to: https://app.supabase.com/project/<your-project-ref>/sql
 2. Copy contents of: `Ascendra/supabase/migrations/20260522000001_tier1_tables.sql`
 3. Paste and click "Run"
 4. Done!

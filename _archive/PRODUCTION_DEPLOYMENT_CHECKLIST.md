@@ -20,7 +20,7 @@
 5. Set environment variables:
    ```
    GROQ_API_KEY=<get from https://console.groq.com>
-   SUPABASE_URL=https://khsemyqovhqwrjzlzwo.supabase.co
+   SUPABASE_URL=https://<your-project-ref>.supabase.co
    SUPABASE_SERVICE_KEY=<get from Supabase Settings → API>
    ```
 6. Deploy and wait for completion
@@ -144,7 +144,7 @@
 
 ### Vercel (Frontend)
 ```bash
-NEXT_PUBLIC_SUPABASE_URL=https://khsemyqovhqwrjzlzwo.supabase.co
+NEXT_PUBLIC_SUPABASE_URL=https://<your-project-ref>.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<from Supabase dashboard>
 NEXT_PUBLIC_AI_AGENTS_URL=<from Render deployment>
 ```
@@ -152,7 +152,7 @@ NEXT_PUBLIC_AI_AGENTS_URL=<from Render deployment>
 ### Render (Backend)
 ```bash
 GROQ_API_KEY=<from Groq console>
-SUPABASE_URL=https://khsemyqovhqwrjzlzwo.supabase.co
+SUPABASE_URL=https://<your-project-ref>.supabase.co
 SUPABASE_SERVICE_KEY=<from Supabase dashboard>
 GROQ_MODEL=llama-3.3-70b-versatile
 PORT=8001
@@ -210,7 +210,7 @@ FRONTEND_URL=<your Vercel URL>
 
 - **Frontend**: https://your-app.vercel.app
 - **Backend**: https://syncsenta-ai-backend.onrender.com
-- **Database**: https://supabase.com/dashboard/project/khsemyqovhqwrjzlzwo
+- **Database**: https://supabase.com/dashboard/project/<your-project-ref>
 - **Vercel Dashboard**: https://vercel.com/dashboard
 - **Render Dashboard**: https://dashboard.render.com
 - **Groq Console**: https://console.groq.com

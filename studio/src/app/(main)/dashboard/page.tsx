@@ -7,9 +7,9 @@ import { Button } from '@/components/ui/button';
 import ParentDashboard from '@/components/dashboards/parent-dashboard';
 import SchoolAdminDashboard from '@/components/dashboards/school-admin-dashboard';
 import NationalAdminDashboard from '@/components/dashboards/national-admin-dashboard';
-import { getServerUser } from '@/lib/auth';
 import type { UserRole } from '@/lib/types';
-import { BookOpen, LayoutDashboard, ArrowRight } from 'lucide-react';
+import { LayoutDashboard, ArrowRight } from 'lucide-react';
+import { supabase } from '@/lib/supabase/client';
 
 const DashboardSkeleton = () => (
   <div className="space-y-5 p-6">
@@ -31,12 +31,18 @@ const DashboardSkeleton = () => (
 
 function RoleRedirectCard({ role }: { role: string }) {
   const router = useRouter();
-  const destinations: Record<string, { label: string; path: string; description: string }> = {
-    teacher: { label: 'Teacher Dashboard', path: '/teacher/dashboard', description: 'Monitor students, manage lessons and view class analytics.' },
-    school_head: { label: 'School Dashboard', path: '/teacher/dashboard', description: 'Oversee school performance and staff activity.' },
-    county_officer: { label: 'County Dashboard', path: '/teacher/dashboard', description: 'View county-wide education metrics and reports.' },
+  const destinations: Record<string, { label: string; path: string }> = {
+    teacher:        { label: 'Teacher Dashboard', path: '/teacher/dashboard' },
+    school_head:    { label: 'School Dashboard',  path: '/teacher/dashboard' },
+    county_officer: { label: 'County Dashboard',  path: '/teacher/dashboard' },
   };
   const dest = destinations[role];
+
+  // Auto-navigate immediately — no extra button click needed.
+  useEffect(() => {
+    if (dest) router.replace(dest.path);
+  }, [dest, router]);
+
   if (!dest) return null;
 
   return (
@@ -46,8 +52,8 @@ function RoleRedirectCard({ role }: { role: string }) {
           <LayoutDashboard className="h-6 w-6 text-teal-600" />
         </div>
         <h2 className="text-lg font-bold">{dest.label}</h2>
-        <p className="mt-2 text-sm text-muted-foreground">{dest.description}</p>
-        <Button className="mt-6 w-full gap-2" onClick={() => router.push(dest.path)}>
+        <p className="mt-2 text-sm text-muted-foreground">Taking you there…</p>
+        <Button className="mt-6 w-full gap-2" onClick={() => router.replace(dest.path)}>
           Open Dashboard <ArrowRight className="h-4 w-4" />
         </Button>
       </div>
@@ -55,13 +61,43 @@ function RoleRedirectCard({ role }: { role: string }) {
   );
 }
 
+/**
+ * Resolve the signed-in user's role.
+ *
+ * Priority:
+ *  1. Supabase session → profiles table  (covers demo-login + real auth)
+ *  2. Legacy userRole cookie             (presentation / no-Supabase mode)
+ */
+async function resolveRole(): Promise<UserRole | null> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', session.user.id)
+        .maybeSingle();
+      if (profile?.role) return profile.role as UserRole;
+    }
+  } catch {
+    // Supabase not configured — fall through.
+  }
+
+  if (typeof document !== 'undefined') {
+    const match = document.cookie.match(/(?:^|;\s*)userRole=([^;]+)/);
+    if (match?.[1]) return decodeURIComponent(match[1]) as UserRole;
+  }
+
+  return null;
+}
+
 export default function DashboardPage() {
   const [role, setRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getServerUser().then((user) => {
-      setRole(user?.role as UserRole);
+    resolveRole().then((r) => {
+      setRole(r);
       setLoading(false);
     });
   }, []);

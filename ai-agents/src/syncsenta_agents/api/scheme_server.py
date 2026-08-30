@@ -21,11 +21,11 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
-        os.getenv("FRONTEND_URL", "http://localhost:5173"),
+        os.getenv("FRONTEND_URL", "https://sentastudio.vercel.app"),
     ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["*"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 app.include_router(lesson_architect_router)
 

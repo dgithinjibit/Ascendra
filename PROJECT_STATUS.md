@@ -1,8 +1,8 @@
 # Ascendra/SyncSenta - Project Status & Roadmap
 
-**Last Updated**: 2026-05-26  
+**Last Updated**: 2026-08-29  
 **Project**: AI-Powered CBC Education Platform for Kenya  
-**Status**: Active Development - 70% Complete
+**Status**: Active Development - 78% Complete
 
 ---
 
@@ -75,14 +75,25 @@ Ascendra (branded as SyncSenta) is an AI-powered educational platform designed s
 - ✅ Enhanced teacher sidebar with 10 navigation items
 - ✅ Fixed teacher sidebar 500 error (replaced server action with client-side cookies)
 
+### Recent Fixes (2026-08-29)
+- ✅ **"Continue as [role]" dashboard navigation** — clicking any role card now lands directly on that role's dashboard without an extra button click
+  - `page.tsx`: `handleContinue` checks for an existing Supabase session first; if signed in → goes straight to `role.redirect`; if not → goes to `/login?next=<destination>`
+  - `dashboard/page.tsx`: `RoleRedirectCard` auto-navigates via `useEffect` + `router.replace()` instead of waiting for a manual button click (fallback button kept)
+  - `login/page.tsx`: default post-login redirect changed from `/teacher` → `/dashboard` (the role-aware hub) so all roles land correctly
+- ✅ **Supabase-backed personalization** — `test-personalization/route.ts` now reads real profile and progress data from Supabase instead of hardcoded mock data; falls back to zero-state for new users
+- ✅ **Telemetry persistence** — `telemetry_api.py` and `dashboard.py` now write all behavioral data (sessions, events, profiles, misconceptions, interventions, xAPI statements) to Supabase best-effort
+- ✅ **CORS security hardened** — `api.py` wildcard `allow_origins=["*"]` replaced with explicit origin list; `scheme_server.py` production fallback fixed from localhost to `sentastudio.vercel.app`; `allow_headers` tightened on both
+- ✅ **Request payload logging removed** — `offline/resolve/route.ts` no longer logs full request body to console in production
+
 ---
 
 ## 🚧 IN PROGRESS
 
-### Current Sprint
-1. **Project Cleanup** - Consolidating documentation, removing obsolete files
-2. **Supabase Migration** - Applying sandbox_submissions migration
-3. **Production Stability** - Fixing JSON truncation in scheme generation
+### Current Sprint (2026-08-29)
+1. **Demo flow ready for production testing** — role cards → direct dashboard navigation working end-to-end
+2. **Vercel env vars** — `NEXT_PUBLIC_DEMO_MODE=true` must be set in Vercel dashboard before deploy
+3. **Render env vars** — `GROQ_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` must be confirmed in Render dashboard
+4. **Auth wall** — `AUTH_WALL_ENABLED=false` intentional for demo/presentation; flip to `true` when real user onboarding begins
 
 ---
 
@@ -124,6 +135,12 @@ Ascendra (branded as SyncSenta) is an AI-powered educational platform designed s
 - ❌ Individual Learning Plan generator (KICD-SNE)
 
 #### Security & Compliance
+- ✅ CORS locked to known origins (all FastAPI servers)
+- ✅ CSP, HSTS, X-Frame-Options, Permissions-Policy headers (middleware)
+- ✅ Rate limiting — in-memory (signup/onboarding) + Upstash Redis (chat)
+- ✅ Supabase RLS policies on all data tables
+- ✅ Service role key server-only (never exposed to browser)
+- ✅ Request payload logging removed from API routes
 - ❌ Multi-factor authentication (SMS OTP)
 - ❌ GDPR-compliant data deletion
 - ❌ Content safety (profanity filter, AI moderation)
@@ -160,11 +177,13 @@ Ascendra (branded as SyncSenta) is an AI-powered educational platform designed s
 - **Teacher Tools Tier 1**: 100% ✅
 - **Teacher Tools Tier 2**: 20% ⚠️
 - **MeTTa Phase 1**: 100% ✅
+- **Auth & Navigation Flow**: 100% ✅  ← _was broken, now fixed_
+- **Security Hardening**: 70% ⚠️  ← _CORS, CSP, rate limiting done; MFA/audit logs pending_
 - **Payment Integration**: 0% ❌
 - **Parent Portal**: 0% ❌
-- **Security & Monitoring**: 30% ⚠️
+- **Monitoring & Observability**: 0% ❌
 
-**Total Project Completion**: ~70%
+**Total Project Completion**: ~78%
 
 ### Time Estimates
 - **To MVP Launch**: 2-3 weeks (with payment integration)
@@ -239,7 +258,7 @@ What makes Ascendra unique:
 ### Production URLs
 - **Frontend**: https://sentastudio.vercel.app
 - **Backend**: https://ascendra-1.onrender.com
-- **Supabase**: https://chsnemyqqvhqwrjzhzwo.supabase.co
+- **Supabase**: https://app.supabase.com (project URL in Vercel/Render env vars only)
 
 ### Environment Variables
 See `.env.example` for required variables:
@@ -329,7 +348,11 @@ For questions or issues:
 - ✅ Differentiation tool (Tier 2) (2026-05-24)
 - ✅ Fixed schemes page 500 errors (2026-05-26)
 - ✅ Enhanced teacher sidebar navigation (2026-05-26)
+- ✅ "Continue as [role]" → direct dashboard navigation (2026-08-29)
+- ✅ Supabase-backed real personalization data (2026-08-29)
+- ✅ Full telemetry persistence to Supabase (2026-08-29)
+- ✅ CORS hardened across all FastAPI servers (2026-08-29)
 
 ---
 
-**Next Milestone**: Payment integration + Pilot program (4 weeks)
+**Next Milestone**: Set Vercel `NEXT_PUBLIC_DEMO_MODE=true` + confirm Render env vars → push `staging` → test demo flow in production → payment integration
