@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AlertCircle, Loader2, Eye, EyeOff } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { TestAccountQuickLogin } from './test-account-quick-login';
 
 export function SignInForm() {
   const router = useRouter();
@@ -128,6 +129,8 @@ export function SignInForm() {
           {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Signing in…</> : 'Sign In'}
         </Button>
       </form>
+
+      <TestAccountQuickLogin />
 
       <p className="text-center text-sm text-muted-foreground">
         Don&apos;t have an account?{' '}
