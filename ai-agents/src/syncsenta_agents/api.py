@@ -1,5 +1,7 @@
 """FastAPI application for SyncSenta AI Agents service."""
 
+import os
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -21,13 +23,23 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Add CORS middleware
+# Add CORS middleware — locked to known frontend origins.
+# Never use allow_origins=["*"] with allow_credentials=True; browsers will
+# block credentialed cross-origin requests when the origin is a wildcard.
+_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "https://sentastudio.vercel.app",
+    os.getenv("FRONTEND_URL", "https://sentastudio.vercel.app"),
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure this properly in production
+    allow_origins=_ALLOWED_ORIGINS,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 # Global orchestrator instance

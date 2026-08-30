@@ -235,7 +235,7 @@ supabase/migrations/
 
 ## 🔗 EXTERNAL SERVICES
 
-- **Supabase**: https://chsnemyqqvhqwrjzhzwo.supabase.co
+- **Supabase**: https://app.supabase.com (project URL stored in Vercel env vars only)
 - **Backend API**: https://ascendra-1.onrender.com
 - **Frontend**: https://sentastudio.vercel.app
 - **Upstash Redis**: (rate limiting)

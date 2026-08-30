@@ -2,51 +2,27 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import {
-  BookOpen,
-  MessageCircle,
-  Calendar,
-  Clock,
-  Users,
-  Brain,
-  Zap,
-  ArrowRight,
-  Star,
-  TrendingUp,
-  Heart,
-  Target,
-  Trophy,
-  Map,
-  Sparkles,
+  BookOpen, MessageCircle, Brain, Zap, ArrowRight,
+  TrendingUp, Target, Trophy, Map, Sparkles, Clock,
+  ChevronRight, Flame,
 } from 'lucide-react';
 import { StudentHeader } from '@/components/layout/student-header';
-import { GamificationPanel } from '@/components/student/gamification-panel';
 import { GamificationOverview } from '@/components/gamification/gamification-overview';
 import { LeaderboardPanel } from '@/components/gamification/leaderboard-panel';
 import { tutorTaglineFor } from '@/lib/grade-greetings';
 import type { GamificationMode } from '@/components/student/gamification-panel';
-import {
-  GamificationModeSwitcher,
-  loadGamificationMode,
-} from '@/components/student/gamification-mode-switcher';
-import { getDemoBadges } from '@/lib/gamification/badges';
+import { loadGamificationMode } from '@/components/student/gamification-mode-switcher';
 import { getStudentId } from '@/lib/auth/student-id';
 import { CompetencyMap } from '@/components/student/competency-map';
 import { FloatingConceptChat } from '@/components/student/floating-concept-chat';
-import { GuardianLinkCodeCard } from '@/components/student/guardian-link-code-card';
 import { getActivitiesForGradeSubject } from '@/lib/sandbox-activities';
 import { gradeNameToId } from '@/lib/grade-id';
 import type { GradeId, SubjectId } from '@/lib/sandbox-types';
+import { useAgeTheme } from '@/lib/theme/age-theme-context';
 
 interface StudentProfile {
   id: string;
@@ -57,10 +33,7 @@ interface StudentProfile {
   interests: string[];
   strengths: string[];
   challenges: string[];
-  culturalContext: {
-    region: string;
-    culturalReferences: string[];
-  };
+  culturalContext: { region: string; culturalReferences: string[] };
 }
 
 interface LearningProgress {
@@ -71,203 +44,109 @@ interface LearningProgress {
   averageSessionTime: number;
 }
 
-const assignments = [
-  {
-    id: 1,
-    title: 'Mathematics — Algebra Practice',
-    due: 'Tomorrow, 11:59 PM',
-    status: { label: 'Urgent', variant: 'destructive' as const },
-  },
-  {
-    id: 2,
-    title: 'English — Essay Writing',
-    due: 'Friday, 11:59 PM',
-    status: { label: 'In Progress', variant: 'secondary' as const },
-  },
-  {
-    id: 3,
-    title: 'Science — Lab Report',
-    due: 'Next Monday, 11:59 PM',
-    status: { label: 'Not Started', variant: 'outline' as const },
-  },
-];
+type Tab = 'overview' | 'gamification' | 'competency';
 
-const learningPath = [
-  { subject: 'Mathematics', progress: 85, current: 'Fractions', next: 'Ratios' },
-  { subject: 'English', progress: 72, current: 'Essay Writing', next: 'Comprehension' },
-  { subject: 'Science', progress: 68, current: 'Lab Methods', next: 'Observation' },
+const COMPETENCY_DATA = [
+  { id: 'math', name: 'Mathematics', icon: 'calculator', overallMastery: 78, topics: [{ id: 'fractions', name: 'Fractions', overallMastery: 85, competencies: [{ id: 'frac-1', name: 'Understanding Fractions', mastery: 95, status: 'mastered' as const, gamesRecommended: false, lastPracticed: new Date(Date.now() - 2 * 86400000).toISOString(), totalPractices: 12 }, { id: 'frac-2', name: 'Adding Fractions', mastery: 80, status: 'in-progress' as const, gamesRecommended: false, lastPracticed: new Date(Date.now() - 86400000).toISOString(), totalPractices: 8 }] }, { id: 'decimals', name: 'Decimals', overallMastery: 70, competencies: [{ id: 'dec-1', name: 'Understanding Decimals', mastery: 75, status: 'in-progress' as const, gamesRecommended: false, lastPracticed: new Date(Date.now() - 86400000).toISOString(), totalPractices: 6 }] }] },
+  { id: 'english', name: 'English', icon: 'book', overallMastery: 82, topics: [{ id: 'reading', name: 'Reading Comprehension', overallMastery: 88, competencies: [{ id: 'read-1', name: 'Main Idea', mastery: 92, status: 'mastered' as const, gamesRecommended: false, lastPracticed: new Date(Date.now() - 86400000).toISOString(), totalPractices: 10 }, { id: 'read-2', name: 'Inference', mastery: 84, status: 'in-progress' as const, gamesRecommended: false, lastPracticed: new Date(Date.now() - 2 * 86400000).toISOString(), totalPractices: 7 }] }] },
+  { id: 'science', name: 'Science', icon: 'flask', overallMastery: 68, topics: [{ id: 'biology', name: 'Biology', overallMastery: 72, competencies: [{ id: 'bio-1', name: 'Plant Parts', mastery: 80, status: 'in-progress' as const, gamesRecommended: false, lastPracticed: new Date(Date.now() - 2 * 86400000).toISOString(), totalPractices: 6 }, { id: 'bio-2', name: 'Photosynthesis', mastery: 64, status: 'in-progress' as const, gamesRecommended: true, lastPracticed: new Date(Date.now() - 4 * 86400000).toISOString(), totalPractices: 3 }] }] },
 ];
-
-const todaysClasses = [
-  { subject: 'Mathematics', time: '2:00 PM — 3:00 PM' },
-  { subject: 'English Literature', time: '3:30 PM — 4:30 PM' },
-];
-
-const DASHBOARD_CARD_CLASS = 'border-teal-100 bg-white/90 text-slate-900 shadow-sm';
 
 export default function StudentDashboardPage() {
   const router = useRouter();
+  const { theme, ageTheme, setGrade: setThemeGrade } = useAgeTheme();
   const [studentName, setStudentName] = useState('Student');
   const [profile, setProfile] = useState<StudentProfile | null>(null);
   const [learningProgress, setLearningProgress] = useState<LearningProgress[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'gamification' | 'competency'>('overview');
+  const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [gamificationMode, setGamificationMode] = useState<GamificationMode>('balanced');
 
   useEffect(() => {
     const stored = localStorage.getItem('userName') || localStorage.getItem('studentName');
     if (stored) setStudentName(stored.split(' ')[0]);
-
     setGamificationMode(loadGamificationMode());
 
-    // Check if this is student0 (demo/test student) - auto-set to Grade 2
-    const studentId = getStudentId();
-    if (studentId === 'student0') {
-      // Auto-set Grade 2 for student0
-      sessionStorage.setItem('learningJourney.grade', 'Grade 2');
-      sessionStorage.setItem('learningJourney.level', 'lower-primary');
-    }
-
-    // Restore the authenticated learner's durable CBC context. Session storage
-    // wins for the current tab; local storage preserves the selected context
-    // across tabs and reloads until the learner explicitly changes it.
     const savedGrade = sessionStorage.getItem('learningJourney.grade') || localStorage.getItem('learningJourney.grade');
     const savedLevel = sessionStorage.getItem('learningJourney.level') || localStorage.getItem('learningJourney.level');
     if (savedGrade && !sessionStorage.getItem('learningJourney.grade')) sessionStorage.setItem('learningJourney.grade', savedGrade);
     if (savedLevel && !sessionStorage.getItem('learningJourney.level')) sessionStorage.setItem('learningJourney.level', savedLevel);
-    if (!savedGrade) {
-      router.push('/student/journey');
-      return;
-    }
+    if (!savedGrade) { router.push('/student/journey'); return; }
+    if (savedGrade) setThemeGrade(savedGrade);
 
-    // Load personalized learning data
     loadPersonalizedLearningData();
   }, [router]);
 
-  const fetchWithTimeout = async (input: RequestInfo | URL, init: RequestInit = {}, timeoutMs = 8000) => {
-    const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
-    try {
-      return await fetch(input, { ...init, signal: controller.signal });
-    } finally {
-      window.clearTimeout(timeout);
-    }
+  const fetchWithTimeout = async (input: RequestInfo | URL, init: RequestInit = {}, ms = 8000) => {
+    const ctrl = new AbortController();
+    const t = window.setTimeout(() => ctrl.abort(), ms);
+    try { return await fetch(input, { ...init, signal: ctrl.signal }); }
+    finally { window.clearTimeout(t); }
   };
 
   const loadPersonalizedLearningData = async () => {
     try {
       setIsLoading(true);
       setLoadError(null);
-      
-      // Get student profile
-      const profileResponse = await fetchWithTimeout('/api/test-personalization?action=profile&userId=user1');
-      if (!profileResponse.ok) throw new Error('profile request failed');
-      const profileData = await profileResponse.json();
-      
-      if (!profileData.success || !profileData.profile) {
-        throw new Error('profile unavailable');
-      }
+      const profileRes = await fetchWithTimeout('/api/test-personalization?action=profile&userId=user1');
+      if (!profileRes.ok) throw new Error('profile unavailable');
+      const profileData = await profileRes.json();
+      if (!profileData.success || !profileData.profile) throw new Error('profile unavailable');
       setProfile(profileData.profile);
       setStudentName(profileData.profile.name);
+      if (profileData.profile.grade) setThemeGrade(profileData.profile.grade);
 
-      // Get learning progress for main subjects
       const subjects = ['Mathematics', 'English', 'Science'];
-      const progressPromises = subjects.map(async (subject) => {
-        const response = await fetchWithTimeout(`/api/test-personalization?action=progress&userId=user1&subject=${subject}`);
-        if (!response.ok) return null;
-        const data = await response.json();
-        return data.success && data.progress ? { subject, ...data.progress } : null;
-      });
-
-      const progressResults = await Promise.all(progressPromises);
-      setLearningProgress(progressResults.filter(Boolean) as LearningProgress[]);
-      
-    } catch (error) {
-      const reason = error instanceof DOMException && error.name === 'AbortError' ? 'The learning service took too long to respond.' : 'The learning service is temporarily unavailable.';
-      console.error('Failed to load personalized data:', { reason, error });
+      const results = await Promise.all(subjects.map(async (subject) => {
+        const res = await fetchWithTimeout(`/api/test-personalization?action=progress&userId=user1&subject=${subject}`);
+        if (!res.ok) return null;
+        const d = await res.json();
+        return d.success && d.progress ? { subject, ...d.progress } : null;
+      }));
+      setLearningProgress(results.filter(Boolean) as LearningProgress[]);
+    } catch {
       setLoadError('We could not load your learning path right now. Your progress is safe.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const goToTutor = (subject?: string) => {
-    const target = subject
-      ? `/student/tutor-dashboard?subject=${encodeURIComponent(subject)}`
-      : '/student/tutor-dashboard';
-    router.push(target);
-  };
-
   const goToSandbox = (subject?: string) => {
     const savedGrade = sessionStorage.getItem('learningJourney.grade') || localStorage.getItem('learningJourney.grade');
-    if (!savedGrade) {
-      router.push('/student/journey');
-      return;
-    }
-
-    const resolvedSubject = subject || localStorage.getItem('learningJourney.subject') || sessionStorage.getItem('learningJourney.subject') || 'Mathematics';
-    const subjectId = resolvedSubject.toLowerCase().includes('math')
-      ? 'mathematics'
-      : resolvedSubject.toLowerCase().includes('kiswahili')
-        ? 'kiswahili'
-        : resolvedSubject.toLowerCase().includes('environment')
-          ? 'environmental'
-          : resolvedSubject.toLowerCase().includes('creative')
-            ? 'creative'
-            : resolvedSubject.toLowerCase().includes('english')
-              ? 'english'
-              : 'mathematics';
+    if (!savedGrade) { router.push('/student/journey'); return; }
+    const resolved = subject || localStorage.getItem('learningJourney.subject') || 'Mathematics';
+    const subjectId = resolved.toLowerCase().includes('math') ? 'mathematics'
+      : resolved.toLowerCase().includes('kiswahili') ? 'kiswahili'
+      : resolved.toLowerCase().includes('environment') ? 'environmental'
+      : resolved.toLowerCase().includes('creative') ? 'creative'
+      : resolved.toLowerCase().includes('english') ? 'english' : 'mathematics';
     const gradeId = gradeNameToId(savedGrade) as GradeId;
-    const firstActivity = getActivitiesForGradeSubject(gradeId, subjectId as SubjectId)[0];
-
-    sessionStorage.setItem('learningJourney.subject', resolvedSubject);
-    localStorage.setItem('learningJourney.subject', resolvedSubject);
-    if (!firstActivity) {
-      router.push(`/student/sandbox?grade=${encodeURIComponent(gradeId)}&subject=${encodeURIComponent(subjectId)}`);
-      return;
-    }
-    router.push(`/student/sandbox/${encodeURIComponent(gradeId)}/${encodeURIComponent(subjectId)}/${encodeURIComponent(firstActivity.id)}`);
+    const first = getActivitiesForGradeSubject(gradeId, subjectId as SubjectId)[0];
+    sessionStorage.setItem('learningJourney.subject', resolved);
+    localStorage.setItem('learningJourney.subject', resolved);
+    if (!first) { router.push(`/student/sandbox?grade=${encodeURIComponent(gradeId)}&subject=${encodeURIComponent(subjectId)}`); return; }
+    router.push(`/student/sandbox/${encodeURIComponent(gradeId)}/${encodeURIComponent(subjectId)}/${encodeURIComponent(first.id)}`);
   };
 
-  const getPersonalizedGreeting = () => {
-    if (!profile) return `Karibu, ${studentName}`;
-    
-    const greetings = {
-      english: `Welcome back, ${profile.name}!`,
-      kiswahili: `Karibu tena, ${profile.name}!`,
-      mixed: `Karibu, ${profile.name}!`
-    };
-    
-    return greetings[profile.preferredLanguage] || greetings.mixed;
-  };
+  const greeting = profile
+    ? (profile.preferredLanguage === 'kiswahili' ? `Karibu tena, ${profile.name}!` : `Welcome back, ${profile.name}!`)
+    : `Karibu, ${studentName}`;
 
-  const getPersonalizedMotivation = () => {
-    if (!profile) return "Ready to learn with syncsenta today?";
-    
-    const totalSessions = learningProgress.reduce((sum, p) => sum + p.totalSessions, 0);
-    const maxStreak = Math.max(...learningProgress.map(p => p.streakDays), 0);
-    
-    if (maxStreak > 7) {
-      return `Amazing ${maxStreak}-day streak! You're on fire! 🔥`;
-    } else if (totalSessions > 10) {
-      return `${totalSessions} learning sessions completed! Keep growing! 🌱`;
-    } else if (profile.interests.length > 0) {
-      return `Ready to explore ${profile.interests[0]} and more today?`;
-    }
-    
-    return "Let's discover something amazing together today!";
-  };
+  const totalSessions = learningProgress.reduce((s, p) => s + p.totalSessions, 0);
+  const maxStreak = Math.max(...learningProgress.map(p => p.streakDays), 0);
+  const avgProgress = Math.round(learningProgress.reduce((s, p) => s + p.overallProgress, 0) / Math.max(learningProgress.length, 1));
+
+  const isYoung = ageTheme === 'pre-primary' || ageTheme === 'lower-primary';
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen flex-col bg-[#fffaf0] text-slate-900">
+      <div className={`flex min-h-screen flex-col ${theme.pageBg}`}>
         <StudentHeader showBackButton={false} onBack={() => router.back()} />
-        <main className="flex-1 p-6 flex items-center justify-center">
-          <div className="w-full max-w-md text-center">
-            <Brain className="h-12 w-12 animate-pulse mx-auto mb-4 text-primary" aria-hidden="true" />
-            <p className="font-medium">Preparing your learning path</p>
-            <p className="mt-2 text-sm text-muted-foreground">We are checking your grade, progress, and saved preferences.</p>
+        <main className="flex flex-1 items-center justify-center p-6">
+          <div className="text-center">
+            <Brain className="h-10 w-10 animate-pulse mx-auto mb-3 text-teal-600" />
+            <p className="font-medium">{isYoung ? '🌟 Getting your learning ready…' : 'Preparing your learning path…'}</p>
           </div>
         </main>
       </div>
@@ -276,14 +155,17 @@ export default function StudentDashboardPage() {
 
   if (loadError) {
     return (
-      <div className="flex min-h-screen flex-col bg-[#fffaf0] text-slate-900">
+      <div className={`flex min-h-screen flex-col ${theme.pageBg}`}>
         <StudentHeader showBackButton={false} onBack={() => router.back()} />
         <main className="flex flex-1 items-center justify-center p-6">
-          <section className="w-full max-w-md rounded-2xl border border-amber-200 bg-white p-6 text-center shadow-sm" role="alert">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 text-amber-700"><Clock className="h-6 w-6" aria-hidden="true" /></div>
-            <h1 className="mt-4 text-xl font-bold">Your learning path is temporarily unavailable</h1>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">{loadError}</p>
-            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center"><Button onClick={() => void loadPersonalizedLearningData()}>Try again</Button><Button variant="outline" onClick={() => router.push('/student/journey')}>Review my setup</Button></div>
+          <section className={`w-full max-w-sm ${theme.cardClass} border-amber-200 bg-white p-6 text-center`} role="alert">
+            <Clock className="h-8 w-8 mx-auto text-amber-500 mb-3" />
+            <h1 className="text-lg font-bold">Learning path unavailable</h1>
+            <p className="mt-1 text-sm text-muted-foreground">{loadError}</p>
+            <div className="mt-5 flex gap-2 justify-center">
+              <Button size="sm" onClick={() => void loadPersonalizedLearningData()}>Try again</Button>
+              <Button size="sm" variant="outline" onClick={() => router.push('/student/journey')}>Review setup</Button>
+            </div>
           </section>
         </main>
       </div>
@@ -291,509 +173,187 @@ export default function StudentDashboardPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#fffaf0] text-slate-900">
+    <div className={`flex min-h-screen flex-col ${theme.pageBg} text-slate-900`}>
       <StudentHeader showBackButton={false} onBack={() => router.back()} variant="catalog" />
 
-      <main className="flex-1 p-6">
-        <div className="max-w-7xl mx-auto space-y-6">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+      <main className="flex-1 px-4 py-5 md:px-6 md:py-6">
+        <div className="max-w-6xl mx-auto space-y-5">
+
+          {/* ── Greeting + actions ── */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold font-headline">
-                {getPersonalizedGreeting()}
+              <h1 className={`font-bold font-headline ${theme.headingSize}`}>
+                {greeting}{isYoung ? ' 🌟' : ''}
               </h1>
-              <p className="text-muted-foreground">
-                {getPersonalizedMotivation()}
+              <p className="text-sm text-muted-foreground mt-0.5">
+                {maxStreak > 7 ? `🔥 ${maxStreak}-day streak — you're on fire!`
+                  : totalSessions > 10 ? `${totalSessions} sessions done. Keep going!`
+                  : tutorTaglineFor(profile?.grade)}
               </p>
-              {profile && (
-                <div className="flex flex-wrap gap-2 mt-2">
-                  <Badge variant="secondary" className="gap-1 border-teal-100 bg-teal-50 text-teal-800">
-                    <Heart className="h-3 w-3" />
-                    {profile.learningStyle} learner
-                  </Badge>
-                  <Badge variant="outline" className="gap-1 border-teal-200 text-teal-800">
-                    <Target className="h-3 w-3" />
-                    {profile.grade}
-                  </Badge>
-                  {profile.interests.slice(0, 2).map((interest) => (
-                    <Badge key={interest} variant="outline" className="gap-1 border-teal-200 text-teal-800">
-                      <Star className="h-3 w-3" />
-                      {interest}
-                    </Badge>
-                  ))}
-                </div>
-              )}
             </div>
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="gap-1 border-teal-200 text-teal-800">
-                <Brain className="h-3 w-3" />
-                SyncSenta ready
-              </Badge>
-              <Badge variant="outline" className="gap-1 border-teal-200 text-teal-800">
-                <Clock className="h-3 w-3" />
-                Based on your progress
-              </Badge>
+            <div className="flex gap-2 shrink-0">
+              <button
+                onClick={() => goToSandbox(learningProgress[0]?.subject)}
+                className={`flex items-center gap-1.5 px-4 py-2 text-sm ${theme.ctaClass}`}
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                {isYoung ? '🚀 Start Learning!' : 'Start Learning'}
+              </button>
+              <Button size="sm" variant="outline" onClick={() => setActiveTab('competency')} className={`gap-1.5 ${theme.radiusClass}`}>
+                <Map className="h-3.5 w-3.5" />
+                {isYoung ? '🗺️ Map' : 'Learning Map'}
+              </Button>
             </div>
           </div>
 
-          <section className="overflow-hidden rounded-2xl border border-teal-100 bg-gradient-to-r from-teal-50 via-white to-amber-50 p-4 md:p-6" aria-label="Your learning guide">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <div className="max-w-2xl">
-                <p className="text-xs font-semibold uppercase tracking-wide text-teal-700">Your next step</p>
-                <h2 className="mt-1 text-xl md:text-2xl font-bold">Ask SyncSenta, practise a strand, or check in privately.</h2>
-                <p className="mt-2 text-sm text-slate-600">Your guide uses your selected grade, subject, language, and learning progress. You choose what wellbeing information to share.</p>
-                <div className="mt-4 flex flex-wrap gap-2"><Button onClick={() => goToSandbox(learningProgress[0]?.subject || 'Mathematics')} className="gap-2"><Brain className="h-4 w-4" />Start learning</Button><Button variant="outline" onClick={() => setActiveTab('competency')} className="gap-2"><Map className="h-4 w-4" />View learning map</Button></div>
-              </div>
-              <img src="/images/learning-catalog/ai.png" alt="Illustration for SyncSenta learning support" className="h-28 w-28 object-contain self-center md:h-36 md:w-36" />
-            </div>
-          </section>
-
-          <GuardianLinkCodeCard />
-
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card className={DASHBOARD_CARD_CLASS}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Learning Sessions</CardTitle>
-                <MessageCircle className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {learningProgress.reduce((sum, p) => sum + p.totalSessions, 0)}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Avg {Math.round(learningProgress.reduce((sum, p) => sum + p.averageSessionTime, 0) / Math.max(learningProgress.length, 1))} min/session
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className={DASHBOARD_CARD_CLASS}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Learning Streak</CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {Math.max(...learningProgress.map(p => p.streakDays), 0)}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {Math.max(...learningProgress.map(p => p.streakDays), 0) > 0 ? 'days in a row!' : 'Start your streak today!'}
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className={DASHBOARD_CARD_CLASS}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Overall Progress</CardTitle>
-                <Brain className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {Math.round(learningProgress.reduce((sum, p) => sum + p.overallProgress, 0) / Math.max(learningProgress.length, 1))}%
-                </div>
-                <p className="text-xs text-muted-foreground">Across all subjects</p>
-              </CardContent>
-            </Card>
-
-            <Card className={DASHBOARD_CARD_CLASS}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Active Assignments</CardTitle>
-                <BookOpen className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">3</div>
-                <p className="text-xs text-muted-foreground">2 due this week</p>
-              </CardContent>
-            </Card>
+          {/* ── Stats ── */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <StatCard theme={theme} label={isYoung ? '🎯 Sessions' : 'Sessions'} value={totalSessions || '—'} sub={totalSessions ? `Avg ${Math.round(learningProgress.reduce((s, p) => s + p.averageSessionTime, 0) / Math.max(learningProgress.length, 1))} min` : 'Start your first!'} icon={<MessageCircle className="h-4 w-4 text-teal-600" />} />
+            <StatCard theme={theme} label={isYoung ? '🔥 Streak' : 'Streak'} value={maxStreak > 0 ? `${maxStreak}d` : '—'} sub={maxStreak > 0 ? 'days in a row! 🔥' : 'Start today!'} icon={<Flame className="h-4 w-4 text-orange-500" />} />
+            <StatCard theme={theme} label={isYoung ? '📈 Progress' : 'Progress'} value={learningProgress.length ? `${avgProgress}%` : '—'} sub="Across subjects" icon={<TrendingUp className="h-4 w-4 text-blue-500" />} />
+            <StatCard theme={theme} label={isYoung ? '⭐ Grade' : 'Grade'} value={profile?.grade ?? (sessionStorage.getItem('learningJourney.grade') ?? '—')} sub={profile?.learningStyle ? `${profile.learningStyle} learner` : 'CBC curriculum'} icon={<Target className="h-4 w-4 text-violet-500" />} />
           </div>
 
-          {/* Tab Navigation */}
-          <div className="flex gap-2 overflow-x-auto pb-2">
-            <Button
-              variant={activeTab === 'overview' ? 'default' : 'outline'}
-              onClick={() => setActiveTab('overview')}
-              className="gap-2"
-            >
-              <BookOpen className="h-4 w-4" />
-              Overview
-            </Button>
-            <Button
-              variant={activeTab === 'gamification' ? 'default' : 'outline'}
-              onClick={() => setActiveTab('gamification')}
-              className="gap-2"
-            >
-              <Trophy className="h-4 w-4" />
-              Achievements
-            </Button>
-            <Button
-              variant={activeTab === 'competency' ? 'default' : 'outline'}
-              onClick={() => setActiveTab('competency')}
-              className="gap-2"
-            >
-              <Map className="h-4 w-4" />
-              Learning Map
-            </Button>
+          {/* ── Tab bar ── */}
+          <div className="flex border-b border-border">
+            {([
+              { id: 'overview' as Tab, label: isYoung ? '📚 Overview' : 'Overview', icon: <BookOpen className="h-3.5 w-3.5" /> },
+              { id: 'gamification' as Tab, label: isYoung ? '🏆 Badges' : 'Achievements', icon: <Trophy className="h-3.5 w-3.5" /> },
+              { id: 'competency' as Tab, label: isYoung ? '🗺️ Map' : 'Learning Map', icon: <Map className="h-3.5 w-3.5" /> },
+            ]).map(({ id, label, icon }) => (
+              <button key={id} onClick={() => setActiveTab(id)}
+                className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${activeTab === id ? 'border-teal-600 text-teal-700' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+              >
+                {icon}{label}
+              </button>
+            ))}
           </div>
 
-          {/* Overview Tab */}
+          {/* ── Overview ── */}
           {activeTab === 'overview' && (
-            <div className="grid gap-6 lg:grid-cols-3">
-              <Card className={`${DASHBOARD_CARD_CLASS} lg:col-span-2`}>
-              <CardHeader>
-                <CardTitle>Your personalized learning path</CardTitle>
-                <CardDescription>AI-adapted curriculum based on your progress and interests</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
+            <div className="grid gap-5 lg:grid-cols-3">
+              <div className="lg:col-span-2 space-y-3">
+                <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  {isYoung ? '📖 Your Subjects' : 'Your subjects'}
+                </h2>
                 {learningProgress.length > 0 ? (
-                  learningProgress.map((progress) => (
-                    <button
-                      key={progress.subject}
-                      onClick={() => goToSandbox(progress.subject)}
-                      className="w-full text-left rounded-lg p-4 border hover:bg-muted transition-colors"
+                  learningProgress.map((p, i) => (
+                    <button key={p.subject} onClick={() => goToSandbox(p.subject)}
+                      className={`w-full text-left ${theme.cardClass} border p-4 hover:shadow-md transition-all ${theme.subjectColours[i % theme.subjectColours.length]}`}
                     >
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <h4 className="font-medium">{progress.subject}</h4>
-                          <p className="text-sm text-muted-foreground">
-                            {progress.totalSessions} sessions • {progress.streakDays} day streak
-                          </p>
-                        </div>
-                        <Badge variant={progress.overallProgress > 70 ? 'default' : 'secondary'}>
-                          {progress.overallProgress}%
-                        </Badge>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-semibold text-sm">{isYoung ? ['📐', '📝', '🔬'][i] ?? '📚' : ''} {p.subject}</span>
+                        <span className="flex items-center gap-1 text-xs font-medium">{p.overallProgress}% <ChevronRight className="h-3 w-3 opacity-50" /></span>
                       </div>
-                      <Progress value={progress.overallProgress} className="mb-2" />
-                      <div className="flex justify-between text-xs text-muted-foreground">
-                        <span>
-                          {progress.overallProgress < 30 ? 'Building foundations' :
-                           progress.overallProgress < 70 ? 'Making good progress' :
-                           'Mastering concepts'}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          Click to start learning
-                          <ArrowRight className="h-3 w-3" />
-                        </span>
+                      <Progress value={p.overallProgress} className="h-1.5 mb-1.5" />
+                      <div className="flex justify-between text-xs opacity-70">
+                        <span>{p.totalSessions} sessions · {p.streakDays}d streak</span>
+                        <span>{p.overallProgress < 30 ? 'Building foundations' : p.overallProgress < 70 ? 'Good progress' : 'Mastering it'}</span>
                       </div>
                     </button>
                   ))
                 ) : (
-                  assignments.map((a) => (
-                    <div
-                      key={a.id}
-                      className="flex items-center justify-between p-4 border rounded-lg"
-                    >
-                      <div>
-                        <h4 className="font-medium">{a.title}</h4>
-                        <p className="text-sm text-muted-foreground">Due: {a.due}</p>
-                      </div>
-                      <Badge variant={a.status.variant}>{a.status.label}</Badge>
-                    </div>
-                  ))
-                )}
-              </CardContent>
-            </Card>
-
-            <div className="space-y-6">
-              <Card className={DASHBOARD_CARD_CLASS}>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Brain className="h-5 w-5" />
-                    Learning Path
-                  </CardTitle>
-                  <CardDescription>AI-personalized curriculum</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {learningPath.map((p) => (
-                    <button
-                      key={p.subject}
-                      onClick={() => goToSandbox(p.subject)}
-                      className="w-full text-left rounded-lg p-2 -mx-2 hover:bg-muted transition-colors"
-                    >
-                      <div className="flex justify-between text-sm mb-2">
-                        <span className="font-medium">{p.subject}</span>
-                        <span>{p.progress}%</span>
-                      </div>
-                      <Progress value={p.progress} />
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Current: {p.current} → Next: {p.next}
-                      </p>
+                  <div className={`${theme.cardClass} border border-dashed border-teal-200 bg-teal-50/50 p-6 text-center`}>
+                    <Brain className="h-8 w-8 mx-auto text-teal-400 mb-2" />
+                    <p className="text-sm font-medium text-teal-700">{isYoung ? '✨ No sessions yet — let\'s start!' : 'No sessions yet'}</p>
+                    <p className="text-xs text-teal-600 mt-1">Start learning to see your progress here</p>
+                    <button onClick={() => goToSandbox()} className={`mt-3 px-4 py-2 text-sm ${theme.ctaClass}`}>
+                      {isYoung ? '🚀 Begin!' : 'Start first session'}
                     </button>
-                  ))}
-                </CardContent>
-              </Card>
+                  </div>
+                )}
+              </div>
 
-              <Card className={DASHBOARD_CARD_CLASS}>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Zap className="h-5 w-5" />
-                    syncsenta Tutor
-                  </CardTitle>
-                  <CardDescription>
-                    {tutorTaglineFor(profile?.grade)}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <Button
-                    className="w-full"
-                    onClick={() => {
-                      const savedSubject = localStorage.getItem('learningJourney.subject') || sessionStorage.getItem('learningJourney.subject');
-                      if (savedSubject) goToSandbox(savedSubject);
-                      else router.push('/student/journey');
-                    }}
-                  >
-                    <MessageCircle className="mr-2 h-4 w-4" />
-                    Open learning sandbox
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => {
-                      const savedSubject = localStorage.getItem('learningJourney.subject') || sessionStorage.getItem('learningJourney.subject');
-                      if (savedSubject) goToSandbox(savedSubject);
-                      else router.push('/student/journey');
-                    }}
-                  >
-                    Learning sandbox
-                  </Button>
-                </CardContent>
-              </Card>
+              {/* Right quick-access */}
+              <div className="space-y-3">
+                <Card className={`${theme.cardClass} bg-white`}>
+                  <CardHeader className="pb-2 pt-4 px-4">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <Zap className="h-4 w-4 text-teal-600" />
+                      {isYoung ? '🤖 SyncSenta' : 'SyncSenta Tutor'}
+                    </CardTitle>
+                    <p className="text-xs text-muted-foreground">{tutorTaglineFor(profile?.grade)}</p>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-4">
+                    <button className={`w-full flex items-center justify-center gap-1.5 py-2 text-sm ${theme.ctaClass}`}
+                      onClick={() => { const s = localStorage.getItem('learningJourney.subject') || sessionStorage.getItem('learningJourney.subject'); s ? goToSandbox(s) : router.push('/student/journey'); }}>
+                      <MessageCircle className="h-3.5 w-3.5" />
+                      {isYoung ? '💬 Open Sandbox!' : 'Open Sandbox'}
+                      <ArrowRight className="h-3.5 w-3.5 ml-auto" />
+                    </button>
+                  </CardContent>
+                </Card>
 
-              <Card className={`${DASHBOARD_CARD_CLASS} border-primary/40`}>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Sparkles className="h-5 w-5 text-primary" />
-                    Practice Sandbox
-                  </CardTitle>
-                  <CardDescription>
-                    Drag, build, and explore. syncsenta learns from how you think.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button
-                    className="w-full"
-                    onClick={() => router.push('/student/sandbox')}
-                  >
-                    Open Sandbox
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </CardContent>
-              </Card>
+                <Card className={`${theme.cardClass} bg-amber-50/50`} style={{ borderColor: 'rgb(253 230 138)' }}>
+                  <CardHeader className="pb-2 pt-4 px-4">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <Trophy className="h-4 w-4 text-amber-600" />
+                      {isYoung ? '🏅 My Badges' : 'Achievements'}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-4">
+                    <button onClick={() => setActiveTab('gamification')} className={`w-full flex items-center justify-between text-sm text-amber-700 font-medium hover:underline ${theme.radiusClass}`}>
+                      {isYoung ? 'See my stickers! ⭐' : 'View badges & leaderboard'}
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </CardContent>
+                </Card>
 
-              <Card className={DASHBOARD_CARD_CLASS}>
-                <CardHeader>
-                  <CardTitle>Today&apos;s Classes</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {todaysClasses.map((c) => (
-                    <div key={c.subject} className="flex items-center gap-3">
-                      <Calendar className="h-4 w-4 text-muted-foreground" />
-                      <div>
-                        <p className="font-medium">{c.subject}</p>
-                        <p className="text-sm text-muted-foreground">{c.time}</p>
-                      </div>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
+                <Card className={`${theme.cardClass} bg-violet-50/50`} style={{ borderColor: 'rgb(221 214 254)' }}>
+                  <CardHeader className="pb-2 pt-4 px-4">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <Map className="h-4 w-4 text-violet-600" />
+                      {isYoung ? '🗺️ My Map' : 'Competency Map'}
+                    </CardTitle>
+                    <p className="text-xs text-muted-foreground">{isYoung ? 'See what you know!' : 'See what you\'ve mastered'}</p>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-4">
+                    <button onClick={() => setActiveTab('competency')} className={`w-full flex items-center justify-between text-sm text-violet-700 font-medium hover:underline ${theme.radiusClass}`}>
+                      {isYoung ? 'Open map 🗺️' : 'Open learning map'}
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </CardContent>
+                </Card>
+              </div>
             </div>
-          </div>
           )}
 
-          {/* Gamification Tab */}
           {activeTab === 'gamification' && (
-          <div className="space-y-6">
-            <GamificationOverview
-              userId={getStudentId()}
-              userName={studentName}
-            />
-            <div className="grid gap-6 lg:grid-cols-2">
-              <LeaderboardPanel
-                userId={getStudentId()}
-                scope="class"
-              />
-              <LeaderboardPanel
-                userId={getStudentId()}
-                scope="school"
-              />
+            <div className="space-y-5">
+              <GamificationOverview userId={getStudentId()} userName={studentName} />
+              <div className="grid gap-5 lg:grid-cols-2">
+                <LeaderboardPanel userId={getStudentId()} scope="class" />
+                <LeaderboardPanel userId={getStudentId()} scope="school" />
+              </div>
             </div>
-          </div>
           )}
 
-          {/* Competency Map Tab */}
           {activeTab === 'competency' && (
-            <CompetencyMap
-              subjects={[
-                {
-                  id: 'math',
-                  name: 'Mathematics',
-                  icon: 'calculator',
-                  overallMastery: 78,
-                  topics: [
-                    {
-                      id: 'fractions',
-                      name: 'Fractions',
-                      overallMastery: 85,
-                      competencies: [
-                        {
-                          id: 'frac-1',
-                          name: 'Understanding Fractions',
-                          mastery: 95,
-                          status: 'mastered',
-                          gamesRecommended: false,
-                          lastPracticed: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-                          totalPractices: 12,
-                        },
-                        {
-                          id: 'frac-2',
-                          name: 'Adding Fractions',
-                          mastery: 80,
-                          status: 'in-progress',
-                          gamesRecommended: false,
-                          lastPracticed: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-                          totalPractices: 8,
-                        },
-                        {
-                          id: 'frac-3',
-                          name: 'Multiplying Fractions',
-                          mastery: 65,
-                          status: 'in-progress',
-                          gamesRecommended: true,
-                          lastPracticed: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-                          totalPractices: 5,
-                        },
-                      ],
-                    },
-                    {
-                      id: 'decimals',
-                      name: 'Decimals',
-                      overallMastery: 70,
-                      competencies: [
-                        {
-                          id: 'dec-1',
-                          name: 'Understanding Decimals',
-                          mastery: 75,
-                          status: 'in-progress',
-                          gamesRecommended: false,
-                          lastPracticed: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-                          totalPractices: 6,
-                        },
-                        {
-                          id: 'dec-2',
-                          name: 'Adding Decimals',
-                          mastery: 65,
-                          status: 'in-progress',
-                          gamesRecommended: true,
-                          lastPracticed: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-                          totalPractices: 4,
-                        },
-                      ],
-                    },
-                  ],
-                },
-                {
-                  id: 'english',
-                  name: 'English',
-                  icon: 'book',
-                  overallMastery: 82,
-                  topics: [
-                    {
-                      id: 'reading',
-                      name: 'Reading Comprehension',
-                      overallMastery: 88,
-                      competencies: [
-                        {
-                          id: 'read-1',
-                          name: 'Main Idea',
-                          mastery: 92,
-                          status: 'mastered',
-                          gamesRecommended: false,
-                          lastPracticed: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-                          totalPractices: 10,
-                        },
-                        {
-                          id: 'read-2',
-                          name: 'Inference',
-                          mastery: 84,
-                          status: 'in-progress',
-                          gamesRecommended: false,
-                          lastPracticed: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-                          totalPractices: 7,
-                        },
-                      ],
-                    },
-                    {
-                      id: 'writing',
-                      name: 'Writing',
-                      overallMastery: 76,
-                      competencies: [
-                        {
-                          id: 'write-1',
-                          name: 'Essay Structure',
-                          mastery: 70,
-                          status: 'in-progress',
-                          gamesRecommended: true,
-                          lastPracticed: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-                          totalPractices: 5,
-                        },
-                        {
-                          id: 'write-2',
-                          name: 'Grammar',
-                          mastery: 82,
-                          status: 'in-progress',
-                          gamesRecommended: false,
-                          lastPracticed: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-                          totalPractices: 9,
-                        },
-                      ],
-                    },
-                  ],
-                },
-                {
-                  id: 'science',
-                  name: 'Science',
-                  icon: 'flask',
-                  overallMastery: 68,
-                  topics: [
-                    {
-                      id: 'biology',
-                      name: 'Biology',
-                      overallMastery: 72,
-                      competencies: [
-                        {
-                          id: 'bio-1',
-                          name: 'Plant Parts',
-                          mastery: 80,
-                          status: 'in-progress',
-                          gamesRecommended: false,
-                          lastPracticed: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-                          totalPractices: 6,
-                        },
-                        {
-                          id: 'bio-2',
-                          name: 'Photosynthesis',
-                          mastery: 64,
-                          status: 'in-progress',
-                          gamesRecommended: true,
-                          lastPracticed: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
-                          totalPractices: 3,
-                        },
-                      ],
-                    },
-                  ],
-                },
-              ]}
-              onStartPractice={(competencyId) => {
-                console.log('Start practice for:', competencyId);
-                router.push(`/student/tutor-dashboard?competency=${competencyId}`);
-              }}
-            />
+            <CompetencyMap subjects={COMPETENCY_DATA}
+              onStartPractice={(id) => router.push(`/student/tutor-dashboard?competency=${id}`)} />
           )}
+
         </div>
       </main>
-      <FloatingConceptChat
-        studentName={studentName}
-        grade={profile?.grade}
-        language={profile?.preferredLanguage ?? 'mixed'}
-      />
+
+      <FloatingConceptChat studentName={studentName} grade={profile?.grade} language={profile?.preferredLanguage ?? 'mixed'} />
     </div>
+  );
+}
+
+function StatCard({ theme, label, value, sub, icon }: {
+  theme: any; label: string; value: string | number; sub: string; icon: React.ReactNode;
+}) {
+  return (
+    <Card className={`${theme.cardClass} bg-white`}>
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-xs text-muted-foreground font-medium">{label}</span>
+          {icon}
+        </div>
+        <p className="text-xl font-bold leading-none">{value}</p>
+        <p className="text-xs text-muted-foreground mt-1 leading-tight">{sub}</p>
+      </CardContent>
+    </Card>
   );
 }

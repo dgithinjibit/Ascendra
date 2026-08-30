@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Users,
   UserPlus,
@@ -31,11 +31,11 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { supabase } from '@/lib/supabase/client';
 
 const mockSchoolAdmin = {
-  id: 'admin_1',
-  name: 'Mary Njeri',
-  school: 'Nairobi Primary School',
+  name: 'Administrator',
+  school: 'Your School',
   role: 'School Administrator',
 };
 
@@ -141,6 +141,33 @@ const mockPendingApprovals = [
 
 export default function SchoolAdminDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
+  const [adminName, setAdminName] = useState(mockSchoolAdmin.name);
+  const [schoolName, setSchoolName] = useState(mockSchoolAdmin.school);
+
+  // Resolve real admin name + school from Supabase session.
+  useEffect(() => {
+    async function load() {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user) return;
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('full_name, school_id')
+          .eq('id', session.user.id)
+          .maybeSingle();
+        if (profile?.full_name) setAdminName(profile.full_name);
+        if (profile?.school_id) {
+          const { data: school } = await supabase
+            .from('schools')
+            .select('name')
+            .eq('id', profile.school_id)
+            .maybeSingle();
+          if (school?.name) setSchoolName(school.name);
+        }
+      } catch { /* fallback to defaults */ }
+    }
+    load();
+  }, []);
 
   const schoolStats = mockSchoolStats;
   const enrollments = mockRecentEnrollments;
@@ -152,10 +179,10 @@ export default function SchoolAdminDashboard() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-2 md:space-y-0">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-foreground font-headline">
-            Karibu, {mockSchoolAdmin.name}
+            Karibu, {adminName}
           </h1>
           <p className="text-muted-foreground">
-            {mockSchoolAdmin.role} • {mockSchoolAdmin.school}
+            {mockSchoolAdmin.role} • {schoolName}
           </p>
         </div>
         <div className="flex items-center gap-2">

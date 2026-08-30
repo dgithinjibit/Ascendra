@@ -37,7 +37,6 @@ export async function POST(request: NextRequest) {
   if (!ROLES.has(role) || !fullName) return NextResponse.json({ error: 'Choose a valid role and provide your full name.' }, { status: 400 });
   if (!email) return NextResponse.json({ error: 'Google did not provide an email address for this account.' }, { status: 400 });
   if (role === 'student' && grade && !GRADES.has(grade)) return NextResponse.json({ error: 'Choose a valid CBC grade.' }, { status: 400 });
-  if (role === 'admin' && !schoolId) return NextResponse.json({ error: 'Heads of School must select an approved school.' }, { status: 400 });
   if (classroomId && !schoolId) return NextResponse.json({ error: 'Choose a school before selecting a class.' }, { status: 400 });
 
   // The generated Database type predates the canonical students directory columns;
@@ -53,8 +52,6 @@ export async function POST(request: NextRequest) {
       .maybeSingle();
     if (schoolError || !school) return NextResponse.json({ error: 'That school is not currently available.' }, { status: 400 });
     verifiedSchoolName = school.name;
-  } else if (role === 'student') {
-    verifiedSchoolName = null;
   }
 
   let verifiedClassName: string | null = null;

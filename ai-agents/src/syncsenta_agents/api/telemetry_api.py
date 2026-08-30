@@ -390,22 +390,126 @@ async def capture_telemetry(request: TelemetryBatchRequest):
 @router.get("/profile/{session_id}", response_model=BehavioralProfileResponse)
 async def get_behavioral_profile(session_id: str):
     """Get behavioral profile for a session."""
-    # TODO: Retrieve from database
-    raise HTTPException(status_code=501, detail="Not implemented yet")
+    supabase = try_get_supabase_client()
+    if supabase is None:
+        raise HTTPException(status_code=503, detail="Database not configured")
+
+    try:
+        resp = (
+            supabase.table("behavioral_profiles")
+            .select("*")
+            .eq("session_id", session_id)
+            .limit(1)
+            .execute()
+        )
+        rows = resp.data or []
+    except Exception as exc:
+        logger.error(f"behavioral_profile query failed: {exc}")
+        raise HTTPException(status_code=500, detail="Database query failed")
+
+    if not rows:
+        raise HTTPException(status_code=404, detail=f"No profile found for session {session_id}")
+
+    row = rows[0]
+    payload = row.get("payload") or {}
+
+    return BehavioralProfileResponse(
+        session_id=row.get("session_id", session_id),
+        student_id=row.get("student_id", ""),
+        activity_type=row.get("activity_type") or payload.get("activity_type", ""),
+        duration_seconds=float(payload.get("duration_seconds") or 0),
+        primary_pattern=row.get("primary_pattern") or payload.get("primary_pattern", "unknown"),
+        secondary_patterns=payload.get("secondary_patterns") or [],
+        engagement_score=float(row.get("engagement_score") or payload.get("engagement_score") or 0),
+        mastery_indicator=float(row.get("mastery_indicator") or payload.get("mastery_indicator") or 0),
+        intervention_needed=bool(row.get("intervention_needed", False)),
+        intervention_urgency=row.get("intervention_urgency") or payload.get("intervention_urgency", "low"),
+        pathing=payload.get("pathing") or {},
+        dwell=payload.get("dwell") or {},
+        erasure=payload.get("erasure") or {},
+        velocity=payload.get("velocity") or {},
+        tool_usage=payload.get("tool_usage") or {},
+    )
 
 
 @router.get("/misconceptions/{student_id}", response_model=List[MisconceptionResponse])
 async def get_student_misconceptions(student_id: str, limit: int = 10):
     """Get recent misconceptions for a student."""
-    # TODO: Retrieve from database
-    raise HTTPException(status_code=501, detail="Not implemented yet")
+    supabase = try_get_supabase_client()
+    if supabase is None:
+        raise HTTPException(status_code=503, detail="Database not configured")
+
+    try:
+        resp = (
+            supabase.table("misconceptions")
+            .select("misconception_id, student_id, competency, misconception_type, description, confidence, severity, payload, created_at")
+            .eq("student_id", student_id)
+            .order("created_at", desc=True)
+            .limit(limit)
+            .execute()
+        )
+        rows = resp.data or []
+    except Exception as exc:
+        logger.error(f"student_misconceptions query failed: {exc}")
+        raise HTTPException(status_code=500, detail="Database query failed")
+
+    return [
+        MisconceptionResponse(
+            misconception_id=r.get("misconception_id", ""),
+            student_id=r.get("student_id", student_id),
+            competency=r.get("competency") or "",
+            misconception_type=r.get("misconception_type") or "",
+            description=r.get("description") or "",
+            confidence=float(r.get("confidence") or 0),
+            severity=r.get("severity") or "low",
+            suggested_intervention=(r.get("payload") or {}).get("suggested_intervention", ""),
+            evidence=(r.get("payload") or {}).get("evidence") or [],
+        )
+        for r in rows
+    ]
 
 
 @router.get("/interventions/{student_id}", response_model=List[InterventionResponse])
 async def get_student_interventions(student_id: str, limit: int = 10):
     """Get recent interventions for a student."""
-    # TODO: Retrieve from database
-    raise HTTPException(status_code=501, detail="Not implemented yet")
+    supabase = try_get_supabase_client()
+    if supabase is None:
+        raise HTTPException(status_code=503, detail="Database not configured")
+
+    try:
+        resp = (
+            supabase.table("interventions")
+            .select("intervention_id, student_id, intervention_type, difficulty_level, title, objective, duration_minutes, payload, created_at")
+            .eq("student_id", student_id)
+            .order("created_at", desc=True)
+            .limit(limit)
+            .execute()
+        )
+        rows = resp.data or []
+    except Exception as exc:
+        logger.error(f"student_interventions query failed: {exc}")
+        raise HTTPException(status_code=500, detail="Database query failed")
+
+    return [
+        InterventionResponse(
+            intervention_id=r.get("intervention_id", ""),
+            student_id=r.get("student_id", student_id),
+            intervention_type=r.get("intervention_type") or "",
+            difficulty_level=r.get("difficulty_level") or "medium",
+            title=r.get("title") or "",
+            objective=r.get("objective") or "",
+            duration_minutes=int(r.get("duration_minutes") or 0),
+            materials_needed=(r.get("payload") or {}).get("materials_needed") or [],
+            content=(r.get("payload") or {}).get("content", ""),
+            visual_aids=(r.get("payload") or {}).get("visual_aids") or [],
+            activities=(r.get("payload") or {}).get("activities") or [],
+            assessment=(r.get("payload") or {}).get("assessment", ""),
+            cbc_alignment=(r.get("payload") or {}).get("cbc_alignment", ""),
+            differentiation_notes=(r.get("payload") or {}).get("differentiation_notes", ""),
+            teacher_notes=(r.get("payload") or {}).get("teacher_notes", ""),
+        )
+        for r in rows
+    ]
 
 
 @router.post("/test", response_model=Dict[str, Any])

@@ -206,7 +206,7 @@ training-data/ (bucket)
 ### 1. Apply Database Migration
 ```bash
 # Via Supabase Dashboard
-# Go to: https://app.supabase.com/project/chsnemyqqvhqwrjzhzwo/sql
+# Go to: https://app.supabase.com/project/<your-project-ref>/sql
 # Copy and run: supabase/migrations/20260522000002_training_data_export.sql
 ```
 
@@ -223,7 +223,7 @@ training-data/ (bucket)
 ### 3. Set Environment Variables
 ```bash
 # In ai-agents/.env
-SUPABASE_URL=https://chsnemyqqvhqwrjzhzwo.supabase.co
+SUPABASE_URL=https://<your-project-ref>.supabase.co
 SUPABASE_SERVICE_KEY=your_service_role_key_here
 ```
 

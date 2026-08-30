@@ -24,7 +24,7 @@ Before deploying, you need:
 
 #### Supabase Service Role Key
 1. Go to your Supabase Dashboard: https://supabase.com/dashboard
-2. Select your project: `khsemyqovhqwrjzlzwo`
+2. Select your project from the Supabase Dashboard
 3. Go to Settings → API
 4. Find "Project API keys" section
 5. Copy the `service_role` key (⚠️ This is secret - never expose in frontend)
@@ -59,7 +59,7 @@ In your Render service dashboard, go to **Environment** tab and add:
 ```bash
 # Required
 GROQ_API_KEY=configure-this-in-the-secret-manager
-SUPABASE_URL=https://khsemyqovhqwrjzlzwo.supabase.co
+SUPABASE_URL=https://<your-project-ref>.supabase.co
 SUPABASE_SERVICE_KEY=your_supabase_service_role_key_here
 
 # Optional (already set in render.yaml)

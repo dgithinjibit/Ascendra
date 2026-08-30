@@ -7,12 +7,6 @@ export async function POST(req: Request) {
     const requestId = body?.requestId ?? 'unknown';
     const originalUrl = body?.originalUrl ?? '/';
 
-    console.log('Received offline resolution payload:', {
-      requestId,
-      originalUrl,
-      action,
-    });
-
     if (!body?.requestId) {
       return NextResponse.json({ ok: false, error: 'Missing requestId' }, { status: 400 });
     }

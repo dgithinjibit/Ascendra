@@ -1,6 +1,20 @@
 // Re-export types
 export type { SubStrandInfo, StrandInfo, SchemeRow } from "./types";
 
+// Re-export pre-primary grade data
+export { pp1LanguageActivities } from "./pre-primary/pp1-language-activities";
+export { pp2LanguageActivities } from "./pre-primary/pp2-language-activities";
+export { pp1MathematicalActivities } from "./pre-primary/pp1-mathematical-activities";
+export { pp2MathematicalActivities } from "./pre-primary/pp2-mathematical-activities";
+export { pp1CRE } from "./pre-primary/pp1-cre";
+export { pp2CRE } from "./pre-primary/pp2-cre";
+export { pp1HRE } from "./pre-primary/pp1-hre";
+export { pp2HRE } from "./pre-primary/pp2-hre";
+export { pp1CreativeActivities } from "./pre-primary/pp1-creative-activities";
+export { pp2CreativeActivities } from "./pre-primary/pp2-creative-activities";
+export { pp1EnvironmentalActivities } from "./pre-primary/pp1-environmental-activities";
+export { pp2EnvironmentalActivities } from "./pre-primary/pp2-environmental-activities";
+
 // Re-export grade data
 export { grade1CreativeActivities, grade2CreativeActivities, grade3CreativeActivities } from "./lower-primary/creative-activities";
 export { grade1CRE, grade2CRE, grade3CRE } from "./lower-primary/cre";
@@ -19,13 +33,21 @@ export {
 } from "./lower-primary/english-activities";
 export { grade6Agriculture } from "./upper-primary/agriculture";
 export { grade4Agriculture } from "./upper-primary/agriculture-grade4";
+export { grade5Agriculture } from "./upper-primary/agriculture-grade5";
+export { grade4Mathematics } from "./upper-primary/mathematics-grade4";
 export { grade4ScienceTechnology } from "./upper-primary/science-technology-grade4";
+export { grade5ScienceTechnology } from "./upper-primary/science-technology-grade5";
+export { grade6ScienceTechnology } from "./upper-primary/science-technology-grade6";
 export { grade4CRE } from "./upper-primary/cre";
+export { grade5CRE } from "./upper-primary/cre-grade5";
+export { grade6CRE } from "./upper-primary/cre-grade6";
 export { grade4CreativeArts } from "./upper-primary/creative-arts";
 export { grade5CreativeArts } from "./upper-primary/creative-arts-grade5";
+export { grade6CreativeArts } from "./upper-primary/creative-arts-grade6";
 export { grade4English, grade5English, grade6English } from "./upper-primary/english";
 export { grade4IndigenousLanguage, grade5IndigenousLanguage, grade6IndigenousLanguage } from "./upper-primary/indigenous-language";
 export { grade4SocialStudies } from "./upper-primary/social-studies";
+export { grade5SocialStudies } from "./upper-primary/social-studies-grade5";
 export { grade6SocialStudies } from "./upper-primary/social-studies-grade6";
 export { grade5Mathematics } from "./upper-primary/mathematics-grade5";
 export { grade6Mathematics } from "./upper-primary/mathematics-grade6";
@@ -36,6 +58,20 @@ export { grade1IRE, grade2IRE, grade3IRE } from "./lower-primary/ire";
 
 import type { StrandInfo } from "./types";
 import type { GradeLevel } from "../../types/curriculum";
+
+// Pre-primary imports
+import { pp1LanguageActivities } from "./pre-primary/pp1-language-activities";
+import { pp2LanguageActivities } from "./pre-primary/pp2-language-activities";
+import { pp1MathematicalActivities } from "./pre-primary/pp1-mathematical-activities";
+import { pp2MathematicalActivities } from "./pre-primary/pp2-mathematical-activities";
+import { pp1CRE } from "./pre-primary/pp1-cre";
+import { pp2CRE } from "./pre-primary/pp2-cre";
+import { pp1HRE } from "./pre-primary/pp1-hre";
+import { pp2HRE } from "./pre-primary/pp2-hre";
+import { pp1CreativeActivities } from "./pre-primary/pp1-creative-activities";
+import { pp2CreativeActivities } from "./pre-primary/pp2-creative-activities";
+import { pp1EnvironmentalActivities } from "./pre-primary/pp1-environmental-activities";
+import { pp2EnvironmentalActivities } from "./pre-primary/pp2-environmental-activities";
 import { grade1CreativeActivities, grade2CreativeActivities, grade3CreativeActivities } from "./lower-primary/creative-activities";
 import { grade1CRE, grade2CRE, grade3CRE } from "./lower-primary/cre";
 import { grade1HRE, grade2HRE, grade3HRE } from "./lower-primary/hre";
@@ -54,13 +90,21 @@ import {
 import { grade1IRE, grade2IRE, grade3IRE } from "./lower-primary/ire";
 import { grade6Agriculture } from "./upper-primary/agriculture";
 import { grade4Agriculture } from "./upper-primary/agriculture-grade4";
+import { grade5Agriculture } from "./upper-primary/agriculture-grade5";
+import { grade4Mathematics } from "./upper-primary/mathematics-grade4";
 import { grade4ScienceTechnology } from "./upper-primary/science-technology-grade4";
+import { grade5ScienceTechnology } from "./upper-primary/science-technology-grade5";
+import { grade6ScienceTechnology } from "./upper-primary/science-technology-grade6";
 import { grade4CRE } from "./upper-primary/cre";
+import { grade5CRE } from "./upper-primary/cre-grade5";
+import { grade6CRE } from "./upper-primary/cre-grade6";
 import { grade4CreativeArts } from "./upper-primary/creative-arts";
 import { grade5CreativeArts } from "./upper-primary/creative-arts-grade5";
+import { grade6CreativeArts } from "./upper-primary/creative-arts-grade6";
 import { grade4English, grade5English, grade6English } from "./upper-primary/english";
 import { grade4IndigenousLanguage, grade5IndigenousLanguage, grade6IndigenousLanguage } from "./upper-primary/indigenous-language";
 import { grade4SocialStudies } from "./upper-primary/social-studies";
+import { grade5SocialStudies } from "./upper-primary/social-studies-grade5";
 import { grade6SocialStudies } from "./upper-primary/social-studies-grade6";
 import { grade5Mathematics } from "./upper-primary/mathematics-grade5";
 import { grade6Mathematics } from "./upper-primary/mathematics-grade6";
@@ -83,6 +127,20 @@ function normalizeGrade(grade: string): string {
 }
 
 const hardcodedStrands: Record<CurriculumKey, StrandInfo[]> = {
+  // ── Pre-Primary ──────────────────────────────────────────────────────────
+  "PP1|Language Activities": pp1LanguageActivities,
+  "PP1|Mathematical Activities": pp1MathematicalActivities,
+  "PP1|Environmental Activities": pp1EnvironmentalActivities,
+  "PP1|Creative Activities": pp1CreativeActivities,
+  "PP1|CRE": pp1CRE,
+  "PP1|HRE": pp1HRE,
+  "PP2|Language Activities": pp2LanguageActivities,
+  "PP2|Mathematical Activities": pp2MathematicalActivities,
+  "PP2|Environmental Activities": pp2EnvironmentalActivities,
+  "PP2|Creative Activities": pp2CreativeActivities,
+  "PP2|CRE": pp2CRE,
+  "PP2|HRE": pp2HRE,
+  // ── Lower Primary ────────────────────────────────────────────────────────
   "Grade 1|Creative Activities": grade1CreativeActivities,
   "Grade 2|Creative Activities": grade2CreativeActivities,
   "Grade 3|Creative Activities": grade3CreativeActivities,
@@ -108,18 +166,26 @@ const hardcodedStrands: Record<CurriculumKey, StrandInfo[]> = {
   "Grade 2|Mathematics": grade2Mathematics,
   "Grade 3|Mathematics": grade3Mathematics,
   "Grade 4|CRE": grade4CRE,
+  "Grade 5|CRE": grade5CRE,
+  "Grade 6|CRE": grade6CRE,
   "Grade 4|Creative Arts": grade4CreativeArts,
   "Grade 5|Creative Arts": grade5CreativeArts,
+  "Grade 6|Creative Arts": grade6CreativeArts,
   "Grade 4|English": grade4English,
   "Grade 4|Indigenous Language": grade4IndigenousLanguage,
   "Grade 4|Social Studies": grade4SocialStudies,
+  "Grade 5|Social Studies": grade5SocialStudies,
   "Grade 5|English": grade5English,
   "Grade 5|Indigenous Language": grade5IndigenousLanguage,
   "Grade 6|Indigenous Language": grade6IndigenousLanguage,
   "Grade 6|English": grade6English,
   "Grade 4|Agriculture": grade4Agriculture,
+  "Grade 5|Agriculture": grade5Agriculture,
   "Grade 6|Agriculture": grade6Agriculture,
+  "Grade 4|Mathematics": grade4Mathematics,
   "Grade 4|Science & Technology": grade4ScienceTechnology,
+  "Grade 5|Science & Technology": grade5ScienceTechnology,
+  "Grade 6|Science & Technology": grade6ScienceTechnology,
   "Grade 4|Kiswahili": grade4Kiswahili,
   "Grade 5|Kiswahili": grade5Kiswahili,
   "Grade 6|Kiswahili": grade6Kiswahili,
@@ -166,6 +232,14 @@ export const columnHeaders = {
 export const kiswahiliSubjects = ["Kiswahili"];
 
 // Official KICD lesson allocation per week by grade level
+const prePrimaryLessons: Record<string, number> = {
+  "Language Activities": 6,
+  "Mathematical Activities": 5,
+  "Environmental Activities": 4,
+  "Creative Activities": 7,
+  "CRE": 3, "HRE": 3, "IRE": 3,
+};
+
 const lowerPrimaryLessons: Record<string, number> = {
   "Indigenous Language": 2,
   "Kiswahili": 4,
@@ -204,7 +278,9 @@ const juniorSecondaryLessons: Record<string, number> = {
 };
 
 export function getLessonsPerWeek(grade: string, subject: string): number {
-  const num = parseInt(normalizeGrade(grade).replace("Grade ", ""));
+  const normalized = normalizeGrade(grade);
+  if (normalized === 'PP1' || normalized === 'PP2') return prePrimaryLessons[subject] || 5;
+  const num = parseInt(normalized.replace("Grade ", ""));
   let map: Record<string, number>;
   if (num >= 1 && num <= 3) map = lowerPrimaryLessons;
   else if (num >= 4 && num <= 6) map = upperPrimaryLessons;
@@ -213,9 +289,20 @@ export function getLessonsPerWeek(grade: string, subject: string): number {
 }
 
 export const grades: GradeLevel[] = [
+  "PP1", "PP2",
   "Grade 1", "Grade 2", "Grade 3",
   "Grade 4", "Grade 5", "Grade 6",
   "Grade 7", "Grade 8", "Grade 9",
+];
+
+const prePrimarySubjects = [
+  "Creative Activities",
+  "CRE",
+  "Environmental Activities",
+  "HRE",
+  "IRE",
+  "Language Activities",
+  "Mathematical Activities",
 ];
 
 const lowerPrimarySubjects = [
@@ -267,7 +354,9 @@ const juniorSecondarySubjects = [
 ];
 
 export function getSubjectsForGrade(grade: string): string[] {
-  const num = parseInt(normalizeGrade(grade).replace("Grade ", ""));
+  const normalized = normalizeGrade(grade);
+  if (normalized === 'PP1' || normalized === 'PP2') return prePrimarySubjects;
+  const num = parseInt(normalized.replace("Grade ", ""));
   if (num >= 1 && num <= 3) return lowerPrimarySubjects;
   if (num >= 4 && num <= 6) return upperPrimarySubjects;
   if (num >= 7 && num <= 9) return juniorSecondarySubjects;
