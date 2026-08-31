@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 
 /**
- * Demo login endpoint — signs in as a preset demo user and redirects
- * to the appropriate dashboard.
+ * Demo login — signs in as a preset test user, sets the session cookie,
+ * and redirects straight to the dashboard. No signup flow, no onboarding.
  *
- * Only active when NEXT_PUBLIC_DEMO_MODE=true (set in Vercel staging env).
- * Never expose this in production.
+ * Guard: only active when DEMO_MODE=true (server-side env var, Vercel Preview only).
+ * Do NOT set this in production.
  */
 
 const DEMO_USERS: Record<string, {
@@ -40,51 +41,80 @@ const DEMO_USERS: Record<string, {
   },
 };
 
+function safeOrigin(request: NextRequest): string {
+  const host = request.headers.get('host') ?? 'localhost:3000';
+  const proto = host.startsWith('localhost') ? 'http' : 'https';
+  return `${proto}://${host}`;
+}
+
+export async function GET(request: NextRequest) {
+  // Support GET so a plain <a href> works too
+  return handler(request);
+}
+
 export async function POST(request: NextRequest) {
-  // Safety guard — only allow in demo/staging mode
-  if (process.env.NEXT_PUBLIC_DEMO_MODE !== 'true') {
-    return NextResponse.json({ error: 'Demo mode is not enabled.' }, { status: 403 });
+  return handler(request);
+}
+
+async function handler(request: NextRequest) {
+  if (process.env.DEMO_MODE !== 'true') {
+    return NextResponse.redirect(new URL('/auth/signup', safeOrigin(request)));
   }
 
-  const body = await request.json().catch(() => null);
-  const role = (body?.role ?? '').toLowerCase() as string;
-  const demo = DEMO_USERS[role];
+  // Role comes from query string (?role=student) or POST body
+  let role = request.nextUrl.searchParams.get('role') ?? '';
+  if (!role && request.method === 'POST') {
+    const body = await request.json().catch(() => ({}));
+    role = body.role ?? '';
+  }
+  role = role.toLowerCase();
 
+  const demo = DEMO_USERS[role];
   if (!demo) {
-    return NextResponse.json({ error: `Unknown demo role: ${role}` }, { status: 400 });
+    return NextResponse.redirect(new URL('/auth/signup', safeOrigin(request)));
   }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
   if (!supabaseUrl || !supabaseAnonKey) {
-    return NextResponse.json({ error: 'Supabase is not configured.' }, { status: 503 });
+    return NextResponse.redirect(new URL('/auth/signin?error=not_configured', safeOrigin(request)));
   }
 
-  // Sign in using the anon client — this sets the session cookie via response
-  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-    auth: { persistSession: false },
+  // Build a response we can write cookies onto
+  const redirectUrl = new URL(demo.redirect, safeOrigin(request));
+
+  // Attach grade context as query params so the student page can pick them up
+  if (demo.grade) {
+    redirectUrl.searchParams.set('demo_grade', demo.grade);
+    if (demo.level) redirectUrl.searchParams.set('demo_level', demo.level);
+  }
+
+  const response = NextResponse.redirect(redirectUrl);
+
+  const cookieStore = await cookies();
+  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+    cookies: {
+      getAll: () => cookieStore.getAll(),
+      setAll: (cookiesToSet) => {
+        cookiesToSet.forEach(({ name, value, options }) => {
+          response.cookies.set(name, value, options);
+        });
+      },
+    },
   });
 
-  const { data, error } = await supabase.auth.signInWithPassword({
+  const { error } = await supabase.auth.signInWithPassword({
     email: demo.email,
     password: demo.password,
   });
 
-  if (error || !data.session) {
-    console.error('[demo-login] sign-in failed:', error?.message);
-    return NextResponse.json(
-      { error: 'Demo login failed. Please try again.' },
-      { status: 500 }
+  if (error) {
+    console.error('[demo-login] failed:', error.message);
+    return NextResponse.redirect(
+      new URL(`/auth/signin?error=demo_failed&role=${role}`, safeOrigin(request))
     );
   }
 
-  return NextResponse.json({
-    success: true,
-    access_token: data.session.access_token,
-    refresh_token: data.session.refresh_token,
-    redirect: demo.redirect,
-    grade: demo.grade ?? null,
-    level: demo.level ?? null,
-  });
+  return response;
 }

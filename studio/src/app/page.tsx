@@ -3,34 +3,35 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
 import {
   ArrowRight,
   BarChart3,
   BookOpenCheck,
   GraduationCap,
   HeartHandshake,
-  Loader2,
   ShieldCheck,
   Users,
   WifiOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { supabase } from "@/lib/supabase/client";
 
+/**
+ * When DEMO_MODE env var is set (server side), the "Continue as X" buttons
+ * hit /api/auth/demo-login?role=X which signs in and redirects server-side.
+ * When not set they go to the normal signup flow.
+ *
+ * NEXT_PUBLIC_DEMO_MODE is baked at build time — set it in Vercel Preview env only.
+ */
 const DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
 
 const roles = [
   {
     title: "Students",
-    demoRole: "student",
     description: "Learn at your pace with CBC-aligned guidance and feedback.",
     icon: GraduationCap,
     href: "/auth/signup?role=student",
-    redirect: "/student",
-    grade: "Grade 5",
-    level: "upper-primary",
+    demoHref: "/api/auth/demo-login?role=student",
     items: [
       "Personalised learning journeys",
       "Practice and feedback matched to your level",
@@ -39,11 +40,10 @@ const roles = [
   },
   {
     title: "Teachers",
-    demoRole: "teacher",
     description: "Prepare, assess, and support learners with less administration.",
     icon: Users,
     href: "/auth/signup?role=teacher",
-    redirect: "/teacher/dashboard",
+    demoHref: "/api/auth/demo-login?role=teacher",
     items: [
       "Schemes and lesson plans",
       "Assessment and markbook workflows",
@@ -52,11 +52,10 @@ const roles = [
   },
   {
     title: "Heads of School",
-    demoRole: "head",
     description: "See school-level progress and the decisions that need attention.",
     icon: BarChart3,
     href: "/auth/signup?role=head",
-    redirect: "/teacher/dashboard",
+    demoHref: "/api/auth/demo-login?role=head",
     items: [
       "Class and school aggregates",
       "Attendance and progress signals",
@@ -65,11 +64,10 @@ const roles = [
   },
   {
     title: "Parents and Guardians",
-    demoRole: "parent",
     description: "Stay connected to a learner's progress without information overload.",
     icon: HeartHandshake,
     href: "/auth/signup?role=parent",
-    redirect: "/dashboard",
+    demoHref: "/api/auth/demo-login?role=parent",
     items: [
       "Weekly learning summaries",
       "Teacher evidence and next steps",
@@ -80,81 +78,18 @@ const roles = [
 
 export default function HomePage() {
   const router = useRouter();
-  const [loadingRole, setLoadingRole] = useState<string | null>(null);
-  const [demoError, setDemoError] = useState<string | null>(null);
 
-  const handleContinue = async (role: typeof roles[0]) => {
-    setLoadingRole(role.demoRole);
-    setDemoError(null);
-
-    // --- Non-demo (production) mode ---
-    if (!DEMO_MODE) {
-      try {
-        // Check if there is already an active Supabase session.
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          // User is already signed in — go straight to their dashboard.
-          router.push(role.redirect);
-        } else {
-          // Not signed in — send them to login, preserving the destination.
-          const loginUrl = `/login?next=${encodeURIComponent(role.redirect)}`;
-          router.push(loginUrl);
-        }
-      } catch {
-        setDemoError("Could not check session. Please try again.");
-      } finally {
-        setLoadingRole(null);
-      }
-      return;
-    }
-
-    // --- Demo mode ---
-    try {
-      const res = await fetch("/api/auth/demo-login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role: role.demoRole }),
-      });
-      const data = await res.json();
-
-      if (!res.ok || !data.success) {
-        setDemoError(data.error || "Demo login failed. Please try again.");
-        return;
-      }
-
-      // Establish the session in the Supabase browser client.
-      await supabase.auth.setSession({
-        access_token: data.access_token,
-        refresh_token: data.refresh_token,
-      });
-
-      // Seed CBC context for student so journey wizard is skipped.
-      if (data.grade && typeof window !== "undefined") {
-        sessionStorage.setItem("learningJourney.grade", data.grade);
-        localStorage.setItem("learningJourney.grade", data.grade);
-        if (data.level) {
-          sessionStorage.setItem("learningJourney.level", data.level);
-          localStorage.setItem("learningJourney.level", data.level);
-        }
-      }
-
-      router.push(data.redirect ?? role.redirect);
-    } catch {
-      setDemoError("Could not connect. Please try again.");
-    } finally {
-      setLoadingRole(null);
-    }
-  };
-
-  const buttonLabel = (role: typeof roles[0]) => {
+  function ctaLabel(role: typeof roles[0]) {
     const name =
-      role.title === "Parents and Guardians"
-        ? "Parent/Guardian"
-        : role.title === "Heads of School"
-        ? "Head"
-        : role.title;
+      role.title === "Parents and Guardians" ? "Parent/Guardian" :
+      role.title === "Heads of School" ? "Head" :
+      role.title;
     return DEMO_MODE ? `Try as ${name}` : `Continue as ${name}`;
-  };
+  }
+
+  function ctaHref(role: typeof roles[0]) {
+    return DEMO_MODE ? role.demoHref : role.href;
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -187,12 +122,13 @@ export default function HomePage() {
               One learning system for the whole school community.
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-muted-foreground sm:text-xl">
-              SyncSenta connects students, teachers, school leaders, and families around CBC-aligned learning
-              evidence—while keeping people in control of important decisions.
+              SyncSenta connects students, teachers, school leaders, and families around
+              CBC-aligned learning evidence—while keeping people in control of important decisions.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Button size="lg" onClick={() => router.push("/signup")} className="min-h-12 sm:w-auto">
-                Choose your role <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
+              <Button size="lg" onClick={() => router.push(DEMO_MODE ? "/api/auth/demo-login?role=student" : "/signup")} className="min-h-12 sm:w-auto">
+                {DEMO_MODE ? "Try the demo" : "Choose your role"}
+                <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
               </Button>
               <Button size="lg" variant="outline" asChild className="min-h-12 sm:w-auto">
                 <Link href="/products">See how it works</Link>
@@ -210,13 +146,13 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Preview card */}
+          {/* Preview widget */}
           <div className="relative flex items-center justify-center rounded-3xl border border-border bg-card p-8 shadow-sm sm:p-12">
             <div className="absolute inset-x-8 top-8 h-24 rounded-full bg-primary/10 blur-3xl" aria-hidden="true" />
             <div className="relative w-full max-w-sm space-y-4">
               <div className="rounded-2xl border border-border bg-background p-5">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="font-semibold">Today's learning path</span>
+                  <span className="font-semibold">Today&apos;s learning path</span>
                   <BookOpenCheck className="h-5 w-5 text-primary" aria-hidden="true" />
                 </div>
                 <div className="mt-5 space-y-4">
@@ -256,7 +192,9 @@ export default function HomePage() {
         <section className="border-y border-border/70 bg-secondary/30" aria-labelledby="role-heading">
           <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8 lg:py-20">
             <div className="max-w-2xl">
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Start with your role</p>
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">
+                {DEMO_MODE ? "Try the demo" : "Start with your role"}
+              </p>
               <h2 id="role-heading" className="mt-3 font-headline text-3xl font-bold text-primary sm:text-4xl">
                 The right view for the work you do.
               </h2>
@@ -264,19 +202,15 @@ export default function HomePage() {
                 Each role sees only the information and actions needed for its responsibilities.
               </p>
               {DEMO_MODE && (
-                <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700 ring-1 ring-amber-200">
-                  🧪 Demo mode — click any role to explore as a test user
-                </p>
-              )}
-              {demoError && (
-                <p className="mt-3 text-sm text-destructive">{demoError}</p>
+                <span className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700 ring-1 ring-amber-200">
+                  🧪 Demo — click any role to go straight to the dashboard, no sign-up needed
+                </span>
               )}
             </div>
 
             <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {roles.map((role) => {
                 const Icon = role.icon;
-                const isLoading = loadingRole === role.demoRole;
                 return (
                   <Card key={role.title} className="flex h-full flex-col border-border bg-background">
                     <CardHeader>
@@ -295,23 +229,11 @@ export default function HomePage() {
                           </li>
                         ))}
                       </ul>
-                      <Button
-                        variant="outline"
-                        className="mt-6 w-full"
-                        disabled={isLoading || loadingRole !== null}
-                        onClick={() => handleContinue(role)}
-                      >
-                        {isLoading ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Signing in…
-                          </>
-                        ) : (
-                          <>
-                            {buttonLabel(role)}
-                            <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
-                          </>
-                        )}
+                      <Button asChild variant="outline" className="mt-6 w-full">
+                        <Link href={ctaHref(role)}>
+                          {ctaLabel(role)}
+                          <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
+                        </Link>
                       </Button>
                     </CardContent>
                   </Card>

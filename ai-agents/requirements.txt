@@ -31,3 +31,9 @@ supabase>=2.0.0
 
 # Environment variables
 python-dotenv>=1.0.0
+
+# Neuro-symbolic reasoning — real Hyperon MeTTa runtime.
+# Pin to the last known-good wheel; the service falls back to the
+# pure-Python evaluator automatically if this import fails at startup.
+# See ai-agents/src/syncsenta_agents/reasoning/hyperon_evaluator.py
+hyperon>=0.1.0

@@ -6,8 +6,19 @@ MeTTa (Meta Type Talk) provides a symbolic reasoning layer that can:
 3. Reason over rules to make decisions
 4. Export/import rules for versioning
 
-This is the "reusable, not permanent" layer - rules can be added,
+This is the "reusable, not permanent" layer — rules can be added,
 modified, or removed based on teacher feedback without code changes.
+
+Two layers work together:
+
+* **Policy layer** — ``HyperonPolicyEvaluator`` (or its pure-Python
+  fallback) enforces the *syncsenta_policy.metta* safeguarding and
+  consent rules before any pedagogical decision is made.
+
+* **Pedagogical layer** — ``MeTTaEngine`` stores and evaluates the
+  telemetry-driven rules (frustration detection, cultural examples,
+  scaffolding selection) that guide *how* to teach once the policy
+  gate has approved the session.
 """
 
 from typing import Dict, Any, List, Optional, Tuple
@@ -16,6 +27,11 @@ import json
 from pathlib import Path
 
 from ..core.logging import AgentLogger
+from .hyperon_evaluator import (
+    get_policy_evaluator,
+    PolicyRequest,
+    PolicyVerdict,
+)
 
 
 @dataclass
@@ -31,22 +47,36 @@ class MeTTaRule:
 
 class MeTTaEngine:
     """Dynamic reasoning engine using MeTTa-style symbolic rules.
-    
+
     Rules are stored as data (not code) and can be:
     - Loaded from database
     - Modified based on teacher feedback
     - Exported/imported for versioning
     - Reasoned over for decision-making
-    
+
+    **Policy gate** — before any pedagogical rule is evaluated, the engine
+    calls ``HyperonPolicyEvaluator`` (real Hyperon runtime, or pure-Python
+    fallback) to enforce the safeguarding/consent/offline-assessment rules
+    defined in ``metta-logic/syncsenta_policy.metta``.  A session that does
+    not receive ``Approved`` is returned immediately with an empty rule list
+    and the policy verdict attached.
+
     This is a Python implementation of MeTTa concepts.
-    When you have 100+ rules, migrate to actual MeTTa/Hyperon.
+    When you have 100+ rules, migrate to actual MeTTa/Hyperon for the
+    pedagogical layer too.
     """
-    
+
     def __init__(self, rules_path: Optional[Path] = None):
         self.logger = AgentLogger("metta_engine")
         self.rules: Dict[str, MeTTaRule] = {}
         self.atomspace: Dict[str, Any] = {}  # Simulated atomspace
-        
+
+        # Shared policy evaluator — real Hyperon if installed, else fallback.
+        self._policy = get_policy_evaluator()
+        self.logger.info(
+            f"MeTTaEngine policy gate: {type(self._policy).__name__}"
+        )
+
         # Load rules from file if provided
         if rules_path and rules_path.exists():
             self.load_rules_from_file(rules_path)
@@ -160,18 +190,130 @@ class MeTTaEngine:
                 f"Updated rule {rule_id} confidence: {old_confidence:.2f} → {new_confidence:.2f}"
             )
     
-    def evaluate(self, telemetry: Dict[str, Any], context: Dict[str, Any]) -> List[Tuple[MeTTaRule, float]]:
-        """Evaluate all rules against current telemetry and context.
-        
-        Returns:
-            List of (rule, match_score) tuples for rules that fired
+    def check_policy(
+        self,
+        age_band: str = "unknown",
+        consent: str = "unknown",
+        connectivity: str = "online",
+        intent: str = "socratic-tutor",
+        safety_signal: str = "clear",
+        role: str = "student",
+        goal: str = "inclusive-learning",
+        accessibility: str = "default",
+    ) -> PolicyVerdict:
+        """Run the MeTTa policy gate before any pedagogical evaluation.
+
+        This is the real Hyperon (or fallback) enforcement of
+        ``syncsenta_policy.metta``.  Call this once per session before
+        calling ``evaluate()``.
+
+        Returns a ``PolicyVerdict``; ``verdict.approved`` is True only
+        when the session is safe to continue.
+
+        Example::
+
+            verdict = engine.check_policy(
+                age_band="primary",
+                consent="granted",
+                connectivity="online",
+                safety_signal="clear",
+            )
+            if not verdict.approved:
+                raise PermissionError(verdict.verdict)
         """
+        req = PolicyRequest(
+            role=role,
+            age_band=age_band,
+            intent=intent,
+            goal=goal,
+            connectivity=connectivity,
+            consent=consent,
+            safety_signal=safety_signal,
+            accessibility=accessibility,
+        )
+        verdict = self._policy.evaluate_session(req)
+        self.logger.info(
+            f"Policy gate [{type(self._policy).__name__}]: {verdict.verdict}",
+            extra={
+                "age_band": age_band,
+                "consent": consent,
+                "connectivity": connectivity,
+                "safety_signal": safety_signal,
+                "approved": verdict.approved,
+            },
+        )
+        return verdict
+
+    def check_safeguarding(self, signal: str) -> PolicyVerdict:
+        """Evaluate a safeguarding signal via the real MeTTa policy.
+
+        ``signal`` should be one of: clear | wellbeing |
+        abuse-or-exploitation | self-harm | dangerous-activity |
+        sexual-content | privacy-request
+        """
+        return self._policy.evaluate_safeguarding(signal)
+
+    def check_cbc_evidence(self, completeness: str) -> PolicyVerdict:
+        """Evaluate CBC evidence completeness: complete | incomplete | unknown."""
+        return self._policy.evaluate_cbc_evidence(completeness)
+
+    def check_attendance(
+        self, token_status: str, consent_status: str
+    ) -> PolicyVerdict:
+        """Evaluate an attendance action: (token_status, consent_status)."""
+        return self._policy.evaluate_attendance_action(token_status, consent_status)
+
+    def check_assessment_finalization(self, sync_state: str) -> PolicyVerdict:
+        """Evaluate assessment sync state: offline-pending-sync | synced."""
+        return self._policy.evaluate_assessment_finalization(sync_state)
+
+    def evaluate(
+        self,
+        telemetry: Dict[str, Any],
+        context: Dict[str, Any],
+        *,
+        policy_verdict: Optional[PolicyVerdict] = None,
+    ) -> List[Tuple[MeTTaRule, float]]:
+        """Evaluate pedagogical rules against current telemetry and context.
+
+        If ``policy_verdict`` is supplied and not approved, the method
+        returns an empty list immediately — no pedagogical rules run
+        for a session that failed the policy gate.
+
+        If ``policy_verdict`` is *not* supplied the engine runs a
+        ``check_policy()`` call automatically using values from ``context``
+        (keys: ``age_band``, ``consent``, ``connectivity``, ``intent``,
+        ``safety_signal``).
+
+        Returns:
+            List of (rule, match_score) tuples for rules that fired,
+            sorted by combined score descending.
+        """
+        # ── Policy gate ──────────────────────────────────────────────
+        if policy_verdict is None:
+            policy_verdict = self.check_policy(
+                age_band=context.get("age_band", "unknown"),
+                consent=context.get("consent", "unknown"),
+                connectivity=context.get("connectivity", "online"),
+                intent=context.get("intent", "socratic-tutor"),
+                safety_signal=context.get("safety_signal", "clear"),
+                role=context.get("role", "student"),
+            )
+
+        if not policy_verdict.approved:
+            self.logger.warning(
+                f"Pedagogical evaluation blocked by policy gate: "
+                f"{policy_verdict.verdict}"
+            )
+            return []
+
+        # ── Pedagogical rules ────────────────────────────────────────
         fired_rules = []
-        
+
         # Populate atomspace with current data
         self.atomspace = {
             "telemetry": telemetry,
-            "context": context
+            "context": context,
         }
         
         for rule in self.rules.values():
