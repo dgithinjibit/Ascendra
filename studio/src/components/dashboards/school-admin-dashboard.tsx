@@ -152,18 +152,11 @@ export default function SchoolAdminDashboard() {
         if (!session?.user) return;
         const { data: profile } = await supabase
           .from('profiles')
-          .select('full_name, school_id')
+          .select('full_name, school_name')
           .eq('id', session.user.id)
           .maybeSingle();
         if (profile?.full_name) setAdminName(profile.full_name);
-        if (profile?.school_id) {
-          const { data: school } = await supabase
-            .from('schools')
-            .select('name')
-            .eq('id', profile.school_id)
-            .maybeSingle();
-          if (school?.name) setSchoolName(school.name);
-        }
+        if (profile?.school_name) setSchoolName(profile.school_name);
       } catch { /* fallback to defaults */ }
     }
     load();

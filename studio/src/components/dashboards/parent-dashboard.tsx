@@ -24,6 +24,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/lib/supabase/client';
 
+const DEMO_DATA_ENABLED =
+  process.env.NODE_ENV !== 'production' && process.env.NEXT_PUBLIC_PARENT_DASHBOARD_DEMO === 'true';
+
 // ---------------------------------------------------------------------------
 // Demo data — used when the parent has no linked students in Supabase yet.
 // Clearly labelled so it's easy to replace once the DB is populated.
@@ -113,21 +116,22 @@ export default function ParentDashboard() {
           return;
         }
       } catch { /* fall through */ }
-      // Fallback: no session (presentation mode).
+      // Do not expose synthetic learners when a real session is unavailable.
       setParentName('Parent');
-      setUsingDemo(true);
+      setUsingDemo(DEMO_DATA_ENABLED);
     }
     loadParent();
   }, []);
 
-  const students = DEMO_STUDENTS;
-  const messages = DEMO_MESSAGES;
+  const students = DEMO_DATA_ENABLED ? DEMO_STUDENTS : [];
+  const messages = DEMO_DATA_ENABLED ? DEMO_MESSAGES : [];
+  const events = DEMO_DATA_ENABLED ? DEMO_EVENTS : [];
   const [selectedStudent, setSelectedStudent] = useState(DEMO_STUDENTS[0]);
 
   const totalFeeBalance = students.reduce((sum, s) => sum + s.feeBalance, 0);
-  const averageAttendance = Math.round(
-    students.reduce((sum, s) => sum + s.attendanceRate, 0) / students.length
-  );
+  const averageAttendance = students.length
+    ? Math.round(students.reduce((sum, s) => sum + s.attendanceRate, 0) / students.length)
+    : 0;
 
   return (
     <div className="space-y-6">
@@ -210,6 +214,12 @@ export default function ParentDashboard() {
             <CardDescription>Academic performance and attendance overview</CardDescription>
           </CardHeader>
           <CardContent>
+            {students.length === 0 ? (
+              <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
+                No learner is linked to this parent account yet. Ask the learner to share their
+                secure connection code; SyncSenta will show verified progress here after linking.
+              </div>
+            ) : (
             <Tabs
               value={selectedStudent.id}
               onValueChange={(value) => {
@@ -293,6 +303,7 @@ export default function ParentDashboard() {
                 </TabsContent>
               ))}
             </Tabs>
+            )}
           </CardContent>
         </Card>
 
@@ -340,7 +351,7 @@ export default function ParentDashboard() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {DEMO_EVENTS.map((event) => (
+                {events.map((event) => (
                   <div
                     key={event.id}
                     className="flex items-center space-x-3 p-3 border rounded-lg"

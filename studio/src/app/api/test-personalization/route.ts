@@ -16,12 +16,12 @@ import { cookies } from 'next/headers';
  *   GET /api/test-personalization?action=progress&userId=<id>&subject=<name>
  */
 
-function makeSupabaseClient() {
+async function makeSupabaseClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!supabaseUrl || !supabaseAnonKey) return null;
 
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   return createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
       getAll() {
@@ -44,7 +44,7 @@ export async function GET(request: Request) {
   // action=profile
   // ------------------------------------------------------------------
   if (action === 'profile') {
-    const supabase = makeSupabaseClient();
+    const supabase = await makeSupabaseClient();
 
     if (supabase) {
       try {
@@ -120,7 +120,7 @@ export async function GET(request: Request) {
       );
     }
 
-    const supabase = makeSupabaseClient();
+    const supabase = await makeSupabaseClient();
 
     if (supabase) {
       try {
