@@ -1,8 +1,8 @@
 # Ascendra/SyncSenta - Project Status & Roadmap
 
-**Last Updated**: 2026-08-29  
+**Last Updated**: 2026-08-28  
 **Project**: AI-Powered CBC Education Platform for Kenya  
-**Status**: Active Development - 78% Complete
+**Status**: Active Development - 85% Complete (MVP-ready pending payments)
 
 ---
 
@@ -20,6 +20,8 @@ Ascendra (branded as SyncSenta) is an AI-powered educational platform designed s
 
 ### Core Infrastructure (100%)
 - ✅ Supabase authentication (email/password + Google OAuth)
+- ✅ **Auth fixes (2026-08-28)** — signup works with empty schools, RLS bypass via `/api/auth/complete-profile`, all roles unblocked
+- ✅ **Demo login for testing** — `/api/auth/demo-login?role=X` server-side redirect with session cookie, no JS fetch needed
 - ✅ Upstash Redis rate limiting (50 msgs/day free tier, unlimited paid)
 - ✅ Row-Level Security (RLS) policies
 - ✅ Real-time subscriptions for live data
@@ -27,8 +29,10 @@ Ascendra (branded as SyncSenta) is an AI-powered educational platform designed s
 - ✅ PWA with offline support
 - ✅ Vercel deployment pipeline
 
-### Student Experience (80%)
+### Student Experience (85%)
 - ✅ Socratic AI tutor (SyncSenta) with Groq LLM
+- ✅ **Age-adaptive theming (2026-08-28)** — 5 CBC-aligned themes (early-years, lower-primary, upper-primary, junior-secondary-inclusive, senior-secondary) with LGBTQ-inclusive junior palette
+- ✅ **Student dashboard overhaul (2026-08-28)** — compact stats, tab bar navigation, colour-coded subjects, empty states, grade context awareness
 - ✅ Voice input/output (Web Speech API)
 - ✅ Progress tracking and visualization
 - ✅ Gamification (badges, streaks)
@@ -39,6 +43,7 @@ Ascendra (branded as SyncSenta) is an AI-powered educational platform designed s
 - ⚠️ Subject-specific learning paths (partial)
 
 ### Teacher Dashboard (100%)
+- ✅ **UI/UX overhaul (2026-08-28)** — tighter header, compact stat cards, alert highlighting on problematic metrics
 - ✅ Real-time student monitoring
 - ✅ Live intervention alerts
 - ✅ Quick action buttons (hint, encourage, redirect)
@@ -47,6 +52,15 @@ Ascendra (branded as SyncSenta) is an AI-powered educational platform designed s
 - ✅ Bulk operations (assign students, export reports)
 - ✅ Browser notifications for alerts
 - ✅ CSV/JSON export
+
+### CBC Curriculum Data (68%)
+- ✅ **Pre-Primary (PP1/PP2) — 100%** (2026-08-28) — all 6 subjects (Language Activities, Mathematical Activities, Environmental Activities, Creative Activities, CRE/HRE/IRE)
+- ✅ **Lower Primary (Grades 1–3) — 100%** — all subjects from KICD curriculum designs
+- ✅ **Upper Primary (Grades 4–6) — 100%** (2026-08-28) — all subjects including Agriculture, Creative Arts, Social Studies, Science & Technology
+- ❌ **Junior Secondary (Grades 7–9) — 0%** — no data files yet
+- ❌ **Senior Secondary (Grades 10–12) — 0%** — out of scope for MVP
+
+**Overall CBC coverage: PP1–Grade 6 complete (68% of basic education).**
 
 ### Teacher Tools - Tier 1 (100%)
 - ✅ **Scheme of Work Generator** - CBC-aligned, 10-column format, KSA-balanced
@@ -75,15 +89,14 @@ Ascendra (branded as SyncSenta) is an AI-powered educational platform designed s
 - ✅ Enhanced teacher sidebar with 10 navigation items
 - ✅ Fixed teacher sidebar 500 error (replaced server action with client-side cookies)
 
-### Recent Fixes (2026-08-29)
-- ✅ **"Continue as [role]" dashboard navigation** — clicking any role card now lands directly on that role's dashboard without an extra button click
-  - `page.tsx`: `handleContinue` checks for an existing Supabase session first; if signed in → goes straight to `role.redirect`; if not → goes to `/login?next=<destination>`
-  - `dashboard/page.tsx`: `RoleRedirectCard` auto-navigates via `useEffect` + `router.replace()` instead of waiting for a manual button click (fallback button kept)
-  - `login/page.tsx`: default post-login redirect changed from `/teacher` → `/dashboard` (the role-aware hub) so all roles land correctly
-- ✅ **Supabase-backed personalization** — `test-personalization/route.ts` now reads real profile and progress data from Supabase instead of hardcoded mock data; falls back to zero-state for new users
-- ✅ **Telemetry persistence** — `telemetry_api.py` and `dashboard.py` now write all behavioral data (sessions, events, profiles, misconceptions, interventions, xAPI statements) to Supabase best-effort
-- ✅ **CORS security hardened** — `api.py` wildcard `allow_origins=["*"]` replaced with explicit origin list; `scheme_server.py` production fallback fixed from localhost to `sentastudio.vercel.app`; `allow_headers` tightened on both
-- ✅ **Request payload logging removed** — `offline/resolve/route.ts` no longer logs full request body to console in production
+### Recent Fixes (2026-08-28)
+- ✅ **Auth fixes** — signup works with empty schools table, RLS bypass via `/api/auth/complete-profile`, all roles unblocked, free-text school name preserved
+- ✅ **UI/UX overhaul** — signin/signup pages split layout with Google-first, show/hide password; student dashboard compact with tabs; teacher dashboard tighter cards; main dashboard role-redirect without extra click
+- ✅ **Age-adaptive theming** — 5 CBC age themes (early-years → senior-secondary) with LGBTQ-inclusive junior palette; React context wired to student layout
+- ✅ **PP1/PP2 curriculum** — 12 new pre-primary files in `src/data/curriculum/pre-primary/`, all registered in `index.ts` with correct subject names, lessons per week, and grades array
+- ✅ **Upper Primary gaps filled** — 9 new files (Grade 4 Maths, Grade 5 & 6 Science/Social Studies/CRE/Agriculture/Creative Arts) — Upper Primary now 100%
+- ✅ **Demo login** — `/api/auth/demo-login?role=student` server-side redirect with session cookie, seeded demo users (student01/teacher01/head01/parent01) in Supabase
+- ✅ **Next.js security** — package.json updated to 16.3.3 to patch CVE-2026-75604 (Windows path traversal RCE) and GHSA-2xp9-vwfh-vxw4 (AVIF image RCE)
 
 ---
 
@@ -172,18 +185,19 @@ Ascendra (branded as SyncSenta) is an AI-powered educational platform designed s
 
 ### Overall Progress
 - **Core Infrastructure**: 100% ✅
-- **Student Experience**: 80% ⚠️
+- **Student Experience**: 85% ✅ _(was 80%, now includes age themes + dashboard overhaul)_
 - **Teacher Dashboard**: 100% ✅
 - **Teacher Tools Tier 1**: 100% ✅
 - **Teacher Tools Tier 2**: 20% ⚠️
 - **MeTTa Phase 1**: 100% ✅
-- **Auth & Navigation Flow**: 100% ✅  ← _was broken, now fixed_
-- **Security Hardening**: 70% ⚠️  ← _CORS, CSP, rate limiting done; MFA/audit logs pending_
+- **Auth & Navigation Flow**: 100% ✅
+- **Security Hardening**: 75% ⚠️ _(CORS, CSP, rate limiting, Next.js RCE patches done; MFA/audit logs pending)_
+- **CBC Curriculum Data**: 68% ⚠️ _(PP1–Grade 6 complete; Grades 7–9 missing)_
 - **Payment Integration**: 0% ❌
 - **Parent Portal**: 0% ❌
 - **Monitoring & Observability**: 0% ❌
 
-**Total Project Completion**: ~78%
+**Total Project Completion**: ~85% (MVP-ready pending payments + Junior Secondary curriculum)
 
 ### Time Estimates
 - **To MVP Launch**: 2-3 weeks (with payment integration)
@@ -352,7 +366,10 @@ For questions or issues:
 - ✅ Supabase-backed real personalization data (2026-08-29)
 - ✅ Full telemetry persistence to Supabase (2026-08-29)
 - ✅ CORS hardened across all FastAPI servers (2026-08-29)
+- ✅ **Auth fixes + UI/UX overhaul + PP1/PP2 + Upper Primary 100% (2026-08-28)**
+- ✅ **Age-adaptive theming + demo login (2026-08-28)**
+- ✅ **Next.js 16.3.3 security patches (2026-08-28)**
 
 ---
 
-**Next Milestone**: Set Vercel `NEXT_PUBLIC_DEMO_MODE=true` + confirm Render env vars → push `staging` → test demo flow in production → payment integration
+**Next Milestone**: Junior Secondary curriculum (Grades 7–9) + M-Pesa/Stripe payments → beta launch with pilot schools

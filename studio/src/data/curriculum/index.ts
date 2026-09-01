@@ -55,6 +55,19 @@ export { grade4Kiswahili } from "./upper-primary/kiswahili";
 export { grade5Kiswahili } from "./upper-primary/kiswahili-grade5";
 export { grade6Kiswahili } from "./upper-primary/kiswahili-grade6";
 export { grade1IRE, grade2IRE, grade3IRE } from "./lower-primary/ire";
+// Junior Secondary exports
+export { grade7Mathematics } from "./junior-secondary/mathematics-grade7";
+export { grade8Mathematics } from "./junior-secondary/mathematics-grade8";
+export { grade9Mathematics } from "./junior-secondary/mathematics-grade9";
+export { grade7English } from "./junior-secondary/english-grade7";
+export { grade8English } from "./junior-secondary/english-grade8";
+export { grade9English } from "./junior-secondary/english-grade9";
+export { grade7IntegratedScience } from "./junior-secondary/integrated-science-grade7";
+export { grade8IntegratedScience } from "./junior-secondary/integrated-science-grade8";
+export { grade9IntegratedScience } from "./junior-secondary/integrated-science-grade9";
+export { grade7SocialStudies } from "./junior-secondary/social-studies-grade7";
+export { grade8SocialStudies } from "./junior-secondary/social-studies-grade8";
+export { grade9SocialStudies } from "./junior-secondary/social-studies-grade9";
 
 import type { StrandInfo } from "./types";
 import type { GradeLevel } from "../../types/curriculum";
@@ -111,6 +124,20 @@ import { grade6Mathematics } from "./upper-primary/mathematics-grade6";
 import { grade4Kiswahili } from "./upper-primary/kiswahili";
 import { grade5Kiswahili } from "./upper-primary/kiswahili-grade5";
 import { grade6Kiswahili } from "./upper-primary/kiswahili-grade6";
+
+// Junior Secondary imports
+import { grade7Mathematics } from "./junior-secondary/mathematics-grade7";
+import { grade8Mathematics } from "./junior-secondary/mathematics-grade8";
+import { grade9Mathematics } from "./junior-secondary/mathematics-grade9";
+import { grade7English } from "./junior-secondary/english-grade7";
+import { grade8English } from "./junior-secondary/english-grade8";
+import { grade9English } from "./junior-secondary/english-grade9";
+import { grade7IntegratedScience } from "./junior-secondary/integrated-science-grade7";
+import { grade8IntegratedScience } from "./junior-secondary/integrated-science-grade8";
+import { grade9IntegratedScience } from "./junior-secondary/integrated-science-grade9";
+import { grade7SocialStudies } from "./junior-secondary/social-studies-grade7";
+import { grade8SocialStudies } from "./junior-secondary/social-studies-grade8";
+import { grade9SocialStudies } from "./junior-secondary/social-studies-grade9";
 
 // ─── Strand registry keyed by "Grade X|Subject" ───
 
@@ -192,6 +219,19 @@ const hardcodedStrands: Record<CurriculumKey, StrandInfo[]> = {
   "Grade 5|Mathematics": grade5Mathematics,
   "Grade 6|Mathematics": grade6Mathematics,
   "Grade 6|Social Studies": grade6SocialStudies,
+  // ── Junior Secondary ─────────────────────────────────────────────────────
+  "Grade 7|Mathematics": grade7Mathematics,
+  "Grade 8|Mathematics": grade8Mathematics,
+  "Grade 9|Mathematics": grade9Mathematics,
+  "Grade 7|English": grade7English,
+  "Grade 8|English": grade8English,
+  "Grade 9|English": grade9English,
+  "Grade 7|Integrated Science": grade7IntegratedScience,
+  "Grade 8|Integrated Science": grade8IntegratedScience,
+  "Grade 9|Integrated Science": grade9IntegratedScience,
+  "Grade 7|Social Studies": grade7SocialStudies,
+  "Grade 8|Social Studies": grade8SocialStudies,
+  "Grade 9|Social Studies": grade9SocialStudies,
 };
 
 /**
