@@ -1,5 +1,5 @@
 /**
- * Sign Up Form — no Card wrapper, tight spacing, Google first
+ * Sign Up Form — no Card wrapper, tight spacing, demo accounts first
  */
 
 'use client';
@@ -14,6 +14,13 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertCircle, Loader2, Eye, EyeOff } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+
+const DEMO_ACCOUNTS = [
+  { role: 'student',  label: '🎒 Join as Student',  email: 'student01@syncsenta.dev',  password: 'Demo@Student01',  redirect: '/student' },
+  { role: 'teacher',  label: '📚 Join as Teacher',  email: 'teacher01@syncsenta.dev',  password: 'Demo@Teacher01',  redirect: '/teacher/dashboard' },
+  { role: 'parent',   label: '👨‍👩‍👧 Join as Parent',   email: 'parent01@syncsenta.dev',   password: 'Demo@Parent01',   redirect: '/dashboard' },
+  { role: 'head',     label: '🏫 Join as Head',      email: 'head01@syncsenta.dev',      password: 'Demo@Head01',      redirect: '/teacher/dashboard' },
+] as const;
 
 function deriveLevelFromGrade(grade: string): string | null {
   if (grade === 'PP1' || grade === 'PP2') return 'pre-primary';
@@ -39,11 +46,12 @@ function roleFromQuery(value: string | null): SignupRole {
 export function SignUpForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { signUp, signInWithGoogle } = useAuth();
+  const { signUp, signIn } = useAuth();
   const [schools, setSchools] = useState<SchoolOption[]>([]);
   const [classes, setClasses] = useState<ClassOption[]>([]);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [demoLoading, setDemoLoading] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     email: '',
@@ -135,17 +143,19 @@ export function SignUpForm() {
     }
   };
 
-  const handleGoogleSignIn = async () => {
-    setLoading(true);
+  const handleDemoLogin = async (account: typeof DEMO_ACCOUNTS[number]) => {
+    setDemoLoading(account.role);
     setError(null);
     try {
-      const next = `/auth/onboarding?role=${encodeURIComponent(formData.role)}`;
-      await signInWithGoogle({ next, flow: 'signup' });
+      await signIn(account.email, account.password);
+      router.push(account.redirect);
     } catch (err: any) {
-      setError(err.message || 'Failed to sign in with Google');
-      setLoading(false);
+      setError(`Demo login failed: ${err.message || 'Please try again'}`);
+      setDemoLoading(null);
     }
   };
+
+  const isAnyLoading = loading || demoLoading !== null;
 
   return (
     <div className="space-y-5">
@@ -156,11 +166,27 @@ export function SignUpForm() {
         </Alert>
       )}
 
-      {/* Google first */}
-      <Button type="button" variant="outline" className="w-full h-11 gap-2 font-medium" onClick={handleGoogleSignIn} disabled={loading}>
-        <GoogleIcon />
-        Continue with Google
-      </Button>
+      {/* Demo accounts — try the app instantly */}
+      <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 space-y-2">
+        <p className="text-xs font-semibold text-blue-800">🚀 Try a demo account — no sign-up needed</p>
+        <div className="grid grid-cols-2 gap-2">
+          {DEMO_ACCOUNTS.map((account) => (
+            <Button
+              key={account.role}
+              type="button"
+              variant="outline"
+              className="h-10 text-xs font-medium border-blue-200 bg-white hover:bg-blue-50"
+              onClick={() => handleDemoLogin(account)}
+              disabled={isAnyLoading}
+            >
+              {demoLoading === account.role
+                ? <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                : null}
+              {account.label}
+            </Button>
+          ))}
+        </div>
+      </div>
 
       <div className="relative">
         <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
@@ -173,7 +199,7 @@ export function SignUpForm() {
         {/* Role selector — first so context is set early */}
         <div className="space-y-1.5">
           <Label htmlFor="role">I am a…</Label>
-          <Select value={formData.role} onValueChange={(v: any) => set('role', v)} disabled={loading}>
+          <Select value={formData.role} onValueChange={(v: any) => set('role', v)} disabled={isAnyLoading}>
             <SelectTrigger id="role" className="h-11"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="student">Student</SelectItem>
@@ -187,13 +213,13 @@ export function SignUpForm() {
         <div className="space-y-1.5">
           <Label htmlFor="fullName">Full Name</Label>
           <Input id="fullName" type="text" placeholder="Jane Wanjiru" value={formData.fullName}
-            onChange={(e) => set('fullName', e.target.value)} required disabled={loading} className="h-11" />
+            onChange={(e) => set('fullName', e.target.value)} required disabled={isAnyLoading} className="h-11" />
         </div>
 
         <div className="space-y-1.5">
           <Label htmlFor="email">Email</Label>
           <Input id="email" type="email" placeholder="you@example.com" value={formData.email}
-            onChange={(e) => set('email', e.target.value)} required disabled={loading} autoComplete="email" className="h-11" />
+            onChange={(e) => set('email', e.target.value)} required disabled={isAnyLoading} autoComplete="email" className="h-11" />
         </div>
 
         <div className="space-y-1.5">
@@ -201,7 +227,7 @@ export function SignUpForm() {
           <div className="relative">
             <Input id="password" type={showPassword ? 'text' : 'password'} placeholder="Min. 8 characters"
               value={formData.password} onChange={(e) => set('password', e.target.value)}
-              required disabled={loading} minLength={8} autoComplete="new-password" className="h-11 pr-10" />
+              required disabled={isAnyLoading} minLength={8} autoComplete="new-password" className="h-11 pr-10" />
             <button type="button" onClick={() => setShowPassword(!showPassword)}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" tabIndex={-1}>
               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -214,7 +240,7 @@ export function SignUpForm() {
           <div className="relative">
             <Input id="confirmPassword" type={showConfirm ? 'text' : 'password'} placeholder="Repeat password"
               value={formData.confirmPassword} onChange={(e) => set('confirmPassword', e.target.value)}
-              required disabled={loading} className="h-11 pr-10" />
+              required disabled={isAnyLoading} className="h-11 pr-10" />
             <button type="button" onClick={() => setShowConfirm(!showConfirm)}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" tabIndex={-1}>
               {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -227,7 +253,7 @@ export function SignUpForm() {
           <>
             <div className="space-y-1.5">
               <Label htmlFor="grade">Grade</Label>
-              <Select value={formData.grade} onValueChange={(v) => set('grade', v)} disabled={loading}>
+              <Select value={formData.grade} onValueChange={(v) => set('grade', v)} disabled={isAnyLoading}>
                 <SelectTrigger id="grade" className="h-11"><SelectValue placeholder="Select your grade" /></SelectTrigger>
                 <SelectContent>
                   {[1,2,3,4,5,6,7,8,9].map((g) => (
@@ -245,7 +271,7 @@ export function SignUpForm() {
                     if (v === 'home-learning') { set('schoolId', ''); set('schoolName', ''); set('homeLearning', true); set('classroomId', ''); set('className', ''); return; }
                     const s = schools.find((x) => x.id === v);
                     setFormData((f) => ({ ...f, schoolId: v, schoolName: s?.name ?? '', homeLearning: false, classroomId: '', className: '' }));
-                  }} disabled={loading}>
+                  }} disabled={isAnyLoading}>
                   <SelectTrigger id="school" className="h-11"><SelectValue placeholder="Choose school or home learning" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="home-learning">I learn at home</SelectItem>
@@ -255,7 +281,7 @@ export function SignUpForm() {
               ) : (
                 <Input id="school" type="text" placeholder="Your school name (optional)" value={formData.schoolName}
                   onChange={(e) => setFormData((f) => ({ ...f, schoolName: e.target.value, schoolId: '', homeLearning: false }))}
-                  disabled={loading} className="h-11" />
+                  disabled={isAnyLoading} className="h-11" />
               )}
             </div>
 
@@ -264,7 +290,7 @@ export function SignUpForm() {
                 <Label htmlFor="classroom">Class <span className="text-muted-foreground text-xs">(optional)</span></Label>
                 <Select value={formData.classroomId}
                   onValueChange={(v) => { const c = classes.find((x) => x.id === v); setFormData((f) => ({ ...f, classroomId: v, className: c?.name ?? '' })); }}
-                  disabled={loading || !formData.grade}>
+                  disabled={isAnyLoading || !formData.grade}>
                   <SelectTrigger id="classroom" className="h-11"><SelectValue placeholder="Select your class" /></SelectTrigger>
                   <SelectContent>
                     {classes.filter((c) => !formData.grade || c.grade === formData.grade).map((c) => (
@@ -282,7 +308,7 @@ export function SignUpForm() {
           <div className="space-y-1.5">
             <Label htmlFor="school">School <span className="text-muted-foreground text-xs">(optional)</span></Label>
             {schools.length > 0 ? (
-              <Select value={formData.schoolId} onValueChange={(v) => { const s = schools.find((x) => x.id === v); setFormData((f) => ({ ...f, schoolId: v, schoolName: s?.name ?? '' })); }} disabled={loading}>
+              <Select value={formData.schoolId} onValueChange={(v) => { const s = schools.find((x) => x.id === v); setFormData((f) => ({ ...f, schoolId: v, schoolName: s?.name ?? '' })); }} disabled={isAnyLoading}>
                 <SelectTrigger id="school" className="h-11"><SelectValue placeholder="Select your school" /></SelectTrigger>
                 <SelectContent>
                   {schools.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}{s.county ? ` — ${s.county}` : ''}</SelectItem>)}
@@ -291,7 +317,7 @@ export function SignUpForm() {
             ) : (
               <Input id="school" type="text" placeholder="Your school name (optional)" value={formData.schoolName}
                 onChange={(e) => setFormData((f) => ({ ...f, schoolName: e.target.value, schoolId: '' }))}
-                disabled={loading} className="h-11" />
+                disabled={isAnyLoading} className="h-11" />
             )}
           </div>
         )}
@@ -301,11 +327,11 @@ export function SignUpForm() {
           <div className="space-y-1.5">
             <Label htmlFor="schoolName">School Name <span className="text-muted-foreground text-xs">(optional)</span></Label>
             <Input id="schoolName" type="text" placeholder="Your school name" value={formData.schoolName}
-              onChange={(e) => set('schoolName', e.target.value)} disabled={loading} className="h-11" />
+              onChange={(e) => set('schoolName', e.target.value)} disabled={isAnyLoading} className="h-11" />
           </div>
         )}
 
-        <Button type="submit" className="w-full h-11" disabled={loading}>
+        <Button type="submit" className="w-full h-11" disabled={isAnyLoading}>
           {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating account…</> : 'Create Account'}
         </Button>
       </form>
@@ -318,13 +344,4 @@ export function SignUpForm() {
   );
 }
 
-function GoogleIcon() {
-  return (
-    <svg className="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
-      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-    </svg>
-  );
-}
+
