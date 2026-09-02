@@ -5,10 +5,10 @@
  * Uses service role key (keep secret, never expose to browser).
  */
 
-import { createClient } from '@supabase/supabase-js';
+import { createClient as supabaseCreateClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-let serverClient: ReturnType<typeof createClient<Database>> | null = null;
+let serverClient: ReturnType<typeof supabaseCreateClient> | null = null;
 
 export function getSupabaseServerClient() {
   if (serverClient) {
@@ -21,7 +21,7 @@ export function getSupabaseServerClient() {
   if (!supabaseUrl || !supabaseServiceKey) {
     // During build time, use placeholder values to allow build to complete
     console.warn('⚠️ Supabase server env vars not set. Using placeholder for build.');
-    serverClient = createClient<Database>(
+    serverClient = supabaseCreateClient<Database>(
       supabaseUrl || 'https://placeholder.supabase.co',
       supabaseServiceKey || 'placeholder-service-key',
       {
@@ -34,7 +34,7 @@ export function getSupabaseServerClient() {
     return serverClient;
   }
 
-  serverClient = createClient<Database>(supabaseUrl, supabaseServiceKey, {
+  serverClient = supabaseCreateClient<Database>(supabaseUrl, supabaseServiceKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
@@ -42,4 +42,13 @@ export function getSupabaseServerClient() {
   });
 
   return serverClient;
+}
+
+// Backwards-compatible export:
+// Some files import `createClient` from this module (e.g. `import { createClient } from '@/lib/supabase/server'`)
+// To avoid build-time "export not found" errors on Vercel, re-export a small wrapper named
+// `createClient` that returns the same server client. Callers may `await createClient()`
+// (that's fine even if the function is synchronous).
+export function createClient() {
+  return getSupabaseServerClient();
 }
