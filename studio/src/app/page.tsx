@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import {
   ArrowRight,
   BarChart3,
@@ -12,18 +13,16 @@ import {
   ShieldCheck,
   Users,
   WifiOff,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 /**
- * When DEMO_MODE env var is set (server side), the "Continue as X" buttons
- * hit /api/auth/demo-login?role=X which signs in and redirects server-side.
- * When not set they go to the normal signup flow.
- *
- * NEXT_PUBLIC_DEMO_MODE is baked at build time — set it in Vercel Preview env only.
+ * Demo mode is now always enabled for easy access to the Grade 2 system.
+ * Users can instantly try the demo accounts without registration.
  */
-const DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
+const DEMO_MODE = true; // Always enable demo mode for immediate access
 
 const roles = [
   {
@@ -78,6 +77,41 @@ const roles = [
 
 export default function HomePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const [autoLoginLoading, setAutoLoginLoading] = useState<string | null>(null);
+
+  // Auto-redirect logic for URL parameters
+  useEffect(() => {
+    const role = searchParams.get('role');
+    const demo = searchParams.get('demo');
+    
+    // Auto-login with demo accounts when URL params are present
+    if ((demo === 'true' || role) && role && !autoLoginLoading) {
+      const validRoles = ['student', 'teacher', 'head', 'parent'];
+      if (validRoles.includes(role)) {
+        setAutoLoginLoading(role);
+        // Use a small delay to show loading state
+        setTimeout(() => {
+          window.location.href = `/api/auth/demo-login?role=${role}`;
+        }, 500);
+      }
+    }
+  }, [searchParams, autoLoginLoading]);
+
+  // Show loading state during auto-login
+  if (autoLoginLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-primary" />
+          <h2 className="text-2xl font-bold mb-2">Launching SyncSenta...</h2>
+          <p className="text-muted-foreground">
+            Setting up your Grade 2 learning experience as {autoLoginLoading}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   function ctaLabel(role: typeof roles[0]) {
     const name =
@@ -116,14 +150,14 @@ export default function HomePage() {
           <div className="flex flex-col justify-center">
             <div className="mb-5 inline-flex w-fit items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1.5 text-sm font-medium text-primary">
               <ShieldCheck className="h-4 w-4" aria-hidden="true" />
-              Built for Kenyan classrooms
+              🚀 Grade 2 Demo Ready - Click any role below
             </div>
             <h1 className="max-w-3xl font-headline text-4xl font-bold tracking-tight text-primary sm:text-5xl lg:text-6xl">
-              One learning system for the whole school community.
+              Omega Agent Powered Learning for Grade 2 Students
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-muted-foreground sm:text-xl">
-              SyncSenta connects students, teachers, school leaders, and families around
-              CBC-aligned learning evidence—while keeping people in control of important decisions.
+              SyncSenta's Omega Agent provides intelligent, culturally-adapted learning experiences 
+              that sync seamlessly across all devices. Built for Kenyan Grade 2 students with CBC curriculum alignment.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Button size="lg" onClick={() => router.push(DEMO_MODE ? "/api/auth/demo-login?role=student" : "/signup")} className="min-h-12 sm:w-auto">

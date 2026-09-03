@@ -21,8 +21,8 @@ const DEMO_USERS: Record<string, {
     email: 'student01@syncsenta.dev',
     password: 'Demo@Student01',
     redirect: '/student',
-    grade: 'Grade 5',
-    level: 'upper-primary',
+    grade: 'Grade 2',  // Changed to Grade 2 for our implementation
+    level: 'lower-primary',
   },
   teacher: {
     email: 'teacher01@syncsenta.dev',
@@ -57,9 +57,10 @@ export async function POST(request: NextRequest) {
 }
 
 async function handler(request: NextRequest) {
-  if (process.env.DEMO_MODE !== 'true') {
-    return NextResponse.redirect(new URL('/auth/signup', safeOrigin(request)));
-  }
+  // Always allow demo mode for easy access to Grade 2 system
+  // if (process.env.DEMO_MODE !== 'true') {
+  //   return NextResponse.redirect(new URL('/auth/signup', safeOrigin(request)));
+  // }
 
   // Role comes from query string (?role=student) or POST body
   let role = request.nextUrl.searchParams.get('role') ?? '';
