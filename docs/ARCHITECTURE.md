@@ -1,309 +1,308 @@
 # Architecture
 
+*Last updated: September 2026*
+
 ## Executive view
 
-Ascendra is a repository of related education products rather than a single
-monolithic application. The principal implemented path is a Next.js
-application called Studio, backed by a FastAPI service called SyncSenta AI
-Agents and Supabase. A standalone Scheme Scribe application and an ESP32-CAM
-prototype live alongside that path.
+Ascendra is a monorepo of related education products. The primary path is a
+Next.js application called **Studio**, backed by a Python FastAPI service
+(**AI Agents**) and **Supabase**. A standalone **Scheme Scribe** Vite app,
+a **Rust adaptive service**, and an **ESP32-CAM firmware** prototype live
+alongside that path.
 
-The most important architectural fact is that there are **two AI delivery
-paths** in Studio:
+## Two AI delivery paths in Studio
 
-1. The Socratic student chat calls Studio's own POST /api/chat route. That
-   route authenticates, rate-limits when Upstash is configured, calls Groq
-   directly, persists progress, and streams Server-Sent Events to the browser.
-2. syncsenta chat, teacher generators, telemetry, and dashboard tooling call the
-   FastAPI service at NEXT_PUBLIC_AI_AGENTS_URL, normally on port 8001 in
-   development.
+Studio has two distinct AI paths that share intent but are not a single
+abstraction:
 
-The paths share product intent and Supabase concepts, but they are not a
-single API abstraction. Changes should preserve or deliberately consolidate
-both paths.
+**Path 1 — Socratic student chat** (`/api/chat`)
+Student browser → `POST /api/chat` → Groq (streamed SSE) → browser.
+This route authenticates, rate-limits via Upstash, calls Groq directly,
+persists history and progress, and streams SSE. Before every response it
+calls `evaluateTutoringDecision()` to compute a scaffolding level
+(Independent / Guided / Intensive) and builds a dynamic system prompt via
+`buildDynamicSystemPrompt()`. The scaffolding level is persisted to Redis
+fire-and-forget. The Rust adaptive service (`SYNCSENTA_RUST_ADAPTIVE_URL`)
+can replace this TS decision engine when deployed — the route falls back
+to the TS engine when that env var is not set.
 
-## High-level component map
+**Path 2 — FastAPI agent calls**
+Teacher generators (schemes, lesson plans, assessments), the AI agents chat,
+and telemetry call the FastAPI service at `NEXT_PUBLIC_AI_AGENTS_URL`
+(port 8001 in development, Render in production).
 
-![Ascendra / SyncSenta architecture overview](images/architecture-overview.png)
+Changes must preserve or deliberately consolidate both paths.
 
-This image is a conceptual component map. The system context and request-flow
-diagrams below are the authoritative reference for connection direction and
-runtime behavior.
+## Component map
 
-## System context
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        Browsers                                 │
+│  Student (PP1–Grade 9)    Teacher / Admin    Guardian           │
+└────────┬──────────────────────┬─────────────────────────────────┘
+         │                      │
+         ▼                      ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                   Studio  (Next.js, Vercel)                     │
+│                                                                 │
+│  /student/*          /teacher/*          /api/*                 │
+│  ├ sandbox (canvas)  ├ dashboard         ├ chat (SSE+Omega)     │
+│  ├ subject/[slug]    ├ scheme-wizard      ├ teacher/*           │
+│  ├ chat tutor        ├ phase2 analytics  ├ session/sync        │
+│  └ journey/profile   └ exams             └ generate/* (proxy)  │
+└──────┬──────────────────────┬──────────────────────────────────┘
+       │                      │
+       │ direct Groq           │ NEXT_PUBLIC_AI_AGENTS_URL
+       ▼                      ▼
+  ┌─────────┐       ┌──────────────────────────────────────────┐
+  │  Groq   │       │  AI Agents  (FastAPI, Render)            │
+  │  API    │       │  LangGraph orchestrator + specialists     │
+  └─────────┘       │  Lesson Architect, telemetry, xAPI       │
+                    └─────────────────┬────────────────────────┘
+                                      │
+                    ┌─────────────────▼────────────────────────┐
+                    │           Supabase                       │
+                    │  Auth · Postgres · RLS · Realtime        │
+                    │  Storage · Edge Functions (Scheme Scribe) │
+                    └──────────────────────────────────────────┘
 
-~~~mermaid
-flowchart LR
-  Student["Student browser"] --> Studio["Studio: Next.js app"]
-  Teacher["Teacher/admin browser"] --> Studio
-
-  Studio -->|cookie-aware browser access| Supabase["Supabase Auth + Postgres + Storage"]
-  Studio -->|POST /api/chat, SSE| StudioChat["Studio chat route"]
-  StudioChat --> Groq["Groq API"]
-  StudioChat --> Supabase
-
-  Studio -->|HTTPS and WebSocket| Agents["AI Agents: FastAPI"]
-  Agents --> Orchestrator["LangGraph orchestration + specialists"]
-  Orchestrator --> Groq
-  Agents -->|service-role client, optional/best effort| Supabase
-
-  Scheme["Scheme Scribe: Vite/React"] --> SchemeDB["Separate Supabase client and Edge Functions"]
-  SchemeDB --> Groq
-
-  ESP32["ESP32-CAM firmware"] -. intended HTTP integration .-> Agents
-~~~
-
-The dashed firmware line is intentional. The firmware currently has a
-placeholder base URL and expects endpoints such as /assess and /generate-exam,
-while the current FastAPI service exposes different route names. It is a
-prototype integration contract, not a connected production path.
+  ┌───────────────────┐    ┌──────────────────────────┐
+  │  Upstash Redis    │    │  Rust adaptive service   │
+  │  LearningSession  │    │  rust-service/ (port 8091)│
+  │  rate limits      │    │  Not yet in production   │
+  └───────────────────┘    └──────────────────────────┘
+```
 
 ## Components and responsibilities
 
-### 1. Studio web application
+### 1. Studio — `studio/`
 
-Location: [studio](../studio)
+Next.js 16 App Router, React 18, TypeScript, Tailwind, shadcn/ui.
 
-Studio is a Next.js App Router application using React, TypeScript, Tailwind,
-Supabase SSR utilities, and a mix of server and client components. The
-committed package manifest pins Next 16.2.5 and React 18.3.1.
+**Student routes**
 
-Responsibilities:
+| Route | Purpose |
+|---|---|
+| `/student` | Landing + journey selector |
+| `/student/sandbox` | Subject catalogue — routes all 10 subjects to `/student/subject/[slug]` |
+| `/student/subject/[slug]` | Subject entry page: XP badge, resume point, chat or sandbox layout |
+| `/student/sandbox/[grade]/[subject]` | Activity list |
+| `/student/sandbox/[grade]/[subject]/[activityId]` | Activity player (canvas + worksheet renderer, Redis resume) |
 
-- Public routes, authentication pages, and role-oriented layouts.
-- Student chat, sandboxes, tutor dashboard, quizzes, and progress screens.
-- Teacher schemes, lesson plans, assessments, learner monitoring, feedback,
-  and administrative dashboards.
-- Next route handlers under studio/src/app/api for same-origin operations and
-  selected proxying to the AI-agent service.
-- Browser-side Supabase sessions and Supabase-backed application data.
-- Direct Groq streaming for the primary Socratic chat route.
+**Teacher routes**
 
-Useful source areas:
+| Route | Purpose |
+|---|---|
+| `/teacher/dashboard` | Main teacher view |
+| `/teacher/scheme-wizard` | CBC scheme-of-work generator |
+| `/teacher/grade/[grade]/[...slug]` | Per-grade student view |
+| `/teacher/exams` | Exam tooling |
 
-| Concern | Source |
-| --- | --- |
-| App routes and layouts | studio/src/app |
-| UI components | studio/src/components |
-| Client/service configuration | studio/src/lib/api-config.ts |
-| Supabase helpers | studio/src/lib/supabase |
-| Student Socratic chat | studio/src/components/student/socratic-chat.tsx |
-| Direct multi-agent chat | studio/src/components/student/syncsenta-chat.tsx |
-| Security headers and CSP | studio/src/middleware.ts |
+**Key API routes**
 
-Studio starts on port 5173 because its dev script is next dev -p 5173.
+| Route | What it does |
+|---|---|
+| `POST /api/chat` | Socratic chat — Omega decision → dynamic prompt → Groq SSE |
+| `GET /api/teacher/student-subjects` | Per-subject session summary for teacher dashboard |
+| `GET/POST /api/session/sync` | Redis LearningSession read/write |
+| `POST /api/metta/interact` | MeTTa-style interaction processing |
+| `POST /api/generate/scheme` | Proxies to FastAPI Lesson Architect |
+| `POST /api/generate/lesson-plan` | Proxies to FastAPI Lesson Architect |
+| `POST /api/generate/assessment` | Proxies to FastAPI Lesson Architect |
 
-### 2. SyncSenta AI Agents service
+**Key library modules**
 
-Location: [ai-agents](../ai-agents)
+| Module | Purpose |
+|---|---|
+| `lib/subject-session.ts` | SUBJECT_REGISTRY, XP/level, chat session helpers, Omega prompt builder |
+| `lib/omega-agent/metta-core.ts` | `evaluateTutoringDecision()` — TS port of Rust `decide_tutoring()` |
+| `lib/sandbox-activities.ts` | Activity catalogue (loads from `curriculum/`) |
+| `lib/session-persistence.ts` | Redis LearningSession CRUD |
+| `lib/cbc-curriculum.ts` | Grade/level/subject structure |
+| `lib/socratic-prompts.ts` | `buildCompassSystemPrompt()` (socratic replaced by Omega path) |
+| `lib/chat-history-supabase.ts` | `chat_sessions` + `chat_messages` persistence |
+| `lib/rate-limit-upstash.ts` | Distributed rate limiting |
 
-The deployable FastAPI application is created in
-ai-agents/src/syncsenta_agents/api/server.py. The Render configuration starts
-that exact application with Uvicorn and exposes a health check at /healthz.
-The service is conventionally run on port 8001.
+### 2. AI Agents service — `ai-agents/`
 
-Responsibilities:
+FastAPI (Python 3.11), LangGraph, Groq. Deployed on Render.
 
-- Assessment quiz generation and grading.
-- Agent chat through SyncSentaOrchestrator.
-- Lesson Architect operations: schemes, plans, worksheets, text-leveling,
-  outcome unpacking, differentiation, and exams.
-- Telemetry analysis, xAPI-statement generation, and best-effort persistence.
-- Teacher dashboard data queries and WebSocket connections.
-- Curriculum validation and training-data export.
+- Assessment quiz generation and grading
+- LangGraph orchestration + specialist agents
+- Lesson Architect: schemes, lesson plans, worksheets, text-leveling, differentiation, exams
+- Telemetry capture, xAPI statements, behavioral profiling
+- Teacher dashboard data queries and WebSockets
+- Training data export
 
-The FastAPI service uses a lazy-initialized SyncSentaOrchestrator. Its
-LangGraph workflow classifies a request and dispatches registered specialist
-agents. The active orchestration and several agents use Groq through
-langchain-groq. The source tree also contains Ollama, Dify, and model
-deployment modules, but the current multi-provider client only instantiates a
-Groq provider.
+Entry point: `src/syncsenta_agents/api/server.py` (started by `render.yaml`).
+Health check: `GET /healthz`.
 
-Important entry-point distinction:
-
-- api/server.py is the application selected by render.yaml and the normal
-  development command.
-- ai-agents/src/syncsenta_agents/api.py defines a different FastAPI app with
-  older /health and /api/agents paths. It is not the service started by
-  render.yaml.
+> Note: `ai-agents/src/syncsenta_agents/api.py` is a separate legacy FastAPI
+> app with different paths. It is **not** started by `render.yaml`.
 
 ### 3. Supabase
 
-Supabase provides several distinct roles:
+Primary database and auth layer.
 
-- Auth and browser sessions for Studio and Scheme Scribe.
-- PostgreSQL storage for profiles, chat history, progress, teacher materials,
-  telemetry, dashboard data, and generated content.
-- Storage use for training-data exports and, by design, other artifacts.
-- Edge Functions for Scheme Scribe's generation and grading workflow.
+| Access style | Helper | Use |
+|---|---|---|
+| Browser session | `lib/supabase/client.ts` | Client components, RLS user actions |
+| Cookie-aware route | `lib/supabase/route-handler.ts` | Route handlers acting as signed-in caller |
+| Service-role | `lib/supabase/server.ts` | Trusted server-side operations |
 
-Studio uses three access styles:
+Key tables: `profiles`, `chat_sessions`, `chat_messages`, `learning_progress`,
+`point_transactions`, `behavioral_profiles`, `misconceptions`,
+`interventions`, `schemes`, `lesson_plans`, `exams`.
 
-| Style | Helper | Intended use |
-| --- | --- | --- |
-| Browser session | studio/src/lib/supabase/client.ts | Client components and RLS-protected user actions |
-| Cookie-aware route client | studio/src/lib/supabase/route-handler.ts | Route handlers acting as the signed-in caller |
-| Service-role client | studio/src/lib/supabase/server.ts | Administrative or trusted server-side operations |
+### 4. Upstash Redis
 
-The Python service uses SUPABASE_URL plus SUPABASE_SERVICE_KEY and therefore
-acts as a trusted server process. See [Data and API reference](DATA_AND_API.md)
-for the migration-source and RLS implications.
+Stores `LearningSession` per user (7-day TTL). Accessed via
+`lib/session-persistence.ts` and `/api/session/sync`.
 
-### 4. Scheme Scribe
+Contains per-user: `currentActivity` (resume point), `recentActivities`,
+`preferences.scaffoldingLevel` (last Omega decision), `competencyProgress`,
+`achievements`.
 
-Location: [scheme-scribe](../scheme-scribe)
+### 5. Rust adaptive service — `rust-service/` + `rust-core/`
 
-Scheme Scribe is a self-contained Vite/React application. It has its own
-router, authentication provider, Supabase client, database migrations, and
-Supabase Edge Functions. It offers:
+`rust-core/` contains 14 modules including `agent_runtime.rs`
+(`decide_tutoring()` — the Rust source of truth for scaffolding thresholds)
+and `adaptive_question.rs`.
 
-- Google sign-in through the Lovable integration.
-- Scheme-of-work generation and feedback.
-- Lesson-plan generation and DOCX/PDF export.
-- Exam generation, taking, scoring, and a pupil dashboard.
+`rust-service/` wraps rust-core as an HTTP service:
+- `GET /health`
+- `POST /v1/adaptive-question`
 
-The visible components mainly call Supabase Edge Functions such as
-generate-scheme, generate-exam, mark-exam, fetch-strands, and
-generate-lesson-plan. The repository also contains a generic API client for
-the FastAPI Lesson Architect, but this is not the primary component path.
+**Current status: built locally, not deployed to production.**
+Studio's `/api/chat` uses the TypeScript port in `metta-core.ts` as fallback.
+Wire it by setting `SYNCSENTA_RUST_ADAPTIVE_URL` in Vercel env vars.
+Readiness probe: `scripts/rust-adaptive-readiness.sh`.
 
-Treat Scheme Scribe's database and Edge Function secrets as separate from
-Studio until a deliberate migration unifies them.
+### 6. Scheme Scribe — `scheme-scribe/`
 
-### 5. ESP32-CAM firmware
+Self-contained Vite/React app with its own Supabase project, auth, Edge
+Functions, and migrations. Offers scheme-of-work generation, lesson planning,
+exam generation and grading, and a pupil dashboard.
 
-Location: [arduino/syncsenta_system](../arduino/syncsenta_system)
+Treat its database and Edge Function secrets as separate from Studio until
+a deliberate migration unifies them.
 
-The firmware is designed around local SD-card data, Wi-Fi, a camera/face
-recognition loop, attendance collection, and HTTP calls to a backend. Its
-configuration declares an API base URL and API key, but both must be supplied
-by the deployment owner. It expects the following legacy-style API shapes:
+### 7. ESP32-CAM firmware — `arduino/`
 
-    GET  /health
-    POST /assess
-    POST /generate-exam
-    GET  /analyze-progress/{studentId}
-    GET  /recommendations/{studentId}
-    POST /grade-exam
+Prototype attendance + assessment device. Expects API routes (`/assess`,
+`/generate-exam`, etc.) that do not match the current FastAPI contract.
+A firmware integration requires an adapter service or agreed API contract.
+Not connected in production.
 
-Those routes do not match the deployed FastAPI API. A firmware integration
-requires an adapter service or an agreed API contract before it can be enabled.
+## Omega tutoring decision engine
+
+```
+POST /api/chat
+  │
+  ├─ Query learning_progress (questions_answered, correct_answers, mastery_level)
+  │
+  ├─ buildLearningState()  →  { attempts, correctAttempts, hintsUsed, frustrationSignal }
+  │
+  ├─ evaluateTutoringDecision()  →  TutoringDecision
+  │      frustrationSignal || hintsUsed >= 2 || masteryPct < 40  →  Intensive
+  │      attempts === 0 || masteryPct < 80                        →  Guided
+  │      else                                                     →  Independent
+  │
+  ├─ buildDynamicSystemPrompt()  →  system prompt with scaffolding instructions
+  │
+  ├─ Groq / Gemini streaming call
+  │
+  └─ updateLearningSession() fire-and-forget  →  Redis scaffoldingLevel
+```
+
+TypeScript implementation: `lib/omega-agent/metta-core.ts`
+Rust source of truth: `rust-core/src/agent_runtime.rs`
+Thresholds must stay in sync between the two.
+
+## Subject session flow
+
+```
+sandbox/page.tsx
+  └─ openSubject({ slug })
+       └─ router.push('/student/subject/[slug]')
+            └─ /student/subject/[slug]/page.tsx
+                 ├─ getSubjectXP()         (point_transactions)
+                 ├─ /api/session/sync      (Redis resume point)
+                 ├─ getOrCreateChatSession() (chat_sessions)
+                 └─ getChatMessages()      (chat_messages)
+
+layout: 'chat'     →  SubjectChat  →  POST /api/chat (SSE)
+layout: 'sandbox'  →  redirect to /student/sandbox/[grade]/[slug]
+```
+
+Subject slugs: `mathematics`, `english`, `kiswahili`, `environmental`,
+`creative`, `cre`, `indigenous` (sandbox), `blockchain`, `financial-literacy`,
+`ai` (chat).
 
 ## Primary request flows
 
-### Socratic student chat
+### Socratic student chat (with Omega)
 
-~~~mermaid
-sequenceDiagram
-  participant B as Browser
-  participant N as Studio /api/chat
-  participant S as Supabase
-  participant R as Upstash Redis
-  participant G as Groq
-  B->>N: Message, history, grade, subject, mode
-  N->>S: Validate user/profile and load/persist history
-  N->>R: Apply subscription-based rate limit when configured
-  N->>G: Request streamed completion with Socratic prompt
-  G-->>N: Tokens
-  N-->>B: Server-Sent Event stream
-  N->>S: Message, progress, activity, and usage updates
-~~~
-
-The browser implementation is SocraticChat. It preserves anonymous history in
-local storage and migrates it when a user is authenticated. Authenticated
-requests expect a profile row and a server-side GROQ_API_KEY. Missing Upstash
-credentials disable rate limiting rather than blocking chat.
-
-### FastAPI agent chat
-
-~~~mermaid
-sequenceDiagram
-  participant B as syncsenta chat or teacher UI
-  participant A as FastAPI /agents/chat
-  participant S as Supabase
-  participant O as SyncSentaOrchestrator
-  participant G as Groq
-  B->>A: message, user_id, session, grade, subject, language
-  A->>S: Best-effort session and message persistence
-  A->>O: AgentRequest
-  O->>G: Routing and specialist generation
-  O-->>A: response, agent metadata, fallback state
-  A->>S: Best-effort assistant-message persistence
-  A-->>B: JSON response
-~~~
-
-syncsenta chat reads NEXT_PUBLIC_AI_AGENTS_URL but also has a hard-coded Render
-fallback. Teacher components use the shared API configuration helper. This is
-a JSON API, not the same SSE transport as SocraticChat.
+```
+Browser → POST /api/chat
+  → auth + profile
+  → rate limit (Upstash)
+  → query learning_progress
+  → evaluateTutoringDecision()
+  → buildDynamicSystemPrompt()
+  → Groq streaming
+  → SSE to browser
+  → persist: chat_messages, learning_progress, api_usage
+  → fire-and-forget: Redis scaffoldingLevel
+```
 
 ### Teacher material generation
 
-Teacher components either call FastAPI directly with the API configuration
-helper or pass through Studio proxy routes:
+```
+Teacher UI → /api/generate/scheme
+           → proxy → FastAPI /lesson-architect/generate-scheme
+           → LangGraph LessonArchitectAgent
+           → Groq
+           → persist to `schemes` table
+```
 
-    /api/generate/scheme       -> /lesson-architect/generate-scheme
-    /api/generate/lesson-plan  -> /lesson-architect/generate-lesson-plan
-    /api/generate/assessment   -> /lesson-architect/generate-exam
+### Activity resume
 
-The Lesson Architect API constructs a LessonArchitectAgent, validates the
-request, calls the LLM-backed generation functions, and can persist outputs
-to tables such as schemes, lesson_plans, worksheets, unpacked_outcomes,
-differentiations, and exams.
+```
+ActivityPage mounts
+  → GET /api/session/sync?action=get
+  → Redis LearningSession.currentActivity
+  → if id matches activityId: restoreVariationIndex
+  → InteractiveSandbox(initialVariationIndex)
 
-### Sandbox telemetry and dashboards
+On variation complete (not yet mastered):
+  → POST /api/session/sync { currentActivity: { id, name, progress, data } }
 
-InteractiveSandbox captures pointer, hover, drag, drop, undo, erase, and
-submit events. On submission, it calls the FastAPI /telemetry/capture route.
-That route:
-
-1. derives a behavioral profile;
-2. detects misconceptions;
-3. generates an intervention plan;
-4. creates xAPI statements;
-5. attempts to persist the data to Supabase without blocking the learner if
-   the database fails.
-
-Dashboard route handlers query those stored telemetry tables. WebSockets
-provide teacher and student activity channels, but several intervention and
-alert mutation paths are still marked TODO in the backend.
+On mastered:
+  → POST /api/session/sync { currentActivity: null }
+  → submitActivity() → Supabase
+```
 
 ## Deployment topology
 
-The checked-in deployment configuration targets:
+| Component | Config | Platform |
+|---|---|---|
+| Studio | `studio/vercel.json` | Vercel |
+| AI Agents | `ai-agents/render.yaml` | Render |
+| Scheme Scribe | Vite + Supabase Edge Functions | Separate |
+| Rust service | `rust-service/Dockerfile` | Not yet deployed |
 
-| Component | Configuration | Current intent |
-| --- | --- | --- |
-| Studio | studio/vercel.json | Vercel deployment, with selected proxy rewrites |
-| Studio alternative | netlify.toml | Netlify Next.js deployment configuration |
-| AI agents | ai-agents/render.yaml | Render web service plus a scheduled rule-learning job |
-| Scheme Scribe | Supabase plus Vite configuration | Separate frontend and Edge Functions |
+Studio starts on port 5173 (`next dev -p 5173`).
+AI Agents runs on port 8001.
 
-Production deployments should use one authoritative target per component.
-Vercel and Netlify contain different backend environment URLs, so they should
-not be assumed to be interchangeable.
+## Known integration gaps
 
-## Current integration boundaries and verification items
-
-These are code-backed items to resolve before calling the whole repository a
-single production system:
-
-- FastAPI CORS explicitly lists local ports 3000 and 3001, whereas Studio
-  starts on 5173. Direct browser calls to port 8001 need a local CORS test or
-  an updated allow-list.
-- Studio's service-role helper explicitly warns that it is not cookie-aware.
-  Several routes call auth.getUser through that helper, while
-  /api/teacher/assignments correctly uses the cookie-aware helper. Align the
-  authentication approach before relying on those other routes for access
-  control.
-- The FastAPI server includes dashboard, telemetry, Lesson Architect,
-  validation, and training-export routers. It does not include the
-  teacher-feedback router that exists in the source tree.
-- The firmware contract does not match the FastAPI contract.
-- The two frontend applications have separate Supabase migration histories and
-  generation paths.
-- Several helper scripts refer to missing backend or frontend Rust
-  directories. Use the manual commands in [Development guide](DEVELOPMENT.md)
-  rather than assuming every shell script is runnable.
-
-These are documentation observations, not hidden behavior changes. They are
-intended to give future maintainers safe boundaries for integration work.
+- FastAPI CORS lists ports 3000/3001; Studio uses 5173. Direct browser calls
+  to the FastAPI service need the CORS allow-list updated.
+- Service-role Supabase helper is not cookie-aware. Some route handlers call
+  `auth.getUser()` through it — align before relying on those for access control.
+- The teacher-feedback FastAPI router exists in source but is not registered
+  in `api/server.py`.
+- Firmware API contract does not match FastAPI contract.
+- Rust service is built but not wired to production.
+- Voice call orchestrator contains a placeholder AI method.

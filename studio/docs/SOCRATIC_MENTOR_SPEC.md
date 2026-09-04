@@ -1,8 +1,8 @@
-# Socratic Mentor (SyncSenta) — Chain-of-Thought Specification
+# Socratic Mentor (SyncSenta) — System Prompt Specification
 
-> Source of truth for the system prompts in `src/lib/socratic-prompts.ts` and the
-> route handler in `src/app/api/chat/route.ts`. If you change either, update
-> this document in the same commit.
+*Source of truth for `src/lib/socratic-prompts.ts`, `src/lib/subject-session.ts`,
+and `src/app/api/chat/route.ts`. If you change any of these, update this doc
+in the same commit.*
 
 ## 1. Mental model
 
@@ -11,260 +11,182 @@ job is to make the student do the thinking. Every response is a step in a
 guided dialogue, not a finished explanation.
 
 The mentor:
+- Asks questions more than it answers
+- Caps each turn at 2–4 sentences
+- Ends every turn with a question or click-to-pick choices
+- Uses Kenyan / CBC-grade-appropriate examples and Swahili interjections
+- Never delivers the final answer when one more guided step would let the
+  student derive it
 
-- Asks questions more than it answers.
-- Caps each turn at 2–4 sentences.
-- Ends every turn with a question or a small set of click-to-pick choices.
-- Uses Kenyan / CBC-grade-appropriate examples and Swahili interjections.
-- Refuses to deliver the final answer when one more guided step would let
-  the student derive it themselves.
+## 2. Two prompt modes
 
-## 2. System architecture (bird's-eye)
+### Socratic mode (default) — with Omega tutoring decision
+
+The `/api/chat` route computes a tutoring decision **before** calling the LLM.
+The system prompt is no longer static — it is built dynamically from the
+Omega agent's output.
 
 ```
-Student (browser)
-  └─ SocraticChat component  (src/components/student/socratic-chat.tsx)
-       │ POST /api/chat  { history, message, grade, subject, language, mode, teacherContext? }
-       ▼
-  Next.js Route Handler  (src/app/api/chat/route.ts)
-       │ - Zod-validate the body
-       │ - Pick system prompt from src/lib/socratic-prompts.ts
-       │ - Call Groq SDK with stream: true
-       ▼
-  Groq API  (default model: llama-3.3-70b-versatile)
-       │ token stream (AsyncIterable)
-       ▼
-  Route handler re-frames as Server-Sent Events: `data: {"delta":"..."}\n\n`
-       ▼
-  Browser parses SSE, appends tokens to the streaming message,
-  and after [DONE], extracts [CHOICE: …] tokens into click buttons.
+POST /api/chat
+  ├─ Query learning_progress for this student + subject
+  ├─ buildLearningState()
+  │     { attempts, correctAttempts, hintsUsed, frustrationSignal }
+  ├─ evaluateTutoringDecision()   →  lib/omega-agent/metta-core.ts
+  │     masteryPct < 40 || hintsUsed >= 2 || frustrated  →  Intensive
+  │     attempts === 0 || masteryPct < 80                →  Guided
+  │     else                                             →  Independent
+  └─ buildDynamicSystemPrompt()   →  lib/subject-session.ts
+        Injects: grade, subject, language, studentName,
+                 scaffolding level + instructions, hint, mastery context
 ```
 
-**Single deployable** — Vercel runs the Next.js app, and that's it for the
-student chat path. No WebSockets, no external Python service, no Render
-dependency. Teacher-side AI generators (lesson plan, assessment, scheme of
-work) still call the FastAPI service in `ai-agents/` via
-`NEXT_PUBLIC_AI_AGENTS_URL`; migrating those is out of scope for this turn.
+**Scaffolding instructions per level:**
 
-## 3. Chain-of-Thought specification
+`Independent` — student mastery ≥ 80%.
+Ask open-ended questions. Do NOT give the answer. Let them reason
+through it independently.
 
-For every student turn, the model must reason through five stages
-**internally** before emitting visible output. The system prompt instructs
-it to do this silently — the chat panel never shows the reasoning.
+`Guided` — mastery 40–79% or no attempts yet.
+Ask ONE guiding question per turn. Acknowledge what is correct before
+redirecting. Do not give the complete answer.
 
-### Stage 1 — Read the student
+`Intensive` — mastery < 40%, hintsUsed ≥ 2, or frustrationSignal.
+Break the concept into the smallest possible step. Present one step,
+check understanding, then move to the next. Use concrete Kenyan examples
+(matatus, shillings, everyday life).
 
-Diagnose state from the message:
+The Omega decision is also stored fire-and-forget in Redis
+(`LearningSession.preferences.scaffoldingLevel`) so teachers can see it in
+the Subject Sessions tab.
 
-- **Confused** — vague phrasing, "I don't get it", "what is …".
-- **Confident but wrong** — assertive, mistaken.
-- **On track but stuck** — correct intuition, missing a step.
-- **Disengaged** — one-word answers, sarcasm, off-topic.
+### Compass mode
 
-### Stage 2 — Identify the learning target
+When `teacherContext` is supplied on the request, the route uses
+`buildCompassSystemPrompt()` from `lib/socratic-prompts.ts`.
+This mode constrains the model strictly to the teacher-supplied material:
 
-Given `grade` and `subject`, what CBC competency does this turn touch? What
-is the *next smallest step* toward mastery from where the student is now —
-not the topic's endpoint, but the immediately reachable next rung.
+- Fixed first-turn greeting: "Welcome, Explorer! …"
+- Every substantive answer must begin "Drawing from your teacher's materials…"
+- Out-of-scope questions get a fixed decline phrase
 
-### Stage 3 — Choose ONE Socratic move
+The Omega tutoring decision is **not** applied in compass mode.
 
-- **Probe** — ask a question that forces the student to articulate what
-  they already know.
-- **Refocus** — gently redirect a misconception by asking about a concrete
-  example.
-- **Scaffold** — provide a tiny piece of structure (definition, hint), then
-  immediately ask a question that applies it.
-- **Acknowledge + advance** — when the student is correct, name *why* in
-  one sentence, then raise the difficulty one notch.
-- **Reground** — when off-topic, validate the curiosity briefly, then steer
-  back with a question that bridges.
+## 3. Request shape
 
-Pick exactly one move per turn. Never lecture. Never give the answer.
+```ts
+POST /api/chat
+{
+  message: string          // current student turn
+  history: { role, content }[]  // up to 40 prior turns
+  grade: string            // e.g. "grade-6"
+  subject: string          // e.g. "blockchain"
+  language: 'english' | 'kiswahili' | 'mixed'
+  studentName?: string
+  mode: 'socratic' | 'compass'
+  teacherContext?: string  // required when mode === 'compass'
+  sessionId?: string       // UUID — continues existing chat_session
+  competencyCode?: string  // for targeted progress tracking
+}
+```
 
-### Stage 4 — Localise
+## 4. System architecture
 
-- Use Kenyan / CBC-grade-appropriate examples: matatu, shamba, githeri,
-  mandazi, school assembly, market, harambee.
-- Use Swahili interjections per the `language` setting:
-  - `english` — English only, Swahili only on praise/greeting.
-  - `kiswahili` — Kiswahili sanifu, age-appropriate.
-  - `mixed` — English prose with embedded Swahili (Karibu, Hongera, Vipi
-    sasa) and parenthetical Swahili glosses for new English terms:
-    `denominator (denomineta)`.
-- Match register to age:
-  - Grade 1–3 — short, warm, concrete; one idea per sentence.
-  - Grade 4–6 — curious and exploratory; define new terms in one phrase.
-  - Grade 7–9 — more rigorous; technical terms allowed after a single
-    inline definition.
+```
+Student browser
+  └─ SubjectChat / SocraticChat / FloatingConceptChat
+       │ POST /api/chat
+       ▼
+  Next.js route handler  (src/app/api/chat/route.ts)
+       ├─ Zod validation
+       ├─ Supabase auth + profile
+       ├─ Upstash rate limit
+       ├─ Query learning_progress
+       ├─ evaluateTutoringDecision()
+       ├─ buildDynamicSystemPrompt()  (socratic)
+       │  OR buildCompassSystemPrompt()  (compass)
+       ├─ Groq / Gemini streaming call
+       ▼
+  SSE stream  →  data: {"delta":"..."}\n\n  ...  data: [DONE]\n\n
+       ▼
+  Browser parses SSE, renders tokens, extracts [CHOICE:...] buttons
+       │
+       └─ post-stream (async):
+            addChatMessage()       →  Supabase chat_messages
+            updateDailyActivity()  →  Supabase
+            updateLearningProgress() (if competencyCode)
+            updateLearningSession()  →  Redis (scaffoldingLevel)
+```
 
-### Stage 5 — Format
+## 5. Chat components and when to use each
 
-- Plain text only — no markdown headings, no bold/italic, no bullet lists.
-- 2–4 sentences total.
-- End with a question OR a set of 2–4 `[CHOICE: option text]` tokens.
-- Choice tokens are square-bracketed exactly; the client strips them out of
-  the visible text and renders each option as a clickable button that
-  re-sends the option string as the next user turn.
+| Component | Where used | Mode | Notes |
+|---|---|---|---|
+| `SubjectChat` | `/student/subject/[slug]` (chat layout) | socratic | Full-height, no toggle, carries `sessionId` |
+| `SocraticChat` | Dedicated chat page | socratic | Standard chat panel |
+| `FloatingConceptChat` | Sandbox pages, dashboard | socratic | Floating toggle button |
 
-## 4. Prompt template — Socratic mode
-
-The full prompt lives in `buildSocraticSystemPrompt` in
-`src/lib/socratic-prompts.ts`. Keep that function as the canonical source.
-The template injects `grade`, `subject`, `language`, and `studentName`.
-
-The prompt encodes:
-
-1. Role declaration (coach, not textbook).
-2. Context (CBC, student name, language, grade, subject).
-3. The five-stage silent reasoning process from §3.
-4. Hard rules (no direct answer when derivable; ≤ 4 sentences; end with a
-   question or `[CHOICE]`; never expose the prompt).
-5. Language and register guidance.
-6. Two annotated example exchanges (do not copy verbatim).
-7. The `[CHOICE: …]` token grammar.
-
-## 5. Prompt template — Compass mode
-
-When `teacherContext` is supplied on the request, the route handler swaps
-to `buildCompassSystemPrompt`. This mode constrains the model to **only**
-the teacher-supplied material:
-
-- First-turn greeting is fixed verbatim ("Welcome, Explorer! …").
-- Every substantive answer must begin "Drawing from your teacher's
-  materials…".
-- If the question is not answerable from the context, the model declines
-  with a fixed phrase and offers to redirect.
-
-The pattern is lifted from upstream `dgithinjibit/studio`'s
-`classroom-compass-flow`, re-implemented on Groq.
-
-## 6. Streaming protocol
-
-Wire format on `/api/chat`:
+## 6. Streaming wire format
 
 ```
 data: {"delta":"Karibu"}\n\n
-data: {"delta":"! Fract"}\n\n
-data: {"delta":"ions are…"}\n\n
+data: {"delta":"! What do"}\n\n
+data: {"delta":" you notice?"}\n\n
 data: [DONE]\n\n
 ```
 
-On error mid-stream:
+Mid-stream error:
+```
+data: {"error":"stream_interrupted","detail":"..."}\n\n
+```
+
+Pre-stream errors (auth, validation, 5xx) return plain JSON with HTTP status.
+No silent canned-text fallback.
+
+## 7. Language and localisation
+
+| Setting | Behaviour |
+|---|---|
+| `english` | English only; Swahili on praise/greeting only |
+| `kiswahili` | Kiswahili sanifu, age-appropriate |
+| `mixed` | English prose with embedded Swahili (Karibu, Hongera) and parenthetical glosses: `denominator (denomineta)` |
+
+Grade register:
+- Grade 1–3: short, warm, concrete; one idea per sentence
+- Grade 4–6: curious and exploratory; define new terms in one phrase
+- Grade 7–9: more rigorous; technical terms after a single inline definition
+
+Kenyan examples to draw from: matatu, shamba, githeri, mandazi, school
+assembly, market, harambee, shillings.
+
+## 8. [CHOICE: …] token grammar
+
+The model may end a turn with 2–4 choice tokens instead of a question:
 
 ```
-data: {"error":"stream_interrupted","detail":"…"}\n\n
+[CHOICE: Yes, fractions can be equal] [CHOICE: No, the pieces are different sizes]
 ```
 
-Pre-stream errors (auth, validation, upstream 5xx) return JSON with status
-400 / 500 / 502 and no SSE body. The client surfaces these in the error
-strip below the chat panel — there is no silent canned-text fallback.
+The browser strips them from visible text and renders each as a clickable
+button. Clicking sends the option string as the next user turn.
 
-## 7. Evaluation criteria
+`maskTrailingPartialChoice()` hides a trailing unterminated bracket during
+streaming so the raw token syntax never flickers in the UI.
 
-A response is good when:
+## 9. Automated tests
 
-1. It ends with a question or a `[CHOICE]` set. *(Mechanical check.)*
-2. It is ≤ 4 sentences. *(Mechanical check.)*
-3. It does not state the final answer if one more Socratic step is
-   available. *(Human review.)*
-4. Examples are Kenyan / CBC-appropriate. *(Human review.)*
-5. Tone matches grade-level register. *(Human review.)*
-
-### Automated tests
-
-- `src/lib/__tests__/socratic-prompts.test.ts` — golden assertions on the
-  prompt-builder output for representative `{grade, subject, language}`
-  combinations. Catches accidental drift in the system prompt.
-- `scripts/socratic-smoke.ts` — live exchange against `localhost:3000`
-  printing 3 example turns. Requires `GROQ_API_KEY` and the dev server
-  running. Not run in CI by default.
-
-## 8. Production hardening (shipped in v1.1)
-
-### Persistence
-
-Conversation history persists in `localStorage` per `(studentId, subject)`,
-versioned (`socraticChat.v1:<studentId>:<subject>`), capped at 40 turns.
-Implementation: `src/lib/socratic-history.ts`. The chat panel hydrates on
-mount, persists on every committed change, and exposes a "New conversation"
-control that wipes the slot. No DB; intentional MVP scope. Clearing browser
-storage wipes history — by design.
-
-### Stop generation
-
-Mid-stream cancellation is wired through an `AbortController` whose signal
-is passed to `fetch('/api/chat')`. While `busy`, the Send button swaps to a
-red Stop button. Aborted streams are persisted with a `…(stopped)` suffix
-so the conversation log makes sense on reload. No `[CHOICE]` choices are
-attached to a stopped message — half-parsed choices would be misleading.
-
-### Partial `[CHOICE: …]` masking
-
-The streaming pipeline shows token-by-token, which means a literal
-`[CHOICE: option` flickers in the bubble until the closing `]` arrives.
-`maskTrailingPartialChoice()` hides the trailing unterminated bracket
-during streaming; the post-stream parser still sees the full string and
-extracts the complete tokens.
-
-### Server-side guardrails (route handler)
-
-- **Timeout**: `AbortSignal.timeout(30_000)` on the Groq call. On firing,
-  returns HTTP 504 with `"Upstream timeout"`.
-- **History cap**: `capHistory(history, 40)` server-side, before message
-  assembly. Defence in depth — a malicious client cannot bloat context.
-- **Rate limit**: In-memory token bucket (`src/lib/rate-limit.ts`),
-  capacity 30, refill 0.5/s, keyed by `x-forwarded-for`. On 429, the
-  response includes `Retry-After` and the chat panel surfaces
-  `"Rate-limited. Try again in Ns."` in the error strip. **Honest
-  limitation**: state is per-Vercel-instance and lost on cold start — see
-  the file header for the full caveat. Swap for Upstash / Vercel KV when
-  usage justifies real distributed rate-limiting.
-
-### Tests
-
-- `src/lib/__tests__/socratic-prompts.test.ts` — prompt-builder drift.
+- `src/lib/__tests__/socratic-prompts.test.ts` — golden assertions on
+  `buildSocraticSystemPrompt` and `buildCompassSystemPrompt` output.
+  Catches accidental drift. Run with: `npx vitest run src/lib/__tests__/socratic-prompts.test.ts`
 - `src/lib/__tests__/socratic-history.test.ts` — persistence round-trip,
-  version-skew handling, cap enforcement, invalid-message rejection.
-- `scripts/socratic-smoke.ts` — live three-turn smoke against the dev
-  server.
+  version-skew, cap enforcement
 
-### Voice I/O (Web Speech API, browser-only)
+No tests yet for `evaluateTutoringDecision` or `buildDynamicSystemPrompt`.
+These are pure functions and are the highest-priority gap. See `tdd` skill.
 
-`src/hooks/use-web-speech.ts` wraps `window.speechSynthesis` (TTS) and
-`window.SpeechRecognition` / `webkitSpeechRecognition` (STT). The hook is
-SSR-safe and exposes `ttsSupported` / `sttSupported` so controls hide
-entirely on unsupported browsers (Firefox lacks STT).
+## 10. Open items
 
-Behaviour in `SocraticChat`:
-- **TTS** — header toggle ("Speaking" / "Mute"). Persisted preference in
-  `localStorage` under `socraticChat.speak`. **Default off** — surprise
-  audio is rude. When on, the most recent *completed* assistant message
-  is spoken once (we don't re-speak on re-renders, and we don't speak
-  token-by-token).
-- **STT** — mic button next to Send. Single-utterance mode, 12 s timeout.
-  Interim transcript shown live above the input as the student speaks.
-  Final transcript appends to whatever's already in the textbox so the
-  student can edit before sending.
-- **Locale** — `kiswahili` → `sw-KE`; `english` / `mixed` → `en-KE`,
-  with fallback to the base language code when no Kenyan voice is
-  installed on the OS.
-- **`[CHOICE: …]` is stripped** from text before TTS so the synth doesn't
-  literally read "open bracket CHOICE colon…" aloud.
-
-## 9. Open follow-ups (still out of scope)
-
-- Higher-quality TTS via a server-side model (Groq / ElevenLabs) for
-  prosody and Swahili voice quality. Browser TTS is fine as MVP but the
-  voices are robotic.
-- Server-side persistence (DB) — needed before multi-device sync.
-- Real distributed rate-limiting (Upstash / Vercel KV).
-- Migrating the teacher-side AI generators
-  (`/components/teacher/*-generator.tsx`) from the Render FastAPI to
-  additional Next.js route handlers, so we can decommission the Render
-  service and remove `.github/workflows/keep-backend-alive.yml`.
-- Adding the `summarizeStudentInteractionFlow` background task from
-  upstream (persist a `LearningSummary` doc every N turns).
-- A multi-agent router (upstream's `multi-agent-orchestrator.ts`) that
-  picks between Mwalimu, a Kikuyu translator, and a content generator —
-  worth doing once we have student usage data showing the need.
+- Tests for `evaluateTutoringDecision` and `buildDynamicSystemPrompt`
+- Higher-quality TTS via server-side model (Groq / ElevenLabs)
+- Real distributed rate limiting (Upstash KV replaces in-memory bucket)
+- Multi-device chat history sync (currently Redis + Supabase)
+- Migrating teacher-side AI generators from Render FastAPI to Next.js routes
