@@ -64,9 +64,9 @@ export function SchemeOfWorkGenerator() {
   const [term, setTerm] = useState('Term 1')
 
   // Dropdown options. Drive these from the static CBC_LEVELS map and the
-  // shared getSubjectsForGrade() helper — NOT from Object.keys(curriculumData),
-  // because curriculumData is a Proxy whose target is an empty object, so
-  // Object.keys() always returns []. See src/data/curriculum/curriculum-structure.ts.
+  // Drive dropdowns from the static CBC_LEVELS map and getSubjectsForGrade().
+  // Do NOT use Object.keys(curriculumData) — curriculumData is a lazy Proxy
+  // whose target is an empty object, so Object.keys() always returns [].
   const levels = CBC_LEVELS
   const grades = level ? (CBC_LEVELS.find(l => l.id === level)?.grades ?? []) : []
   const subjects = grade ? getSubjectsForGrade(grade) : []

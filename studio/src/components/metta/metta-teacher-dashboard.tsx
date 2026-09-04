@@ -81,15 +81,18 @@ export default function MeTTaTeacherDashboard() {
     if (user?.id) {
       const session = mettaEducationSystem.createSession(user.id, 'teacher');
       setMettaSession(session);
-      
-      // Initialize teacher-specific MeTTa knowledge
-      session.addSessionFact('(teacher-role grade2-specialist)');
-      session.addSessionFact('(classroom-context kenyan-primary-school)');
-      session.addSessionFact('(curriculum cbc-grade2)');
-      session.addSessionFact('(cultural-focus kenyan-heritage)');
-      
-      loadClassroomData(session);
-      startMeTTaMonitoring(session);
+
+      // Restore persisted session from Supabase, then initialize
+      session.restore().then(() => {
+        // Initialize teacher-specific MeTTa knowledge
+        session.addSessionFact('(teacher-role grade2-specialist)');
+        session.addSessionFact('(classroom-context kenyan-primary-school)');
+        session.addSessionFact('(curriculum cbc-grade2)');
+        session.addSessionFact('(cultural-focus kenyan-heritage)');
+
+        loadClassroomData(session);
+        startMeTTaMonitoring(session);
+      });
     }
   }, [user?.id]);
 

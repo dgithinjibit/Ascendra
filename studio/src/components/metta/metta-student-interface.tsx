@@ -60,8 +60,11 @@ export default function MeTTaStudentInterface() {
 
   const initializeInterface = async (session: MeTTaSession) => {
     setIsThinking(true);
-    
+
     try {
+      // Restore any previously persisted session facts from Supabase
+      await session.restore();
+
       // Query MeTTa for initial UI setup
       const initQuery = '(initialize-student-interface grade2 kenya)';
       const response = await session.processInteraction({
@@ -73,10 +76,10 @@ export default function MeTTaStudentInterface() {
       // Generate UI based on MeTTa response
       const elements = await generateUIFromMeTTa(response);
       setUIElements(elements);
-      
+
       // Set initial game state
       await updateGameState(session);
-      
+
     } catch (error) {
       console.error('MeTTa interface initialization failed:', error);
     } finally {
@@ -214,20 +217,28 @@ export default function MeTTaStudentInterface() {
         timestamp: Date.now()
       };
 
-      const response = await mettaSession.processInteraction(interaction);
-      
+      // Use remote endpoint so the interaction is persisted server-side
+      const response = await mettaSession.processInteractionRemote(interaction as Record<string, unknown>);
+      const resp = response as any;
+
+      // Persist current session facts after every interaction
+      await mettaSession.persist(
+        gameState.competencyLevels,
+        { type: interaction.type, input: interaction as any, result: response }
+      );
+
       // Update UI based on MeTTa response
-      if (response.data?.newElements) {
-        const newElements = await generateUIFromMeTTa(response);
+      if (resp?.data?.newElements) {
+        const newElements = await generateUIFromMeTTa(resp);
         setUIElements(prev => [...prev, ...newElements]);
       }
 
-      if (response.data?.updateGameState) {
+      if (resp?.data?.updateGameState) {
         await updateGameState(mettaSession);
       }
 
-      if (response.data?.celebrations) {
-        showMeTTaCelebration(response.data.celebrations);
+      if (resp?.data?.celebrations) {
+        showMeTTaCelebration(resp.data.celebrations);
       }
 
     } catch (error) {
@@ -235,7 +246,7 @@ export default function MeTTaStudentInterface() {
     } finally {
       setIsThinking(false);
     }
-  }, [mettaSession]);
+  }, [mettaSession, gameState.competencyLevels]);
 
   const showMeTTaCelebration = (celebrations: string[]) => {
     // MeTTa-driven celebration animations
