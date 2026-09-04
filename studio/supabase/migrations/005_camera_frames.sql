@@ -1,1 +1,0 @@
-/home/web4ke/codes/Ascendra/sql/studio_migrations/005_camera_frames.sql

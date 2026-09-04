@@ -50,6 +50,7 @@ interface PageState {
   level: number;
   nextLevelXP: number;
   resumeActivity: { id: string; name: string; progress: number } | null;
+  scaffoldingLevel: 'Independent' | 'Guided' | 'Intensive' | null;
 }
 
 export default function SubjectPage() {
@@ -107,6 +108,14 @@ export default function SubjectPage() {
               }
             : null;
 
+        // Read last Omega scaffolding decision from Redis (written fire-and-forget by /api/chat).
+        const scaffoldingLevel =
+          (redisSession?.preferences?.scaffoldingLevel as
+            | 'Independent'
+            | 'Guided'
+            | 'Intensive'
+            | undefined) ?? null;
+
         // Fetch the last 40 messages for the session.
         const rawMessages = await getChatMessages(chatSessionResult.sessionId);
         const initialHistory: { role: 'user' | 'assistant'; content: string }[] =
@@ -125,6 +134,7 @@ export default function SubjectPage() {
           level: xpResult.level,
           nextLevelXP: xpResult.nextLevelXP,
           resumeActivity,
+          scaffoldingLevel,
         });
       } catch (err) {
         console.error('[SubjectPage] load error', err);
@@ -197,6 +207,7 @@ export default function SubjectPage() {
           level={state.level}
           nextLevelXP={state.nextLevelXP}
           resumeActivity={state.resumeActivity}
+          scaffoldingLevel={state.scaffoldingLevel}
           grade={grade}
           onResume={handleResume}
           onStartFresh={handleStartFresh}

@@ -45,14 +45,14 @@ Changes must preserve or deliberately consolidate both paths.
 ┌─────────────────────────────────────────────────────────────────┐
 │                   Studio  (Next.js, Vercel)                     │
 │                                                                 │
-│  /student/*          /teacher/*          /api/*                 │
-│  ├ sandbox (canvas)  ├ dashboard         ├ chat (SSE+Omega)     │
-│  ├ subject/[slug]    ├ scheme-wizard      ├ teacher/*           │
-│  ├ chat tutor        ├ phase2 analytics  ├ session/sync        │
-│  └ journey/profile   └ exams             └ generate/* (proxy)  │
+│  /student/*          /teacher/*            /api/*               │
+│  ├ subject/[slug]    ├ dashboard           ├ chat (SSE+Omega)   │
+│  ├ sandbox (canvas)  ├ scheme-wizard       ├ teacher/*          │
+│  ├ chat tutor        ├ phase2 analytics    ├ session/sync       │
+│  └ journey/profile   └ exams               └ generate/* (proxy) │
 └──────┬──────────────────────┬──────────────────────────────────┘
        │                      │
-       │ direct Groq           │ NEXT_PUBLIC_AI_AGENTS_URL
+       │ direct Groq/Gemini   │ NEXT_PUBLIC_AI_AGENTS_URL
        ▼                      ▼
   ┌─────────┐       ┌──────────────────────────────────────────┐
   │  Groq   │       │  AI Agents  (FastAPI, Render)            │
@@ -196,48 +196,113 @@ Not connected in production.
 
 ## Omega tutoring decision engine
 
-```
-POST /api/chat
-  │
-  ├─ Query learning_progress (questions_answered, correct_answers, mastery_level)
-  │
-  ├─ buildLearningState()  →  { attempts, correctAttempts, hintsUsed, frustrationSignal }
-  │
-  ├─ evaluateTutoringDecision()  →  TutoringDecision
-  │      frustrationSignal || hintsUsed >= 2 || masteryPct < 40  →  Intensive
-  │      attempts === 0 || masteryPct < 80                        →  Guided
-  │      else                                                     →  Independent
-  │
-  ├─ buildDynamicSystemPrompt()  →  system prompt with scaffolding instructions
-  │
-  ├─ Groq / Gemini streaming call
-  │
-  └─ updateLearningSession() fire-and-forget  →  Redis scaffoldingLevel
-```
-
-TypeScript implementation: `lib/omega-agent/metta-core.ts`
-Rust source of truth: `rust-core/src/agent_runtime.rs`
-Thresholds must stay in sync between the two.
-
-## Subject session flow
+Every `/api/chat` request in socratic mode runs through the Omega decision engine
+to compute scaffolding level before calling the LLM. This is the most critical
+AI component for adaptive student tutoring.
 
 ```
-sandbox/page.tsx
+POST /api/chat (socratic mode)
+  │
+  ├─ Auth + profile lookup
+  │
+  ├─ Query learning_progress table
+  │   SELECT questions_answered, correct_answers, mastery_level
+  │   WHERE user_id = $1 AND subject = $2
+  │
+  ├─ buildLearningState()
+  │   Constructs: { attempts, correctAttempts, hintsUsed, frustrationSignal }
+  │
+  ├─ evaluateTutoringDecision()  →  lib/omega-agent/metta-core.ts
+  │   │
+  │   ├─ Calculate masteryPct = (correctAttempts / attempts) * 100
+  │   │
+  │   └─ Apply thresholds:
+  │       frustrationSignal || hintsUsed >= 2 || masteryPct < 40  →  Intensive
+  │       attempts === 0 || masteryPct < 80                       →  Guided
+  │       else                                                    →  Independent
+  │
+  ├─ buildDynamicSystemPrompt()  →  lib/subject-session.ts
+  │   Injects: grade, subject, language, studentName,
+  │            scaffolding level + instructions, hint, mastery context
+  │
+  ├─ Groq / Gemini streaming call with dynamic prompt
+  │
+  ├─ SSE stream to browser
+  │
+  └─ Post-stream (fire-and-forget):
+      ├─ Persist chat_messages to Supabase
+      ├─ Update learning_progress (if competencyCode present)
+      └─ Update Redis LearningSession.preferences.scaffoldingLevel
+```
+
+**Scaffolding levels and instructions:**
+
+| Level | Trigger condition | Prompt instruction |
+|---|---|---|
+| **Independent** | mastery ≥ 80%, no frustration | Ask open-ended questions. Do NOT give the answer. Let them reason through independently. |
+| **Guided** | 40% ≤ mastery < 80%, or no attempts yet | Ask ONE guiding question per turn. Acknowledge what is correct before redirecting. Do not give the complete answer. |
+| **Intensive** | mastery < 40%, hintsUsed ≥ 2, or frustrated | Break concept into smallest possible step. Present one step, check understanding, then move to next. Use concrete Kenyan examples (matatus, shillings, everyday life). |
+
+**Implementation locations:**
+
+- TypeScript (active in production): `lib/omega-agent/metta-core.ts`  
+  `evaluateTutoringDecision()` + `TutoringDecision` interface
+- Rust (source of truth, not yet deployed): `rust-core/src/agent_runtime.rs`  
+  `decide_tutoring()` function
+- Dynamic prompt builder: `lib/subject-session.ts`  
+  `buildDynamicSystemPrompt()`
+
+**Critical invariant:** Thresholds (40%, 80%, hintsUsed ≥ 2) must stay synchronized
+between TypeScript and Rust implementations.
+
+**Wiring the Rust service:**
+
+Set `SYNCSENTA_RUST_ADAPTIVE_URL=http://localhost:8091` (or production URL) in
+Vercel environment variables. When set, `/api/chat` calls the Rust service
+instead of the TypeScript port. Falls back to TypeScript if the env var is unset.
+
+**Teacher visibility:**
+
+The computed scaffolding level is stored fire-and-forget in Redis
+(`LearningSession.preferences.scaffoldingLevel`) and visible in the teacher's
+Phase 2 dashboard Subject Sessions tab.
+
+## Subject session flow (shipped September 2026)
+
+All 10 subjects now route through a unified entry point at `/student/subject/[slug]`:
+
+```
+/student/sandbox (Subject Catalogue)
   └─ openSubject({ slug })
        └─ router.push('/student/subject/[slug]')
             └─ /student/subject/[slug]/page.tsx
-                 ├─ getSubjectXP()         (point_transactions)
-                 ├─ /api/session/sync      (Redis resume point)
-                 ├─ getOrCreateChatSession() (chat_sessions)
-                 └─ getChatMessages()      (chat_messages)
-
-layout: 'chat'     →  SubjectChat  →  POST /api/chat (SSE)
-layout: 'sandbox'  →  redirect to /student/sandbox/[grade]/[slug]
+                 │
+                 ├─ Parallel fetch:
+                 │   ├─ getSubjectXP()            (point_transactions)
+                 │   ├─ GET /api/session/sync     (Redis resume point)
+                 │   ├─ getOrCreateChatSession()  (chat_sessions)
+                 │   └─ getChatMessages(40)       (chat_messages)
+                 │
+                 └─ Route by layout:
+                     ├─ layout: 'chat'     →  SubjectChat (full-height embedded)
+                     │                         ├─ POST /api/chat (SSE)
+                     │                         └─ Omega decision per turn
+                     │
+                     └─ layout: 'sandbox'  →  redirect to
+                                               /student/sandbox/[grade]/[slug]
 ```
 
-Subject slugs: `mathematics`, `english`, `kiswahili`, `environmental`,
-`creative`, `cre`, `indigenous` (sandbox), `blockchain`, `financial-literacy`,
-`ai` (chat).
+**10 subjects in SUBJECT_REGISTRY** (`lib/subject-session.ts`):
+
+- **Core (sandbox layout):** mathematics, english, kiswahili, environmental,
+  creative, cre, indigenous
+- **Extended (chat layout):** blockchain, financial-literacy, ai
+
+Each subject has its own:
+- XP tracking via `point_transactions` table
+- Chat session with up to 40-message history
+- Redis resume point for activity continuity
+- Level calculation (1–10, 100 XP per level)
 
 ## Primary request flows
 
@@ -294,6 +359,17 @@ On mastered:
 
 Studio starts on port 5173 (`next dev -p 5173`).
 AI Agents runs on port 8001.
+
+## Migration paths (removed September 2026)
+
+The `sql/` directory and duplicate migrations in `studio/supabase/migrations/001-005`
+have been removed. Migration source of truth:
+- **Studio + shared schema:** `supabase/migrations/`
+- **Studio-only additions:** `studio/supabase/migrations/` (only non-duplicate files)
+- **Scheme Scribe:** `scheme-scribe/supabase/migrations/` (separate project)
+
+Before applying any migration, verify which have already been applied to the
+target Supabase project.
 
 ## Known integration gaps
 

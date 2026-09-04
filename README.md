@@ -1,82 +1,80 @@
 # SyncSenta
 
 AI-powered education platform for Kenya's Competency-Based Curriculum (CBC).
-Students get an adaptive Socratic tutor. Teachers get real-time analytics,
-scheme-of-work generation, and lesson planning tools.
 
 **Live:** https://sentastudio.vercel.app
+
+SyncSenta delivers adaptive learning for Kenyan students (PP1–Grade 9) and
+intelligent teaching tools for educators. The platform combines an Omega
+tutoring decision engine with real-time analytics to create personalized
+learning experiences aligned with CBC standards.
 
 ---
 
 ## What it does
 
-**For students (PP1 – Grade 9)**
-- Subject catalogue with 10 subjects — 7 core CBC subjects (canvas activities)
-  and 3 extended courses (Blockchain, Financial Literacy, AI) with full-height
-  embedded chat
-- Adaptive Socratic tutor: the Omega decision engine computes a scaffolding
-  level (Independent / Guided / Intensive) before every response, based on
-  the student's mastery data
-- Interactive canvas activities (fraction bars, counting tokens) with
-  micro-assessment mastery gating
-- Cross-device resume: activity progress saved to Redis, restored on return
-- XP + level system per subject
+**For students**
+- **10 CBC-aligned subjects:** 7 core subjects with interactive canvas activities
+  (Mathematics, English, Kiswahili, Environmental, Creative, CRE, Indigenous
+  Languages) + 3 extended courses with full chat (Blockchain, Financial Literacy, AI)
+- **Adaptive Socratic tutor:** Omega decision engine computes scaffolding level
+  (Independent / Guided / Intensive) before every response based on real-time
+  mastery data
+- **Interactive activities:** Fraction bars, counting tokens, pattern recognition
+  with micro-assessment mastery gating
+- **Cross-device continuity:** Activity progress saved to Redis, restored on return
+- **XP progression:** Subject-specific levels (1–10, 100 XP per level)
 
 **For teachers**
-- Real-time student monitoring with misconception detection and intervention
-  alerts
-- CBC scheme-of-work generator, lesson plan generator, assessment generator
-  (PP1 – Grade 9)
-- Phase 2 analytics: competency trends, session timeline, subject chat
-  history with scaffolding level visibility
-- Exam creation and marking
+- **Real-time monitoring:** Student dashboard with misconception detection,
+  scaffolding level visibility, and intervention alerts
+- **CBC content generators:** Scheme-of-work, lesson plans, assessments (PP1–Grade 9)
+- **Phase 2 analytics:** Competency trends, session timelines, subject chat history
+- **Exam tools:** Creation, distribution, automated marking
 
 ---
 
-## Monorepo layout
+## Project structure
 
 ```
-Ascendra/
-├── studio/          Next.js 16 app — the primary web application
-├── ai-agents/       Python FastAPI service — teacher generators, LangGraph orchestrator
-├── rust-core/       Rust library — adaptive question + tutoring decision engine
-├── rust-service/    Rust HTTP service wrapping rust-core (built, not yet deployed)
-├── scheme-scribe/   Vite/React standalone app — scheme + lesson tools (separate Supabase)
-├── arduino/         ESP32-CAM firmware prototype
-├── docs/            Architecture, development, and reference docs
-├── sql/             Studio database migrations
-├── supabase/        Shared Supabase migrations
-├── CONTEXT.md       Domain glossary — read this before any code change
-└── CODING_STANDARDS.md  Coding conventions for Studio
+studio/          Next.js 16 — primary web application (students + teachers)
+ai-agents/       FastAPI — LangGraph orchestrator, CBC content generators
+rust-core/       Rust library — adaptive tutoring decision engine (source of truth)
+rust-service/    Rust HTTP wrapper (built, not yet deployed)
+scheme-scribe/   Vite/React standalone (separate Supabase project)
+supabase/        Database migrations
+docs/            Architecture and development guides
+CONTEXT.md       Domain glossary — read before making changes
 ```
+
+**Key documentation:**
+- [CONTEXT.md](CONTEXT.md) — Domain glossary and core concepts
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — System design, component map, data flows
+- [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) — Local setup, test commands, troubleshooting
+- [CODING_STANDARDS.md](CODING_STANDARDS.md) — Studio coding conventions
+- [studio/docs/SOCRATIC_MENTOR_SPEC.md](studio/docs/SOCRATIC_MENTOR_SPEC.md) — Omega system prompt spec
 
 ---
 
 ## Running locally
 
-See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for the full guide.
+Full setup instructions: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)
 
-Quick version — two terminals:
-
-**Terminal 1 — AI Agents** (needed for teacher generators only)
+**Quick start for Studio** (student features):
 ```powershell
-Set-Location "c:\Users\hp\codes\Ascendra\ai-agents"
-py -3.11 -m venv .venv ; .\.venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
-$env:PYTHONPATH = "$PWD\src"
-python -m uvicorn syncsenta_agents.api.server:app --host 127.0.0.1 --port 8001 --reload
-```
-
-**Terminal 2 — Studio**
-```powershell
-Set-Location "c:\Users\hp\codes\Ascendra\studio"
+cd studio
 npm ci
 npm run dev
 # http://localhost:5173
 ```
 
-Create `studio/.env.local` from `studio/.env.example` — you need at minimum:
-`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `GROQ_API_KEY`.
+Required environment variables in `studio/.env.local`:
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `GROQ_API_KEY`
+
+**Teacher generators** require the AI Agents service (FastAPI on port 8001).  
+See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for Python setup.
 
 ---
 
@@ -105,23 +103,29 @@ Create `studio/.env.local` from `studio/.env.example` — you need at minimum:
 
 ---
 
-## Key docs
+## Architecture highlights
 
-| Document | What it covers |
-|---|---|
-| [CONTEXT.md](CONTEXT.md) | Domain glossary — start here |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Full system architecture, component map, request flows |
-| [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | Local setup, test commands, known traps |
-| [CODING_STANDARDS.md](CODING_STANDARDS.md) | Studio coding conventions |
-| [studio/docs/SOCRATIC_MENTOR_SPEC.md](studio/docs/SOCRATIC_MENTOR_SPEC.md) | Chat system prompt spec + Omega decision flow |
-| [docs/architecture/rust-adaptive-deployment.md](docs/architecture/rust-adaptive-deployment.md) | Rust service deployment notes |
+**Omega tutoring decision engine:**  
+Before every chat response, evaluates student mastery to compute scaffolding level
+(Independent / Guided / Intensive). TypeScript implementation active in production
+(`lib/omega-agent/metta-core.ts`); Rust source of truth in `rust-core/src/agent_runtime.rs`.
+
+**Subject session flow:**  
+Unified entry point at `/student/subject/[slug]` for all 10 subjects. Parallel
+fetches: XP from `point_transactions`, resume point from Redis, chat session +
+messages from Supabase. Routes to embedded chat or canvas activities by layout.
+
+**Two curriculum data systems:**  
+`studio/src/curriculum/` — student activity packs (grade 1–6, PP1–2)  
+`studio/src/data/curriculum/` — CBC strands/substrands for teacher tools (PP1–Grade 9)
 
 ---
 
-## Tests
+## Testing
 
 ```powershell
-Set-Location "c:\Users\hp\codes\Ascendra\studio"
-npx vitest run        # all tests once
-npm run build         # production build + env check
+cd studio
+npx vitest run        # Run all tests once (recommended before commits)
+npx vitest            # Watch mode
+npm run build         # Production build + env validation
 ```

@@ -1,1 +1,0 @@
-/home/web4ke/codes/Ascendra/sql/studio_migrations/003_teacher_grade_assignments.sql

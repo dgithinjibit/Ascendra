@@ -80,8 +80,8 @@ stub — it does not make every feature offline.
 
 ## Running the stack
 
-Use two terminals. Do not use the older all-in-one shell scripts in `scripts/`
-— several reference directories that no longer exist.
+Use two terminals for the full stack. For student-only features, Studio alone
+is sufficient.
 
 ### Terminal 1 — AI Agents
 
@@ -132,28 +132,36 @@ Run from the component directory.
 ```powershell
 Set-Location "c:\Users\hp\codes\Ascendra\studio"
 
-# Run all tests once (CI mode)
+# Run all tests once (CI mode, recommended before commits)
 npx vitest run
 
 # Run a single test file
 npx vitest run src/lib/__tests__/socratic-prompts.test.ts
 
-# Watch mode (dev)
+# Run tests matching a pattern
+npx vitest run socratic
+
+# Watch mode (interactive development)
 npx vitest
 
-# Type-check
+# Type-check (catches TypeScript errors without running tests)
 npx tsc --noEmit
 
 # Lint
 npm run lint
 
-# Production build (also validates env vars)
+# Production build (validates env vars and checks for build errors)
 npm run build
 ```
 
 Tests live in:
 - `src/lib/__tests__/` — unit tests for lib modules
 - `src/app/api/**/route.test.ts` — route handler tests
+
+**Test command notes:**
+- `npx vitest run` runs all tests once and exits (use in CI or before commits)
+- `npx vitest` enters watch mode and reruns tests on file changes
+- Individual test files can be run by specifying the full path or a unique substring
 
 ### AI Agents
 
@@ -166,21 +174,23 @@ pytest
 
 ## Database migrations
 
-Do not run every SQL file in the repo against one database — there is
-overlapping history.
-
 Before applying any migration:
 1. Export/back up the target Supabase project
 2. Check what migrations are already applied in that project
-3. Use the correct source family:
-   - Studio schema: `sql/studio_migrations/`
-   - Root shared migrations: `supabase/migrations/`
-   - Scheme Scribe: `scheme-scribe/supabase/migrations/`
+3. Use the correct source:
+   - **Studio + shared schema:** `supabase/migrations/`
+   - **Studio-only additions:** `studio/supabase/migrations/` (non-duplicate files only)
+   - **Scheme Scribe:** `scheme-scribe/supabase/migrations/` (separate project)
 4. Apply to staging first, then regenerate Studio DB types if schema changed
 
-The numbered `001`–`005` files under `supabase/migrations/` and
-`studio/supabase/migrations/` contain absolute Linux paths and are not
-directly runnable. Use `sql/studio_migrations/` for the full Studio schema.
+The numbered `001`–`005` files under `supabase/migrations/` contain the core
+schema. Additional migrations follow the timestamp format `YYYYMMDDNNNNNN_*.sql`.
+
+To apply migrations using Supabase CLI:
+```powershell
+Set-Location "c:\Users\hp\codes\Ascendra"
+npx supabase db push
+```
 
 ## Rust adaptive service (optional)
 
@@ -195,8 +205,8 @@ cargo build --release -p rust-service
 .\target\release\rust-service
 # Listens on 127.0.0.1:8091
 
-# Check readiness
-.\scripts\rust-adaptive-readiness.sh
+# Health check
+Invoke-RestMethod http://127.0.0.1:8091/health
 ```
 
 Wire to Studio by adding to `studio/.env.local`:
@@ -207,17 +217,21 @@ SYNCSENTA_RUST_ADAPTIVE_URL=http://localhost:8091
 When this is set, `/api/chat` uses the Rust decision engine instead of the
 TypeScript port in `lib/omega-agent/metta-core.ts`.
 
+**Note:** The Rust implementation is the source of truth for scaffolding thresholds.
+The TypeScript port in `lib/omega-agent/metta-core.ts` must stay synchronized with
+`rust-core/src/agent_runtime.rs` (`decide_tutoring()` function).
+
 ## Known setup traps
 
 | Symptom | Cause | Fix |
 |---|---|---|
 | Studio build fails immediately | Missing required env var | Check `studio/scripts/check-env.js` output |
-| CORS error on FastAPI call | Studio on 5173, FastAPI CORS only allows 3000/3001 | Add 5173 to FastAPI allow-list |
+| CORS error on FastAPI call | Studio on 5173, FastAPI CORS only allows 3000/3001 | Add 5173 to FastAPI CORS allow-list in `ai-agents/src/syncsenta_agents/api/server.py` |
 | AI agent import not found | PYTHONPATH missing | Set `$env:PYTHONPATH = "$PWD\src"` before uvicorn/pytest |
-| Shell script fails | Script references old Rust directory layout | Use manual commands in this guide |
-| SQL migration path errors | Pointer-file migration selected | Use `sql/studio_migrations/` |
-| Teacher feedback 404 from FastAPI | Router not registered in `api/server.py` | Register the router |
+| Teacher feedback 404 from FastAPI | Router not registered in `api/server.py` | Register the router in FastAPI app |
 | Voice UI broken | Placeholder AI method in orchestrator | Review `voice-call-orchestrator.ts` |
+| `vitest` hangs or doesn't exit | Watch mode is active | Use `npx vitest run` for single-pass execution |
+| Rust service connection refused | Service not running or wrong port | Check service is running on 8091, verify `SYNCSENTA_RUST_ADAPTIVE_URL` |
 
 ## Safe change workflow
 

@@ -1,8 +1,10 @@
 'use client';
 
-import { Star, RotateCcw, PlayCircle } from 'lucide-react';
+import { Brain, PlayCircle, RotateCcw, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+
+export type ScaffoldingLevel = 'Independent' | 'Guided' | 'Intensive';
 
 export interface SubjectHeaderProps {
   label: string;
@@ -12,13 +14,35 @@ export interface SubjectHeaderProps {
   nextLevelXP: number;
   resumeActivity?: { id: string; name: string; progress: number } | null;
   grade: string;
+  scaffoldingLevel?: ScaffoldingLevel | null;
   onResume: () => void;
   onStartFresh: () => void;
 }
 
+const SCAFFOLDING_BADGE: Record<
+  ScaffoldingLevel,
+  { label: string; className: string; title: string }
+> = {
+  Independent: {
+    label: '🟢 Independent',
+    className: 'border-green-300 bg-green-50 text-green-800',
+    title: 'You are working independently — great mastery!',
+  },
+  Guided: {
+    label: '🟡 Guided',
+    className: 'border-yellow-300 bg-yellow-50 text-yellow-800',
+    title: 'Your tutor is giving you guided hints.',
+  },
+  Intensive: {
+    label: '🔵 Intensive',
+    className: 'border-blue-300 bg-blue-50 text-blue-800',
+    title: 'Your tutor is breaking topics into small steps to support you.',
+  },
+};
+
 /**
- * Sticky subject page header showing XP badge, level progress, and
- * optional resume / start-fresh actions.
+ * Sticky subject page header showing XP badge, level progress,
+ * Omega scaffolding level, and optional resume / start-fresh actions.
  */
 export function SubjectHeader({
   label,
@@ -26,12 +50,15 @@ export function SubjectHeader({
   level,
   nextLevelXP,
   resumeActivity,
+  scaffoldingLevel,
   onResume,
   onStartFresh,
 }: SubjectHeaderProps) {
+  const scaffoldBadge = scaffoldingLevel ? SCAFFOLDING_BADGE[scaffoldingLevel] : null;
+
   return (
     <div className="flex flex-col gap-4 border-b border-teal-100 bg-white/80 px-5 pb-4 pt-4 backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:px-8">
-      {/* Left: title + XP */}
+      {/* Left: title + XP + scaffolding */}
       <div className="flex items-center gap-4 min-w-0">
         <div className="min-w-0">
           <h1 className="text-2xl font-black tracking-tight text-teal-950 sm:text-3xl">
@@ -52,6 +79,16 @@ export function SubjectHeader({
               <span className="text-xs text-teal-500">
                 · {nextLevelXP.toLocaleString()} to Level {level + 1}
               </span>
+            )}
+            {scaffoldBadge && (
+              <Badge
+                variant="outline"
+                className={`gap-1 font-medium text-xs ${scaffoldBadge.className}`}
+                title={scaffoldBadge.title}
+              >
+                <Brain className="h-3 w-3" />
+                {scaffoldBadge.label}
+              </Badge>
             )}
           </div>
         </div>

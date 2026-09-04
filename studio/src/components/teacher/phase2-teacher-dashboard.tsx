@@ -1,13 +1,3 @@
-/**
- * Phase 2 Teacher Dashboard
- * 
- * Comprehensive real-time monitoring dashboard with:
- * - Live alerts from behavioral profiling
- * - Per-student misconception analysis
- * - Competency-wide trends and misconception patterns
- * - Session timelines and intervention tracking
- */
-
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -25,6 +15,7 @@ import {
 } from '@/components/ui/select';
 import {
   AlertTriangle,
+  Brain,
   RefreshCw,
   TrendingUp,
   Users,
@@ -37,16 +28,48 @@ import { CompetencyTrendsPanel } from './competency-trends-panel';
 import { MisconceptionsTrendPanel } from './misconceptions-trend-panel';
 import { StudentTimelineView } from './student-timeline-view';
 import { Phase2StudentDetail } from './phase2-student-detail';
+// ─────────────────────────────────────────────────────────────────────────────
+// Scaffolding map type (mirrors the route response shape)
+// ─────────────────────────────────────────────────────────────────────────────
+
+type ScaffoldingMap = Record<string, 'Independent' | 'Guided' | 'Intensive' | null>;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Scaffolding badge config
+// ─────────────────────────────────────────────────────────────────────────────
+
+const SCAFFOLDING_STYLE: Record<
+  'Independent' | 'Guided' | 'Intensive',
+  { className: string; icon: string }
+> = {
+  Independent: { className: 'bg-green-100 text-green-800',  icon: '🟢' },
+  Guided:      { className: 'bg-yellow-100 text-yellow-800', icon: '🟡' },
+  Intensive:   { className: 'bg-blue-100 text-blue-800',    icon: '🔵' },
+};
 
 export function Phase2TeacherDashboard() {
   const { user, profile } = useAuth();
 
   const [activeStudents, setActiveStudents] = useState<StudentActivitySummary[]>([]);
+  const [scaffoldingMap, setScaffoldingMap] = useState<ScaffoldingMap>({});
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [selectedStudentName, setSelectedStudentName] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
+
+  const loadScaffolding = async (students: StudentActivitySummary[]) => {
+    if (students.length === 0) return;
+    const ids = students.map((s) => s.student_id).join(',');
+    try {
+      const res = await fetch(
+        `/api/teacher/students-scaffolding?studentIds=${encodeURIComponent(ids)}`,
+      );
+      if (res.ok) setScaffoldingMap(await res.json());
+    } catch {
+      // Non-critical — scaffolding badges just won't show
+    }
+  };
 
   const loadActiveStudents = async () => {
     try {
@@ -58,6 +81,7 @@ export function Phase2TeacherDashboard() {
         setSelectedStudentName(data[0].student_name);
       }
       setError(null);
+      await loadScaffolding(data || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load students');
       setActiveStudents([]);
@@ -123,7 +147,7 @@ export function Phase2TeacherDashboard() {
       </div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Active Students</CardTitle>
@@ -151,6 +175,21 @@ export function Phase2TeacherDashboard() {
           <CardContent>
             <div className="text-3xl font-bold text-purple-600">{activeStudents.length}</div>
             <p className="text-xs text-muted-foreground mt-1">With recorded sessions</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-1">
+              <Brain className="h-4 w-4" />
+              Intensive Support
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-blue-600">
+              {Object.values(scaffoldingMap).filter((v) => v === 'Intensive').length}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">Need step-by-step help now</p>
           </CardContent>
         </Card>
       </div>
@@ -200,7 +239,16 @@ export function Phase2TeacherDashboard() {
                     <p className="text-sm text-muted-foreground">No active students</p>
                   ) : (
                     <div className="space-y-2 max-h-80 overflow-y-auto">
-                      {activeStudents.map((student) => (
+                      {activeStudents.map((student) => {
+                        const level = scaffoldingMap[student.student_id] as
+                          | 'Independent'
+                          | 'Guided'
+                          | 'Intensive'
+                          | null
+                          | undefined;
+                        const badge = level ? SCAFFOLDING_STYLE[level] : null;
+
+                        return (
                         <Button
                           key={student.student_id}
                           variant={
@@ -216,7 +264,7 @@ export function Phase2TeacherDashboard() {
                             <p className="font-semibold text-sm">
                               {student.student_name}
                             </p>
-                            <div className="flex items-center gap-2 mt-1 text-xs">
+                            <div className="flex items-center gap-2 mt-1 text-xs flex-wrap">
                               <Badge
                                 variant="outline"
                                 className={
@@ -227,22 +275,33 @@ export function Phase2TeacherDashboard() {
                               >
                                 {student.status}
                               </Badge>
+                              {badge && (
+                                <Badge
+                                  variant="outline"
+                                  className={`gap-1 text-[10px] font-semibold ${badge.className}`}
+                                  title={`Omega scaffolding: ${level}`}
+                                >
+                                  <Brain className="h-2.5 w-2.5" />
+                                  {badge.icon} {level}
+                                </Badge>
+                              )}
                               {student.current_topic && (
-                                <span className="text-muted-foreground">
+                                <span className="text-muted-foreground truncate max-w-[80px]">
                                   {student.current_topic}
                                 </span>
                               )}
                             </div>
                           </div>
                           {student.mastery_indicator !== undefined && (
-                            <div className="text-right">
+                            <div className="text-right shrink-0">
                               <p className="text-xs font-semibold">
                                 {(student.mastery_indicator * 100).toFixed(0)}%
                               </p>
                             </div>
                           )}
                         </Button>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </CardContent>

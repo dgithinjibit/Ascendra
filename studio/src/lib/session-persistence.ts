@@ -62,6 +62,8 @@ export interface LearningSession {
     language: 'english' | 'kiswahili' | 'mixed';
     difficultyLevel: number; // 1-5
     learningStyle: 'visual' | 'auditory' | 'kinesthetic' | 'mixed';
+    /** Last Omega scaffolding decision written by /api/chat (fire-and-forget). */
+    scaffoldingLevel?: 'Independent' | 'Guided' | 'Intensive';
   };
   metadata: {
     lastSync: string;

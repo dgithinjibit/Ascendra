@@ -27,49 +27,82 @@ The system prompt is no longer static — it is built dynamically from the
 Omega agent's output.
 
 ```
-POST /api/chat
-  ├─ Query learning_progress for this student + subject
+POST /api/chat (mode: 'socratic')
+  │
+  ├─ Auth + profile lookup
+  │
+  ├─ Query learning_progress table
+  │   SELECT questions_answered, correct_answers, mastery_level, hints_used
+  │   WHERE user_id = $1 AND subject = $2
+  │
   ├─ buildLearningState()
-  │     { attempts, correctAttempts, hintsUsed, frustrationSignal }
+  │   Constructs: { attempts, correctAttempts, hintsUsed, frustrationSignal }
+  │
   ├─ evaluateTutoringDecision()   →  lib/omega-agent/metta-core.ts
-  │     masteryPct < 40 || hintsUsed >= 2 || frustrated  →  Intensive
-  │     attempts === 0 || masteryPct < 80                →  Guided
-  │     else                                             →  Independent
-  └─ buildDynamicSystemPrompt()   →  lib/subject-session.ts
-        Injects: grade, subject, language, studentName,
-                 scaffolding level + instructions, hint, mastery context
+  │   │
+  │   ├─ Calculate: masteryPct = (correctAttempts / attempts) * 100
+  │   │
+  │   └─ Apply thresholds:
+  │       frustrationSignal || hintsUsed >= 2 || masteryPct < 40  →  Intensive
+  │       attempts === 0 || masteryPct < 80                       →  Guided
+  │       else                                                    →  Independent
+  │
+  ├─ buildDynamicSystemPrompt()   →  lib/subject-session.ts
+  │   Injects into prompt:
+  │     • grade, subject, language, studentName
+  │     • scaffolding level with level-specific instructions
+  │     • hint (when scaffolding === Intensive)
+  │     • mastery context (current performance metrics)
+  │
+  ├─ Groq / Gemini streaming call with dynamic system prompt
+  │
+  ├─ SSE stream to browser
+  │
+  └─ Post-stream (async, fire-and-forget):
+      ├─ addChatMessage()            →  chat_messages table
+      ├─ updateDailyActivity()       →  daily_activity table
+      ├─ updateLearningProgress()    →  learning_progress (if competencyCode)
+      └─ updateLearningSession()     →  Redis (scaffoldingLevel)
 ```
 
 **Scaffolding instructions per level:**
 
-`Independent` — student mastery ≥ 80%.
-Ask open-ended questions. Do NOT give the answer. Let them reason
-through it independently.
+| Level | Trigger condition | System prompt instruction |
+|---|---|---|
+| **Independent** | mastery ≥ 80%, no frustration, hints < 2 | Ask open-ended questions. Do NOT give the answer. Let them reason through it independently. Celebrate their autonomy. |
+| **Guided** | 40% ≤ mastery < 80%, or no attempts yet | Ask ONE guiding question per turn. Acknowledge what is correct before redirecting. Do not give the complete answer. Lead them to discover it. |
+| **Intensive** | mastery < 40%, OR hintsUsed ≥ 2, OR frustrationSignal detected | Break the concept into the smallest possible step. Present one step, check understanding, then move to the next. Use concrete Kenyan examples (matatus, shillings, school assembly, everyday life). Be extremely patient and encouraging. |
 
-`Guided` — mastery 40–79% or no attempts yet.
-Ask ONE guiding question per turn. Acknowledge what is correct before
-redirecting. Do not give the complete answer.
+**Implementation details:**
 
-`Intensive` — mastery < 40%, hintsUsed ≥ 2, or frustrationSignal.
-Break the concept into the smallest possible step. Present one step,
-check understanding, then move to the next. Use concrete Kenyan examples
-(matatus, shillings, everyday life).
+- TypeScript (active in production): `lib/omega-agent/metta-core.ts`  
+  Contains `evaluateTutoringDecision()` and `TutoringDecision` interface
+- Rust (source of truth, built but not deployed): `rust-core/src/agent_runtime.rs`  
+  Contains `decide_tutoring()` function
+- Dynamic prompt builder: `lib/subject-session.ts`  
+  Contains `buildDynamicSystemPrompt()` and `SUBJECT_REGISTRY`
+- Rust service can be wired via `SYNCSENTA_RUST_ADAPTIVE_URL` env var
 
-The Omega decision is also stored fire-and-forget in Redis
-(`LearningSession.preferences.scaffoldingLevel`) so teachers can see it in
-the Subject Sessions tab.
+**Teacher visibility:**
 
-### Compass mode
+The computed scaffolding level is stored fire-and-forget in Redis
+(`LearningSession.preferences.scaffoldingLevel`). Teachers can see the current
+scaffolding level for each student in the Phase 2 dashboard → Student Detail
+→ Subject Sessions tab.
 
-When `teacherContext` is supplied on the request, the route uses
-`buildCompassSystemPrompt()` from `lib/socratic-prompts.ts`.
+### Compass mode (teacher-constrained)
+
+When `mode: 'compass'` and `teacherContext` is supplied on the request, the
+route uses `buildCompassSystemPrompt()` from `lib/socratic-prompts.ts`.
 This mode constrains the model strictly to the teacher-supplied material:
 
 - Fixed first-turn greeting: "Welcome, Explorer! …"
 - Every substantive answer must begin "Drawing from your teacher's materials…"
 - Out-of-scope questions get a fixed decline phrase
+- The Omega tutoring decision is **not** applied in compass mode
+- Used when teachers want to constrain chat to specific lesson content
 
-The Omega tutoring decision is **not** applied in compass mode.
+Compass mode is currently available but less commonly used than socratic mode.
 
 ## 3. Request shape
 
@@ -174,19 +207,42 @@ streaming so the raw token syntax never flickers in the UI.
 
 ## 9. Automated tests
 
+Current test coverage:
 - `src/lib/__tests__/socratic-prompts.test.ts` — golden assertions on
-  `buildSocraticSystemPrompt` and `buildCompassSystemPrompt` output.
-  Catches accidental drift. Run with: `npx vitest run src/lib/__tests__/socratic-prompts.test.ts`
+  `buildCompassSystemPrompt` output. Catches accidental drift.  
+  Run: `npx vitest run src/lib/__tests__/socratic-prompts.test.ts`
 - `src/lib/__tests__/socratic-history.test.ts` — persistence round-trip,
   version-skew, cap enforcement
 
-No tests yet for `evaluateTutoringDecision` or `buildDynamicSystemPrompt`.
-These are pure functions and are the highest-priority gap. See `tdd` skill.
+**High-priority test gaps:**
+- `evaluateTutoringDecision()` in `lib/omega-agent/metta-core.ts`
+- `buildDynamicSystemPrompt()` in `lib/subject-session.ts`
+- `buildLearningState()` mastery calculation edge cases
 
-## 10. Open items
+These are pure functions and should have unit tests covering:
+- Threshold boundary conditions (exactly 40%, 80%)
+- Edge cases (0 attempts, null values, invalid inputs)
+- Synchronization with Rust implementation thresholds
 
-- Tests for `evaluateTutoringDecision` and `buildDynamicSystemPrompt`
+See `.kiro/skills/tdd.md` for test-driven development guidelines.
+
+## 10. Open items and future work
+
+**Testing:**
+- Unit tests for `evaluateTutoringDecision` and `buildDynamicSystemPrompt`
+- Integration tests for full Omega decision flow with mocked Supabase + Redis
+
+**Features:**
 - Higher-quality TTS via server-side model (Groq / ElevenLabs)
-- Real distributed rate limiting (Upstash KV replaces in-memory bucket)
-- Multi-device chat history sync (currently Redis + Supabase)
+- Multi-device chat history sync improvements (currently Redis + Supabase hybrid)
+- Streaming progress indicators for long LLM responses
 - Migrating teacher-side AI generators from Render FastAPI to Next.js routes
+
+**Infrastructure:**
+- Deploy Rust adaptive service to production and wire via `SYNCSENTA_RUST_ADAPTIVE_URL`
+- Extend distributed rate limiting from `/api/chat` to other routes
+- WebSocket real-time updates for teacher intervention alerts
+
+**Known issues:**
+- Compass mode (`buildCompassSystemPrompt`) lacks golden tests
+- No automated verification that Rust and TypeScript thresholds stay synchronized
