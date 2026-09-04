@@ -1,0 +1,99 @@
+'use client';
+
+import { Star, RotateCcw, PlayCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+
+export interface SubjectHeaderProps {
+  label: string;
+  slug: string;
+  totalXP: number;
+  level: number;
+  nextLevelXP: number;
+  resumeActivity?: { id: string; name: string; progress: number } | null;
+  grade: string;
+  onResume: () => void;
+  onStartFresh: () => void;
+}
+
+/**
+ * Sticky subject page header showing XP badge, level progress, and
+ * optional resume / start-fresh actions.
+ */
+export function SubjectHeader({
+  label,
+  totalXP,
+  level,
+  nextLevelXP,
+  resumeActivity,
+  onResume,
+  onStartFresh,
+}: SubjectHeaderProps) {
+  return (
+    <div className="flex flex-col gap-4 border-b border-teal-100 bg-white/80 px-5 pb-4 pt-4 backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:px-8">
+      {/* Left: title + XP */}
+      <div className="flex items-center gap-4 min-w-0">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-black tracking-tight text-teal-950 sm:text-3xl">
+            {label}
+          </h1>
+          <div className="mt-1 flex items-center gap-2 flex-wrap">
+            <Badge
+              variant="outline"
+              className="gap-1 border-amber-300 bg-amber-50 text-amber-800 font-semibold"
+            >
+              <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+              Level {level}
+            </Badge>
+            <span className="text-sm text-teal-700 font-medium">
+              {totalXP.toLocaleString()} XP
+            </span>
+            {level < 5 && (
+              <span className="text-xs text-teal-500">
+                · {nextLevelXP.toLocaleString()} to Level {level + 1}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Right: resume / start buttons */}
+      <div className="flex items-center gap-3 shrink-0">
+        {resumeActivity ? (
+          <>
+            <Button
+              onClick={onResume}
+              size="sm"
+              className="gap-2 bg-teal-600 hover:bg-teal-700 text-white"
+            >
+              <PlayCircle className="h-4 w-4" />
+              <span className="hidden sm:inline">Continue:</span>{' '}
+              {resumeActivity.name}
+              <span className="text-xs opacity-75 ml-1">
+                {resumeActivity.progress}%
+              </span>
+            </Button>
+            <Button
+              onClick={onStartFresh}
+              variant="outline"
+              size="sm"
+              className="gap-1 text-teal-700 border-teal-200"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              Start fresh
+            </Button>
+          </>
+        ) : (
+          <Button
+            onClick={onStartFresh}
+            size="sm"
+            className="gap-2 bg-teal-600 hover:bg-teal-700 text-white"
+          >
+            <PlayCircle className="h-4 w-4" />
+            Start learning
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}

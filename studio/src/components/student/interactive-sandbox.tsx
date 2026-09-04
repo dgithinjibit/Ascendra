@@ -164,6 +164,9 @@ interface InteractiveSandboxProps {
   /** Optional teacher-approved video; unsafe or mismatched assets never render. */
   media?: TeacherApprovedSandboxMedia
   onComplete?: (result: SandboxCompletionResult) => void
+  /** Resume from a specific variation index (0-based). Used by the
+   *  Redis resume-point feature on the activity page. */
+  initialVariationIndex?: number
 }
 
 // ---------------------------------------------------------------------------
@@ -224,6 +227,7 @@ export function InteractiveSandbox({
   lessonId,
   media,
   onComplete,
+  initialVariationIndex = 0,
 }: InteractiveSandboxProps) {
   // ----- Variation / lesson state -----------------------------------------
   //
@@ -240,7 +244,7 @@ export function InteractiveSandbox({
   )
   const masteryGoal = masteryThreshold ?? lessonVariations.length
 
-  const [variationIndex, setVariationIndex] = useState(0)
+  const [variationIndex, setVariationIndex] = useState(initialVariationIndex)
   const [correctCount, setCorrectCount] = useState(0)
   const [learningLoop, setLearningLoop] = useState<LearningLoopState>(() =>
     createLearningLoop({ lessonId: lessonId ?? 'sandbox-lesson', masteryThreshold: masteryGoal }),

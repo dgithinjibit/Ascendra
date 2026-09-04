@@ -5,12 +5,13 @@ import { useRouter } from 'next/navigation'
 import { Check, ChevronRight, Sparkles } from 'lucide-react'
 import { StudentHeader } from '@/components/layout/student-header'
 import { FloatingConceptChat } from '@/components/student/floating-concept-chat'
-import type { SubjectId } from '@/lib/sandbox-types'
+import type { SubjectId, ExtendedSubjectId } from '@/lib/sandbox-types'
 
 type SubjectCard = {
   label: string
   image: string
   subject?: SubjectId
+  slug?: ExtendedSubjectId
 }
 
 const CORE_SUBJECTS: SubjectCard[] = [
@@ -25,10 +26,10 @@ const CORE_SUBJECTS: SubjectCard[] = [
   { label: 'Kenyan Sign Language', image: '/images/learning-catalog/kenyan-sign-language.png' },
 ]
 
-const RECOMMENDED_COURSES = [
-  { label: 'AI', image: '/images/learning-catalog/ai.png' },
-  { label: 'Blockchain', image: '/images/learning-catalog/blockchain.png' },
-  { label: 'Financial Literacy', image: '/images/learning-catalog/financial-literacy.png' },
+const RECOMMENDED_COURSES: SubjectCard[] = [
+  { label: 'AI',                image: '/images/learning-catalog/ai.png',                slug: 'ai' },
+  { label: 'Blockchain',        image: '/images/learning-catalog/blockchain.png',        slug: 'blockchain' },
+  { label: 'Financial Literacy',image: '/images/learning-catalog/financial-literacy.png',slug: 'financial-literacy' },
 ]
 
 function LearningProgress() {
@@ -103,13 +104,12 @@ export default function SandboxPage() {
   }, [])
 
   const openSubject = (card: SubjectCard) => {
-    if (!card.subject) {
-      setNotice(`${card.label} activities are being prepared for the next release.`)
+    const slug = card.subject ?? card.slug
+    if (!slug) {
+      setNotice(`${card.label} is coming soon.`)
       return
     }
-
-    const gradeSlug = grade.toLowerCase().replace(/[^a-z0-9]+/g, '-')
-    router.push(`/student/sandbox/${gradeSlug}/${card.subject}`)
+    router.push(`/student/subject/${slug}`)
   }
 
   return (
@@ -155,7 +155,7 @@ export default function SandboxPage() {
                   <ImageCard
                     key={course.label}
                     {...course}
-                    onClick={() => setNotice(`${course.label} is ready to be designed as a learning path next.`)}
+                    onClick={() => openSubject(course)}
                   />
                 ))}
               </div>

@@ -10,7 +10,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   getStudentProgress,
   getStudentMisconceptions,
@@ -29,6 +29,7 @@ import {
   Zap,
   Clock,
   BookOpen,
+  BookMarked,
 } from 'lucide-react';
 
 interface Phase2StudentDetailProps {
@@ -144,7 +145,7 @@ export function Phase2StudentDetail({
 
       <CardContent>
         <Tabs defaultValue="progress" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="progress" className="text-xs">
               <TrendingUp className="h-4 w-4 mr-1" />
               Progress
@@ -160,6 +161,10 @@ export function Phase2StudentDetail({
             <TabsTrigger value="details" className="text-xs">
               <BookOpen className="h-4 w-4 mr-1" />
               Details
+            </TabsTrigger>
+            <TabsTrigger value="subjects" className="text-xs">
+              <BookMarked className="h-4 w-4 mr-1" />
+              Subjects
             </TabsTrigger>
           </TabsList>
 
@@ -286,8 +291,166 @@ export function Phase2StudentDetail({
               </div>
             </div>
           </TabsContent>
+
+          {/* Subject Sessions Tab */}
+          <TabsContent value="subjects">
+            <SubjectSessionsPanel studentId={studentId} />
+          </TabsContent>
         </Tabs>
       </CardContent>
     </Card>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SubjectSessionsPanel
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface SubjectSummary {
+  subject: string;
+  label: string;
+  lastSessionDate: string | null;
+  lastActivityName: string | null;
+  lastActivityProgress: number;
+  sessionCount: number;
+  timeSpentMinutes: number;
+  masteryPercent: number;
+  scaffoldingLevel: 'Independent' | 'Guided' | 'Intensive' | null;
+  lastMessages: { role: string; content: string; created_at: string }[];
+}
+
+function SubjectSessionsPanel({ studentId }: { studentId: string }) {
+  const [data, setData] = React.useState<SubjectSummary[] | null>(null);
+  const [loadError, setLoadError] = React.useState<string | null>(null);
+  const [expandedSlug, setExpandedSlug] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    fetch(`/api/teacher/student-subjects?studentId=${encodeURIComponent(studentId)}`)
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then(setData)
+      .catch(() => setLoadError('Could not load subject data.'));
+  }, [studentId]);
+
+  if (loadError) {
+    return <p className="text-sm text-red-600 py-4">{loadError}</p>;
+  }
+
+  if (!data) {
+    return (
+      <div className="space-y-2 animate-pulse mt-2">
+        {[1, 2, 3].map((n) => (
+          <div key={n} className="h-12 rounded bg-muted" />
+        ))}
+      </div>
+    );
+  }
+
+  if (data.length === 0) {
+    return <p className="text-sm text-muted-foreground py-4">No subject sessions yet.</p>;
+  }
+
+  const scaffoldingColor: Record<string, string> = {
+    Independent: 'bg-green-100 text-green-800',
+    Guided:      'bg-blue-100 text-blue-800',
+    Intensive:   'bg-orange-100 text-orange-800',
+  };
+
+  return (
+    <div className="mt-2 space-y-1">
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="border-b text-left text-muted-foreground">
+            <th className="py-2 pr-3 font-semibold">Subject</th>
+            <th className="py-2 pr-3 font-semibold">Last session</th>
+            <th className="py-2 pr-3 font-semibold">Last activity</th>
+            <th className="py-2 pr-3 font-semibold text-right">Sessions</th>
+            <th className="py-2 pr-3 font-semibold text-right">Time</th>
+            <th className="py-2 pr-3 font-semibold text-right">Mastery</th>
+            <th className="py-2 font-semibold">Scaffolding</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data.map((row) => (
+            <React.Fragment key={row.subject}>
+              <tr
+                className="border-b cursor-pointer hover:bg-muted/50 transition-colors"
+                onClick={() =>
+                  setExpandedSlug((prev) =>
+                    prev === row.subject ? null : row.subject,
+                  )
+                }
+              >
+                <td className="py-2 pr-3 font-medium">{row.label}</td>
+                <td className="py-2 pr-3 text-muted-foreground">
+                  {row.lastSessionDate
+                    ? new Date(row.lastSessionDate).toLocaleDateString()
+                    : '—'}
+                </td>
+                <td className="py-2 pr-3 text-muted-foreground max-w-[120px] truncate">
+                  {row.lastActivityName
+                    ? `${row.lastActivityName} (${row.lastActivityProgress}%)`
+                    : '—'}
+                </td>
+                <td className="py-2 pr-3 text-right">{row.sessionCount}</td>
+                <td className="py-2 pr-3 text-right">{row.timeSpentMinutes}m</td>
+                <td className="py-2 pr-3 text-right">{row.masteryPercent}%</td>
+                <td className="py-2">
+                  {row.scaffoldingLevel ? (
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                        scaffoldingColor[row.scaffoldingLevel] ?? ''
+                      }`}
+                    >
+                      {row.scaffoldingLevel}
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  )}
+                </td>
+              </tr>
+
+              {/* Expanded: last messages */}
+              {expandedSlug === row.subject && (
+                <tr>
+                  <td colSpan={7} className="bg-muted/30 px-3 py-3">
+                    {row.lastMessages.length === 0 ? (
+                      <p className="text-muted-foreground text-xs">No messages yet.</p>
+                    ) : (
+                      <div className="space-y-1.5">
+                        <p className="text-xs font-semibold text-muted-foreground mb-2">
+                          Last {row.lastMessages.length} message
+                          {row.lastMessages.length !== 1 ? 's' : ''}
+                        </p>
+                        {row.lastMessages.map((msg, i) => (
+                          <div
+                            key={i}
+                            className={`flex gap-2 text-xs ${
+                              msg.role === 'user' ? 'justify-end' : 'justify-start'
+                            }`}
+                          >
+                            <span
+                              className={`max-w-[80%] rounded-xl px-3 py-1.5 ${
+                                msg.role === 'user'
+                                  ? 'bg-teal-600 text-white'
+                                  : 'bg-white border text-foreground'
+                              }`}
+                            >
+                              {msg.content}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              )}
+            </React.Fragment>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }

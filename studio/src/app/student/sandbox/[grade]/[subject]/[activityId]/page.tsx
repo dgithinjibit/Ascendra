@@ -1,5 +1,6 @@
 'use client';
 
+import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { StudentHeader } from '@/components/layout/student-header';
@@ -65,6 +66,33 @@ export default function ActivityPage() {
   // Shared progress-persistence used by both renderers.
   const { user } = useAuth();
 
+  // ── Redis resume state ────────────────────────────────────────────────────
+  // On mount, fetch the Redis learning session and restore the variation index
+  // if this activity is the one the student was last working on.
+  const [resumeVariationIndex, setResumeVariationIndex] = useState(0);
+  const [resumeLoaded, setResumeLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!user?.id) {
+      setResumeLoaded(true);
+      return;
+    }
+    fetch('/api/session/sync?action=get')
+      .then((r) => (r.ok ? r.json() : { session: null }))
+      .then(({ session }) => {
+        const ca = session?.currentActivity;
+        if (ca?.id === activityId && ca?.data?.currentVariationIndex != null) {
+          setResumeVariationIndex(ca.data.currentVariationIndex as number);
+        }
+      })
+      .catch(() => {/* degraded — start from 0 */})
+      .finally(() => setResumeLoaded(true));
+  }, [user?.id, activityId]);
+
+  // Ref to track current variation for save-on-step
+  const currentVariationRef = useRef(resumeVariationIndex);
+  currentVariationRef.current = resumeVariationIndex;
+
   const persistCompletion = async (score: number) => {
     if (user?.id) {
       try {
@@ -103,6 +131,20 @@ export default function ActivityPage() {
       }
     }
 
+    // Fire-and-forget: clear Redis currentActivity now that this activity is
+    // complete so the subject page no longer shows a stale resume banner.
+    if (user?.id) {
+      fetch('/api/session/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          action: 'save',
+          sessionData: { currentActivity: null },
+        }),
+      }).catch(() => {/* non-critical */});
+    }
+
     router.push(`/student/sandbox/${grade}/${subject}`);
   };
 
@@ -114,7 +156,35 @@ export default function ActivityPage() {
   };
 
   const handleSandboxComplete = (result: SandboxCompletionResult) => {
-    if (!result.mastered) return; // only count mastered lessons
+    if (!result.mastered) {
+      // Partial progress: save current variation index to Redis so the student
+      // can resume from where they left off.
+      if (user?.id) {
+        const completionPercent = Math.round(
+          (result.score / (activity?.masteryThreshold ?? 1)) * 100,
+        );
+        fetch('/api/session/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: user.id,
+            action: 'save',
+            sessionData: {
+              currentActivity: {
+                id: activityId,
+                name: activity?.title ?? activityId,
+                subject,
+                progress: completionPercent,
+                data: {
+                  currentVariationIndex: result.score, // score = variations passed
+                },
+              },
+            },
+          }),
+        }).catch(() => {/* non-critical */});
+      }
+      return;
+    }
     persistCompletion(result.score * 10);
   };
 
@@ -138,6 +208,19 @@ export default function ActivityPage() {
   const sandboxVariations = variationsFor(activity);
   const canvasReady = sandboxActivityType !== null && sandboxVariations !== undefined;
 
+  // Don't render the canvas until we know the resume state (avoids a flash
+  // that starts at variation 0 before the Redis response arrives).
+  if (!resumeLoaded) {
+    return (
+      <div className="education-shell">
+        <StudentHeader showBackButton onBack={handleBack} variant="catalog" />
+        <div className="mx-auto max-w-7xl px-5 py-6 sm:px-8 sm:py-8 animate-pulse">
+          <div className="h-96 rounded-2xl bg-teal-50" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="education-shell">
       <StudentHeader showBackButton onBack={handleBack} variant="catalog" />
@@ -145,7 +228,7 @@ export default function ActivityPage() {
       <div className="mx-auto max-w-7xl px-5 py-6 sm:px-8 sm:py-8">
         {canvasReady && sandboxActivityType && sandboxVariations ? (
           <InteractiveSandbox
-            key={activity.id}
+            key={`${activity.id}-${resumeVariationIndex}`}
             activityType={sandboxActivityType}
             competency={
               activity.competency ??
@@ -163,6 +246,7 @@ export default function ActivityPage() {
             }
             lessonId={activity.id}
             media={activity.media}
+            initialVariationIndex={resumeVariationIndex}
             onComplete={handleSandboxComplete}
           />
         ) : (

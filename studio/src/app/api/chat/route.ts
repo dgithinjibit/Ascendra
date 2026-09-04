@@ -17,10 +17,12 @@ import Groq from 'groq-sdk';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { z } from 'zod';
 import {
-  buildSocraticSystemPrompt,
   buildCompassSystemPrompt,
   type LearnerLearningContext,
 } from '@/lib/socratic-prompts';
+import { evaluateTutoringDecision } from '@/lib/omega-agent/metta-core';
+import { buildDynamicSystemPrompt, buildLearningState } from '@/lib/subject-session';
+import { updateLearningSession } from '@/lib/session-persistence';
 import { checkChatRateLimit } from '@/lib/rate-limit-upstash';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { addChatMessage, createChatSession } from '@/lib/chat-history-supabase';
@@ -187,7 +189,7 @@ export async function POST(req: NextRequest) {
   if (authenticatedUser) {
     const { data: masteryRows } = await supabase
       .from('learning_progress')
-      .select('competency_name, mastery_level, progress_percentage, last_practiced_at')
+      .select('competency_name, mastery_level, progress_percentage, last_practiced_at, questions_answered, correct_answers')
       .eq('user_id', authenticatedUser.id)
       .eq('subject', body.subject)
       .eq('grade', verifiedGrade)
@@ -258,21 +260,69 @@ export async function POST(req: NextRequest) {
   }
 
   // ---- Build messages -------------------------------------------------------
-  const systemPrompt =
-    body.mode === 'compass'
-      ? buildCompassSystemPrompt({
-          teacherContext: body.teacherContext!,
+  // For compass mode, keep the existing prompt unchanged.
+  // For socratic mode, compute a tutoring decision from learning_progress data
+  // and replace the static socratic prompt with a dynamic Omega-aware one.
+  let systemPrompt: string;
+
+  if (body.mode === 'compass') {
+    systemPrompt = buildCompassSystemPrompt({
+      teacherContext: body.teacherContext!,
+      language: body.language,
+      studentName: body.studentName || profile.full_name || undefined,
+      learnerContext,
+    });
+  } else {
+    // Fetch learning_progress row once more (or reuse masteryRows captured above).
+    // We need questions_answered + correct_answers for the decision engine.
+    let masteryRowForDecision: {
+      questions_answered: number | null;
+      correct_answers: number | null;
+      mastery_level: string | null;
+    } | null = null;
+
+    if (authenticatedUser) {
+      const { data: decisionRows } = await supabase
+        .from('learning_progress')
+        .select('questions_answered, correct_answers, mastery_level')
+        .eq('user_id', authenticatedUser.id)
+        .eq('subject', body.subject)
+        .eq('grade', verifiedGrade)
+        .order('last_practiced_at', { ascending: false })
+        .limit(1)
+        .single();
+      masteryRowForDecision = decisionRows ?? null;
+    }
+
+    const learningState = buildLearningState(masteryRowForDecision);
+    const decision = evaluateTutoringDecision(learningState);
+
+    // Fire-and-forget: persist scaffolding level in Redis for teacher visibility.
+    if (authenticatedUser) {
+      updateLearningSession(authenticatedUser.id, {
+        preferences: {
           language: body.language,
-          studentName: body.studentName || profile.full_name || undefined,
-          learnerContext,
-        })
-      : buildSocraticSystemPrompt({
-          grade: verifiedGrade,
-          subject: body.subject,
-          language: body.language === 'mixed' && profile.language_preference ? profile.language_preference : body.language,
-          studentName: body.studentName || profile.full_name || undefined,
-          learnerContext,
-        });
+          difficultyLevel: 3,
+          learningStyle: 'mixed',
+          scaffoldingLevel: decision.scaffolding,
+        } as any,
+      }).catch((err: unknown) => console.error('[/api/chat] Redis scaffolding write failed:', err));
+    }
+
+    const effectiveLanguage =
+      body.language === 'mixed' && profile.language_preference
+        ? (profile.language_preference as 'english' | 'kiswahili' | 'mixed')
+        : body.language;
+
+    systemPrompt = buildDynamicSystemPrompt({
+      decision,
+      subject: body.subject,
+      grade: verifiedGrade,
+      language: effectiveLanguage,
+      studentName: body.studentName || profile.full_name || undefined,
+      learnerContext,
+    });
+  }
 
   // Cap history
   const trimmedHistory = body.history.slice(-MAX_HISTORY_TURNS * 2);

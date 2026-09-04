@@ -26,6 +26,19 @@ export type SubjectId =
   | 'creative'
   | 'indigenous'
 
+/**
+ * Extended subjects available as chat-first courses (not in the core CBC
+ * sandbox catalogue). A subject page exists for each slug and routes to the
+ * SubjectChat layout.
+ */
+export type ExtendedSubjectId =
+  | 'blockchain'
+  | 'financial-literacy'
+  | 'ai'
+
+/** Union of all subjects that have a /student/subject/[slug] page. */
+export type AnySubjectId = SubjectId | ExtendedSubjectId
+
 export type ActivityType = 'explore' | 'practice' | 'challenge' | 'create'
 
 /**

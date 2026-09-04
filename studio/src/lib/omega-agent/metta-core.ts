@@ -687,6 +687,85 @@ export class MeTTaSession {
     });
     return atomStrings.join(' ');
   }
+
+  // ----------------------------------------------------------------
+  // Supabase persistence helpers (client-side, uses anon key)
+  // ----------------------------------------------------------------
+
+  /**
+   * Persist the current session state to the server.
+   * Calls POST /api/metta/session — server handles the Supabase write.
+   * Safe to call after any interaction that should survive a reload.
+   */
+  async persist(
+    competencyLevels: Record<string, number> = {},
+    lastInteraction: { type: string; input: Record<string, unknown>; result: unknown } | null = null
+  ): Promise<boolean> {
+    if (typeof window === 'undefined') return false; // server context — skip
+    try {
+      const res = await fetch('/api/metta/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionFacts: this.getSessionState(),
+          lastInteraction: lastInteraction
+            ? { ...lastInteraction, timestamp: Date.now() }
+            : null,
+          competencyLevels,
+          grade: this.grade,
+        }),
+      });
+      return res.ok;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Restore persisted session facts from the server into this session.
+   * Call once on session initialization.
+   */
+  async restore(): Promise<boolean> {
+    if (typeof window === 'undefined') return false;
+    try {
+      const res = await fetch('/api/metta/session');
+      if (!res.ok) return false;
+      const data = await res.json();
+      if (!data.found) return false;
+
+      const facts: string[] = data.sessionFacts ?? [];
+      for (const fact of facts) {
+        try { this.addSessionFact(fact); } catch { /* ignore bad facts */ }
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Run an interaction via the server-side endpoint.
+   * Use this when the result must be persisted (e.g. competency assessment).
+   * Falls back to client-side processInteraction on network failure.
+   */
+  async processInteractionRemote(interaction: Record<string, unknown>): Promise<unknown> {
+    if (typeof window === 'undefined') {
+      return this.processInteraction(interaction);
+    }
+    try {
+      const res = await fetch('/api/metta/interact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ interaction, grade: this.grade }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      return data.result;
+    } catch {
+      // Degrade gracefully to local processing
+      return this.processInteraction(interaction);
+    }
+  }
 }
 
 // Global MeTTa Education System instance
@@ -699,3 +778,54 @@ export default {
   MeTTaSession,
   mettaEducationSystem
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tutoring Decision Engine — TypeScript port of Rust decide_tutoring()
+// (rust-core/src/agent_runtime.rs)
+//
+// This implementation is used directly by the chat route until the Rust HTTP
+// server is running. Thresholds must stay in sync with the Rust version.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface TutoringDecision {
+  scaffolding: 'Independent' | 'Guided' | 'Intensive';
+  hint: string;
+  nextAction: string;
+}
+
+export function evaluateTutoringDecision(state: {
+  attempts: number;
+  correctAttempts: number;
+  hintsUsed: number;
+  frustrationSignal: boolean;
+}): TutoringDecision {
+  const masteryPct =
+    state.attempts === 0
+      ? 0
+      : Math.round((state.correctAttempts / state.attempts) * 100);
+
+  // Intensive branch: frustrated, too many hints, or very low mastery
+  if (state.frustrationSignal || state.hintsUsed >= 2 || masteryPct < 40) {
+    return {
+      scaffolding: 'Intensive',
+      hint: 'Let us take one small step together. Look for the part you already know.',
+      nextAction: 'show_conceptual_example',
+    };
+  }
+
+  // Guided branch: no attempts yet, or mastery below 80 %
+  if (state.attempts === 0 || masteryPct < 80) {
+    return {
+      scaffolding: 'Guided',
+      hint: 'What do you notice first? Say or write one idea before trying the next step.',
+      nextAction: 'ask_guiding_question',
+    };
+  }
+
+  // Independent branch: high mastery
+  return {
+    scaffolding: 'Independent',
+    hint: 'Try the next question independently, then explain how you got your answer.',
+    nextAction: 'present_next_challenge',
+  };
+}
