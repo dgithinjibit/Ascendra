@@ -17,12 +17,16 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { isLocalDemoEnabled } from "@/lib/auth/route-policy";
 
 /**
- * Demo mode is now always enabled for easy access to the Grade 2 system.
- * Users can instantly try the demo accounts without registration.
+ * Demo mode is local-development only and must be explicitly enabled.
+ * Production always uses real authentication and real user data.
  */
-const DEMO_MODE = true; // Always enable demo mode for immediate access
+const DEMO_MODE = isLocalDemoEnabled(
+  process.env.NODE_ENV,
+  process.env.NEXT_PUBLIC_SYNC_SENTA_DEMO_MODE,
+);
 
 const roles = [
   {
@@ -83,10 +87,10 @@ function HomePageContent() {
   // Auto-redirect logic for URL parameters
   useEffect(() => {
     const role = searchParams.get('role');
-    const demo = searchParams.get('demo');
+    const demo = searchParams.get('demo') === 'true' && process.env.NODE_ENV !== 'production';
     
-    // Auto-login with demo accounts when URL params are present
-    if ((demo === 'true' || role) && role && !autoLoginLoading) {
+    // Auto-login is intentionally local-only; production must use real authentication.
+    if ((demo || DEMO_MODE) && role && !autoLoginLoading) {
       const validRoles = ['student', 'teacher', 'head', 'parent'];
       if (validRoles.includes(role)) {
         setAutoLoginLoading(role);

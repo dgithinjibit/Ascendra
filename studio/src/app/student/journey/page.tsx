@@ -35,6 +35,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { getAllGrades, getSubjectsForGrade } from '@/data/curriculum';
+import { getJourneyStepAfterGrade } from '@/lib/student-journey';
 
 const STORAGE_LEVEL = 'learningJourney.level';
 const STORAGE_GRADE = 'learningJourney.grade';
@@ -151,7 +152,7 @@ export default function JourneyPage() {
       window.sessionStorage.setItem(STORAGE_GRADE, g);
       window.localStorage.setItem(STORAGE_GRADE, g);
     }
-    router.push('/student');
+    setStep(getJourneyStepAfterGrade(g, coveredGrades));
   };
 
   const pickSubject = (subject: string) => {

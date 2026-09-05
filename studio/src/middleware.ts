@@ -15,6 +15,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
+import { shouldEnforceAuthWall } from '@/lib/auth/route-policy';
 
 const API_VERSION = '1.0.0';
 const SUPPORTED_VERSIONS = ['1.0.0'];
@@ -51,9 +52,13 @@ export async function middleware(request: NextRequest) {
   // production default.
   const protectedRoute = request.nextUrl.pathname.startsWith('/teacher') || request.nextUrl.pathname.startsWith('/student') || request.nextUrl.pathname.startsWith('/parent') || request.nextUrl.pathname.startsWith('/head');
   const demoBypass = process.env.NODE_ENV !== 'production' && process.env.NEXT_PUBLIC_AUTH_DEMO_BYPASS === 'true';
-  // Authentication is opt-in. Presentation deployments can run without a
-  // Supabase project; a real production deployment enables this explicitly.
-  const authWallEnabled = process.env.AUTH_WALL_ENABLED === 'true';
+  // Production role workspaces are protected by default. Local development
+  // remains opt-in so contributors can run the UI without a Supabase session.
+  // Set AUTH_WALL_ENABLED=false only for a deliberate non-production preview.
+  const authWallEnabled = shouldEnforceAuthWall(
+    process.env.NODE_ENV,
+    process.env.AUTH_WALL_ENABLED,
+  );
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
