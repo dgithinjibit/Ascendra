@@ -21,6 +21,11 @@ import statistics
 import math
 
 from ..core.logging import get_logger
+from ..reasoning.hyperon_evaluator import (
+    get_policy_evaluator,
+    PolicyRequest,
+    PolicyVerdict
+)
 
 logger = get_logger("telemetry_agent")
 
@@ -174,6 +179,9 @@ class BehavioralProfile:
     intervention_needed: bool
     intervention_urgency: str  # "none", "low", "medium", "high", "critical"
     
+    # Policy evaluation (MeTTa/Hyperon)
+    policy_verdict: Optional[PolicyVerdict] = None
+    
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for storage."""
         return {
@@ -223,6 +231,14 @@ class BehavioralProfile:
             "engagement_score": self.engagement_score,
             "mastery_indicator": self.mastery_indicator,
             "intervention_needed": self.intervention_needed,
+            "intervention_urgency": self.intervention_urgency,
+            "policy_verdict": {
+                "approved": self.policy_verdict.approved,
+                "verdict": self.policy_verdict.verdict,
+                "reasoning": self.policy_verdict.reasoning,
+                "evaluator_type": self.policy_verdict.evaluator_type,
+            } if self.policy_verdict else None,
+        }
             "intervention_urgency": self.intervention_urgency,
         }
 
@@ -293,6 +309,41 @@ class TelemetryAgent:
             primary_pattern, secondary_patterns, mastery_indicator, pathing
         )
         
+        # === MeTTa Policy Evaluation (Task 5) ===
+        # Evaluate policy on the telemetry data before finalizing profile
+        policy_evaluator = get_policy_evaluator()
+        
+        # Construct telemetry dict for policy evaluation
+        telemetry_data = {
+            "erasure_count": erasure.undo_count,
+            "dwell_time_seconds": dwell.mean_dwell_ms / 1000.0,
+            "attempt_count": pathing.backtrack_count + 1,
+            "first_attempt_correct": mastery_indicator > 0.8,
+            "engagement_score": engagement_score,
+            "mastery_indicator": mastery_indicator,
+            "pattern": primary_pattern.value,
+        }
+        
+        policy_request = PolicyRequest(
+            query_type="session_telemetry",
+            context={
+                "student_id": student_id,
+                "session_id": session_id,
+                "activity_type": activity_type,
+                "duration_seconds": duration,
+                "telemetry": telemetry_data,
+            }
+        )
+        
+        policy_verdict = policy_evaluator.evaluate(policy_request)
+        
+        self.logger.info(
+            f"Policy evaluation for session {session_id}",
+            approved=policy_verdict.approved,
+            verdict=policy_verdict.verdict,
+            evaluator=policy_verdict.evaluator_type
+        )
+        
         # Build profile
         start_time = datetime.fromtimestamp(parsed_events[0].timestamp / 1000)
         end_time = datetime.fromtimestamp(parsed_events[-1].timestamp / 1000)
@@ -315,7 +366,8 @@ class TelemetryAgent:
             engagement_score=engagement_score,
             mastery_indicator=mastery_indicator,
             intervention_needed=intervention_needed,
-            intervention_urgency=urgency
+            intervention_urgency=urgency,
+            policy_verdict=policy_verdict  # MeTTa policy evaluation result
         )
         
         self.logger.info(
@@ -323,7 +375,9 @@ class TelemetryAgent:
             primary_pattern=primary_pattern.value,
             mastery=f"{mastery_indicator:.2f}",
             intervention_needed=intervention_needed,
-            urgency=urgency
+            urgency=urgency,
+            policy_approved=policy_verdict.approved,
+            policy_verdict=policy_verdict.verdict
         )
         
         return profile
