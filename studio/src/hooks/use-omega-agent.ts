@@ -45,13 +45,14 @@ export function useOmegaAgent() {
    */
   useEffect(() => {
     if (!user?.id || initializationRef.current) return;
+    const userId = user.id;
 
     async function initializeAgent() {
       try {
         initializationRef.current = true;
         setState(prev => ({ ...prev, error: null }));
 
-        const agent = getOmegaAgent(user.id);
+        const agent = getOmegaAgent(userId);
         await agent.initialize();
 
         setState(prev => ({
@@ -60,7 +61,7 @@ export function useOmegaAgent() {
           isInitialized: true
         }));
 
-        console.log('🧠 Omega Agent initialized for user:', user.id);
+        console.log('🧠 Omega Agent initialized for user:', userId);
       } catch (error) {
         console.error('❌ Omega Agent initialization failed:', error);
         setState(prev => ({

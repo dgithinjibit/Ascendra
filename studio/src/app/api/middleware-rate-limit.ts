@@ -150,7 +150,7 @@ async function getUserTier(request: NextRequest): Promise<'free' | 'premium' | '
       .single();
     
     // School admin or teacher gets school tier
-    if (profile?.role === 'school_head' || profile?.role === 'teacher') {
+    if (profile?.role === 'admin' || profile?.role === 'teacher') {
       return 'school';
     }
     

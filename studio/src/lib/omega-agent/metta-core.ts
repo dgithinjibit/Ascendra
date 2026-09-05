@@ -807,7 +807,7 @@ export function evaluateTutoringDecision(state: {
       : Math.floor((Math.min(state.correctAttempts, state.attempts) * 100) / state.attempts);
 
   // Intensive: frustrated, too many hints, or very low mastery
-  if (state.frustrationSignal || state.hintsUsed >= 2 || masteryPct < 40) {
+  if (state.frustrationSignal || state.hintsUsed >= 2 || (state.attempts > 0 && masteryPct < 40)) {
     return {
       scaffolding: 'Intensive',
       hint: 'Let us take one small step together. Look for the part you already know.',

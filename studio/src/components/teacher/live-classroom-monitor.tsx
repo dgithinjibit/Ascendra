@@ -30,12 +30,12 @@ import {
   Send,
   User
 } from 'lucide-react';
-import type { StudentProgress } from '@/lib/realtime-feedback';
+import type { StudentProgress, TeacherFeedback } from '@/lib/realtime-feedback';
 
 interface StudentCardProps {
   student: StudentProgress;
   onSendEncouragement: (studentId: string, name: string) => void;
-  onSendHint: (studentId: string, name: string) => void;
+  onSendHint: (studentId: string, name: string, hint: string, activityId?: string) => Promise<TeacherFeedback | null>;
   onSendIntervention: (studentId: string, name: string, issue: string) => void;
   onSendCelebration: (studentId: string, name: string, achievement: string) => void;
 }
@@ -158,7 +158,7 @@ function StudentCard({
             <Button
               size="sm" 
               variant="outline"
-              onClick={() => onSendHint(student.studentId, studentName)}
+              onClick={() => onSendHint(student.studentId, studentName, student.strugglingWith || 'Try the next step slowly')}
               className="h-7 text-xs"
             >
               <Lightbulb className="h-3 w-3 mr-1" />

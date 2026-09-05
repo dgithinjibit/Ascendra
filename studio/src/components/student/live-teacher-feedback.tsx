@@ -44,7 +44,7 @@ const FEEDBACK_COLORS = {
 interface FeedbackCardProps {
   feedback: TeacherFeedback;
   onMarkRead: (id: string) => void;
-  onRespond: (id: string, response: string) => void;
+  onRespond: (id: string, response: string) => Promise<boolean | TeacherFeedback | null>;
 }
 
 function FeedbackCard({ feedback, onMarkRead, onRespond }: FeedbackCardProps) {

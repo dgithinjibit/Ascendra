@@ -225,6 +225,8 @@ export interface Database {
           first_attempted_at: string;
           last_practiced_at: string;
           mastered_at: string | null;
+          hints_used: number;
+          consecutive_wrong: number;
         };
         Insert: {
           id?: string;
@@ -244,6 +246,8 @@ export interface Database {
           first_attempted_at?: string;
           last_practiced_at?: string;
           mastered_at?: string | null;
+          hints_used?: number;
+          consecutive_wrong?: number;
         };
         Update: {
           id?: string;
@@ -263,6 +267,8 @@ export interface Database {
           first_attempted_at?: string;
           last_practiced_at?: string;
           mastered_at?: string | null;
+          hints_used?: number;
+          consecutive_wrong?: number;
         };
         Relationships: [];
       };
@@ -497,6 +503,11 @@ export interface Database {
       camera_frames: LegacyTable;
       "esp32-uploads": LegacyTable;
       point_transactions: LegacyTable;
+      payment_transactions: LegacyTable;
+      user_profiles: LegacyTable;
+      omega_decisions: LegacyTable;
+      teacher_student_feedback: LegacyTable;
+      student_sessions: LegacyTable;
       referrals: LegacyTable;
       student_alerts: LegacyTable;
       teacher_feedback: LegacyTable;

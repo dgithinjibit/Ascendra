@@ -6,11 +6,12 @@
  */
 
 import { createClient as supabaseCreateClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-let serverClient: ReturnType<typeof supabaseCreateClient> | null = null;
+let serverClient: SupabaseClient<Database> | null = null;
 
-export function getSupabaseServerClient() {
+export function getSupabaseServerClient(): SupabaseClient<Database> {
   if (serverClient) {
     return serverClient;
   }
@@ -49,6 +50,6 @@ export function getSupabaseServerClient() {
 // To avoid build-time "export not found" errors on Vercel, re-export a small wrapper named
 // `createClient` that returns the same server client. Callers may `await createClient()`
 // (that's fine even if the function is synchronous).
-export function createClient() {
+export function createClient(): SupabaseClient<Database> {
   return getSupabaseServerClient();
 }

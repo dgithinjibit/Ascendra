@@ -69,7 +69,7 @@ export function defaultCompetencyForSubject(slug: string): {
 // XP & Level
 // ─────────────────────────────────────────────────────────────────────────────
 
-const XP_THRESHOLDS = [0, 200, 500, 1000, 2000] as const;
+const XP_THRESHOLDS: readonly number[] = [0, 200, 500, 1000, 2000];
 
 export async function getSubjectXP(
   userId: string,
@@ -97,7 +97,7 @@ export async function getSubjectXP(
     totalXP >= 500  ? 3 :
     totalXP >= 200  ? 2 : 1;
 
-  const nextThreshold = XP_THRESHOLDS[level] ?? Infinity;
+  const nextThreshold = level >= XP_THRESHOLDS.length ? Infinity : XP_THRESHOLDS[level];
   const nextLevelXP = Math.max(0, nextThreshold - totalXP);
 
   return { totalXP, level, nextLevelXP };

@@ -336,6 +336,11 @@ export const GRADE_2_FEEDBACK_TEMPLATES = {
     "No worries! Let's break this into smaller steps! 📝",
     "Great effort! Let me show you a trick! ✨",
   ],
+
+  redirect: [
+    "Let's refocus on the question, {studentName}! 🎯",
+    "Try connecting this step to what you already know! 🔗",
+  ],
   
   celebration: [
     "AMAZING! You solved it! 🎊🎉",
