@@ -13,6 +13,7 @@
  * - Teacher interventions and feedback
  */
 
+import { useEffect, useState } from 'react';
 import { mettaEducationSystem, MeTTaSession } from './metta-core';
 
 export interface MeTTaRoute {

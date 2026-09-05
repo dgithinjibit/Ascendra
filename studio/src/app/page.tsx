@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import {
   ArrowRight,
   BarChart3,
@@ -75,7 +75,7 @@ const roles = [
   },
 ];
 
-export default function HomePage() {
+function HomePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [autoLoginLoading, setAutoLoginLoading] = useState<string | null>(null);
@@ -288,5 +288,19 @@ export default function HomePage() {
         </div>
       </footer>
     </div>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-background text-foreground">
+          <p className="text-sm text-muted-foreground">Loading SyncSenta…</p>
+        </div>
+      }
+    >
+      <HomePageContent />
+    </Suspense>
   );
 }
