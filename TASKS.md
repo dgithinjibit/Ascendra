@@ -66,9 +66,13 @@ The latest already-pushed baseline is commit `d01505a`. That deployment successf
 | Preview alias | [`sentastudio-cfp7pdug8-dans-projects-5f474b51.vercel.app`](https://sentastudio-cfp7pdug8-dans-projects-5f474b51.vercel.app) |
 | Previous failure | Commit `1741501`, homepage prerender failure |
 | Fixed baseline | Commit `d01505a` |
-| New local changes | Not yet pushed at the time of this update |
+| Current release candidate | Commit `2960776` — `fix: close production type and tutoring policy gates` |
+| Current deployment | `dpl_CqhhvGdJ7UfS5AKHSQzU2PauB44q` — `READY` |
+| Current production URL | [`sentastudio.vercel.app`](https://sentastudio.vercel.app) |
+| Current preview URL | [`sentastudio-i2s4v4ds2-dans-projects-5f474b51.vercel.app`](https://sentastudio-i2s4v4ds2-dans-projects-5f474b51.vercel.app) |
+| New local changes | Pushed to `main` and deployed successfully |
 
-The current changes in this ledger still require a commit, push to `main`, and a fresh Vercel deployment verification before they become the deployed production candidate.
+The current changes were committed as `2960776`, pushed to `main`, and verified in Vercel as `READY`. The remaining release work is now authenticated staging verification, live Supabase/RLS confirmation, production provider configuration, and child-facing approval evidence.
 
 ## Remaining work before production release
 
