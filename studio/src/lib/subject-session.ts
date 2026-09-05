@@ -27,18 +27,43 @@ export interface SubjectMeta {
 
 export const SUBJECT_REGISTRY: Record<string, SubjectMeta> = {
   // Core CBC subjects (sandbox-first)
-  mathematics:          { label: 'Mathematics',           layout: 'sandbox', xpPrefix: 'MATH.' },
-  english:              { label: 'English',               layout: 'sandbox', xpPrefix: 'ENG.' },
-  kiswahili:            { label: 'Kiswahili',             layout: 'sandbox', xpPrefix: 'KSW.' },
-  environmental:        { label: 'Environmental',         layout: 'sandbox', xpPrefix: 'ENV.' },
-  creative:             { label: 'Creative Arts',         layout: 'sandbox', xpPrefix: 'CRE.' },
-  cre:                  { label: 'Religious Education',   layout: 'sandbox', xpPrefix: 'CRE2.' },
-  indigenous:           { label: 'Indigenous Language',   layout: 'sandbox', xpPrefix: 'IND.' },
+  mathematics:          { label: 'Mathematics',             layout: 'sandbox', xpPrefix: 'MATH.' },
+  english:              { label: 'English',                 layout: 'sandbox', xpPrefix: 'ENG.' },
+  kiswahili:            { label: 'Kiswahili',               layout: 'sandbox', xpPrefix: 'KSW.' },
+  environmental:        { label: 'Environmental',           layout: 'sandbox', xpPrefix: 'ENV.' },
+  creative:             { label: 'Creative Arts',           layout: 'sandbox', xpPrefix: 'CRE.' },
+  cre:                  { label: 'Religious Education',     layout: 'sandbox', xpPrefix: 'CRE2.' },
+  indigenous:           { label: 'Indigenous Language',     layout: 'sandbox', xpPrefix: 'IND.' },
   // Extended courses (chat-first)
-  blockchain:           { label: 'Blockchain',            layout: 'chat',    xpPrefix: 'blockchain.' },
-  'financial-literacy': { label: 'Financial Literacy',    layout: 'chat',    xpPrefix: 'finlit.' },
-  ai:                   { label: 'Artificial Intelligence', layout: 'chat',  xpPrefix: 'ai.' },
+  blockchain:           { label: 'Blockchain',              layout: 'chat', xpPrefix: 'blockchain.' },
+  superintelligence:    { label: 'Superintelligence & AI',  layout: 'chat', xpPrefix: 'si.' },
+  'financial-literacy': { label: 'Financial Literacy',      layout: 'chat', xpPrefix: 'finlit.' },
+  ai:                   { label: 'Artificial Intelligence', layout: 'chat', xpPrefix: 'ai.' },
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Default competency code per subject
+//
+// Used by SubjectChat when no specific competency is selected by the student.
+// Gives the Omega engine a real learning_progress row to read/write from the
+// very first message, instead of receiving null and defaulting all inputs to 0.
+//
+// Pattern: <SUBJECT_PREFIX>general  (e.g. "MATH.general", "blockchain.general")
+// The route will upsert this row the first time the student chats.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function defaultCompetencyForSubject(slug: string): {
+  competencyCode: string;
+  competencyName: string;
+} {
+  const meta = SUBJECT_REGISTRY[slug];
+  if (!meta) return { competencyCode: `${slug}.general`, competencyName: slug };
+  const prefix = meta.xpPrefix.endsWith('.') ? meta.xpPrefix : `${meta.xpPrefix}.`;
+  return {
+    competencyCode: `${prefix}general`,
+    competencyName: `${meta.label} — General`,
+  };
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // XP & Level
@@ -138,13 +163,41 @@ export function buildLearningState(masteryRow?: {
   questions_answered: number | null;
   correct_answers: number | null;
   mastery_level: string | null;
+  hints_used?: number | null;
+  consecutive_wrong?: number | null;
 } | null): LearningState {
   const attempts = masteryRow?.questions_answered ?? 0;
   const correctAttempts = masteryRow?.correct_answers ?? 0;
-  const frustrationSignal =
-    masteryRow?.mastery_level === 'not_started' && attempts > 3;
 
-  return { attempts, correctAttempts, hintsUsed: 0, frustrationSignal };
+  // hints_used — now read from DB (was hardcoded 0 before the migration).
+  const hintsUsed = masteryRow?.hints_used ?? 0;
+
+  // frustrationSignal — real signal: consecutive wrong turns >= 3, OR the
+  // legacy heuristic (mastery stuck at not_started with attempts > 3).
+  const consecutiveWrong = masteryRow?.consecutive_wrong ?? 0;
+  const frustrationSignal =
+    consecutiveWrong >= 3 ||
+    (masteryRow?.mastery_level === 'not_started' && attempts > 3);
+
+  return { attempts, correctAttempts, hintsUsed, frustrationSignal };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Mastery percent — mirrors Rust integer truncation in agent_runtime.rs.
+//
+// Rust:       (correct_attempts * 100) / attempts   (integer division, floors)
+// Old TS:     Math.round((correct / attempts) * 100) (rounds 39.5 → 40)
+//
+// The divergence matters at exact boundary values e.g. 79/100 = 79.0% and
+// 80/100 = 80.0% are fine, but 3/8 = 37.5 → Rust floors to 37 (Intensive),
+// old TS rounded to 38 (still Intensive, same branch).  The only dangerous
+// case is Math.round(39.5) = 40 (TS → Guided) vs floor 39 (Rust → Intensive).
+// Using Math.floor eliminates the divergence and keeps the TS and Rust engines
+// producing identical decisions for every possible integer input.
+// ─────────────────────────────────────────────────────────────────────────────
+export function masteryPercent(attempts: number, correctAttempts: number): number {
+  if (attempts === 0) return 0;
+  return Math.floor((Math.min(correctAttempts, attempts) * 100) / attempts);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

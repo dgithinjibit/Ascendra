@@ -10,6 +10,7 @@ import {
   SUBJECT_REGISTRY,
   getSubjectXP,
   getOrCreateChatSession,
+  defaultCompetencyForSubject,
 } from '@/lib/subject-session';
 import { getChatMessages } from '@/lib/chat-history-supabase';
 import type { ChatHistoryMessage } from '@/lib/chat-history-supabase';
@@ -223,6 +224,7 @@ export default function SubjectPage() {
               studentName={studentName}
               sessionId={state.sessionId}
               initialHistory={state.initialHistory}
+              {...defaultCompetencyForSubject(slug)}
             />
           ) : (
             /* Sandbox layout: redirect to the subject activity list */

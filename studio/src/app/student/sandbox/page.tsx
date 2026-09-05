@@ -27,9 +27,10 @@ const CORE_SUBJECTS: SubjectCard[] = [
 ]
 
 const RECOMMENDED_COURSES: SubjectCard[] = [
-  { label: 'AI',                image: '/images/learning-catalog/ai.png',                slug: 'ai' },
-  { label: 'Blockchain',        image: '/images/learning-catalog/blockchain.png',        slug: 'blockchain' },
-  { label: 'Financial Literacy',image: '/images/learning-catalog/financial-literacy.png',slug: 'financial-literacy' },
+  { label: 'AI',                    image: '/images/learning-catalog/ai.png',                    slug: 'ai' },
+  { label: 'Blockchain',            image: '/images/learning-catalog/blockchain.png',            slug: 'blockchain' },
+  { label: 'Superintelligence & AI', image: '/images/learning-catalog/superintelligence.png',   slug: 'superintelligence' },
+  { label: 'Financial Literacy',    image: '/images/learning-catalog/financial-literacy.png',    slug: 'financial-literacy' },
 ]
 
 function LearningProgress() {

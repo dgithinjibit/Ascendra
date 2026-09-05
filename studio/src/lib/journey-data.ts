@@ -40,6 +40,7 @@ type Subject = {
 export const recommendedSubjects: Subject[] = [
     { name: 'AI', icon: '/assets/ai.png' },
     { name: 'Blockchain', icon: '/assets/bc.png' },
+    { name: 'Superintelligence & AI', icon: '/assets/superintelligence.png' },
     { name: 'Financial Literacy', icon: '/assets/finance.png' },
 ];
 

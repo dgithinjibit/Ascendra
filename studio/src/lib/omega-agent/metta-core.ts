@@ -783,8 +783,9 @@ export default {
 // Tutoring Decision Engine — TypeScript port of Rust decide_tutoring()
 // (rust-core/src/agent_runtime.rs)
 //
-// This implementation is used directly by the chat route until the Rust HTTP
-// server is running. Thresholds must stay in sync with the Rust version.
+// Thresholds must stay in sync with the Rust version.
+// Mastery calc uses integer truncation (Math.floor) to match Rust's integer
+// division — see masteryPercent() in lib/subject-session.ts.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface TutoringDecision {
@@ -799,12 +800,13 @@ export function evaluateTutoringDecision(state: {
   hintsUsed: number;
   frustrationSignal: boolean;
 }): TutoringDecision {
+  // Use integer truncation to match Rust: floor((correct * 100) / attempts)
   const masteryPct =
     state.attempts === 0
       ? 0
-      : Math.round((state.correctAttempts / state.attempts) * 100);
+      : Math.floor((Math.min(state.correctAttempts, state.attempts) * 100) / state.attempts);
 
-  // Intensive branch: frustrated, too many hints, or very low mastery
+  // Intensive: frustrated, too many hints, or very low mastery
   if (state.frustrationSignal || state.hintsUsed >= 2 || masteryPct < 40) {
     return {
       scaffolding: 'Intensive',
@@ -813,7 +815,7 @@ export function evaluateTutoringDecision(state: {
     };
   }
 
-  // Guided branch: no attempts yet, or mastery below 80 %
+  // Guided: no attempts yet, or mastery below 80%
   if (state.attempts === 0 || masteryPct < 80) {
     return {
       scaffolding: 'Guided',
@@ -822,7 +824,7 @@ export function evaluateTutoringDecision(state: {
     };
   }
 
-  // Independent branch: high mastery
+  // Independent: mastery >= 80%, no frustration, hints < 2
   return {
     scaffolding: 'Independent',
     hint: 'Try the next question independently, then explain how you got your answer.',

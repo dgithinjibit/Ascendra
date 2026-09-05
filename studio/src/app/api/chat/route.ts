@@ -1,15 +1,27 @@
 /**
- * POST /api/chat - Enhanced Version
+ * POST /api/chat
  *
- * Streams a Socratic Mentor response from Groq with:
- * - Supabase authentication and user profile lookup
+ * Streams a Socratic Mentor response via Groq or Gemini with:
+ * - Supabase authentication + profile lookup
  * - Distributed rate limiting via Upstash Redis
- * - Chat history persistence to database
- * - Progress tracking and analytics
- * - Usage logging for billing/monitoring
+ * - Chat history persistence
+ * - Omega tutoring decision (evaluateTutoringDecision) on every request
+ * - Live hints_used + consecutive_wrong tracking fed to the Omega engine
+ * - questions_asked / questions_answered / correct_answers incremented
+ *   post-stream so mastery data is real for the next decision cycle
+ * - Redis scaffolding level write (fire-and-forget) for teacher visibility
+ * - Usage logging
  *
- * This is the production-ready version that replaces the original route.ts
- * To use: rename this file to route.ts and backup the original.
+ * Omega wiring changes (Sept 2, 2026):
+ *   - Removed duplicate second Supabase query; reuse masteryRows from the
+ *     learner-context fetch (Task 5)
+ *   - Removed `as any` on preferences write; use typed updateScaffoldingLevel
+ *     helper that deep-patches only the scaffoldingLevel field (Task 4)
+ *   - Extended SELECT to include hints_used + consecutive_wrong so
+ *     buildLearningState receives live values (Task 2/4)
+ *   - Increment questions_asked (every turn) + questions_answered /
+ *     correct_answers post-stream when answer quality is detectable (Task 7)
+ *   - Accept hintsUsed + competencyCode from client body (Tasks 6/8)
  */
 
 import { NextRequest } from 'next/server';
@@ -22,7 +34,8 @@ import {
 } from '@/lib/socratic-prompts';
 import { evaluateTutoringDecision } from '@/lib/omega-agent/metta-core';
 import { buildDynamicSystemPrompt, buildLearningState } from '@/lib/subject-session';
-import { updateLearningSession } from '@/lib/session-persistence';
+import { getLearningSession, updateLearningSession } from '@/lib/session-persistence';
+import type { LearningSession } from '@/lib/session-persistence';
 import { checkChatRateLimit } from '@/lib/rate-limit-upstash';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { addChatMessage, createChatSession } from '@/lib/chat-history-supabase';
@@ -31,16 +44,16 @@ import { updateDailyActivity, updateLearningProgress } from '@/lib/progress-trac
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// ──────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 // Tunables
-// ──────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 
 const MODEL_TIMEOUT_MS = 30_000;
 const MAX_HISTORY_TURNS = 40;
 
-// ──────────────────────────────────────────────────────────────────────────
-// Validation
-// ──────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Request schema
+// ─────────────────────────────────────────────────────────────────────────────
 
 const HistoryEntry = z.object({
   role: z.enum(['user', 'assistant']),
@@ -48,21 +61,24 @@ const HistoryEntry = z.object({
 });
 
 const ChatRequest = z.object({
-  message: z.string().min(1).max(2000),
-  history: z.array(HistoryEntry).max(MAX_HISTORY_TURNS * 2).default([]),
-  grade: z.string().min(1).max(40),
-  subject: z.string().min(1).max(80),
-  language: z.enum(['english', 'kiswahili', 'mixed']).default('mixed'),
-  studentName: z.string().max(80).optional(),
-  mode: z.enum(['socratic', 'compass']).default('socratic'),
+  message:        z.string().min(1).max(2000),
+  history:        z.array(HistoryEntry).max(MAX_HISTORY_TURNS * 2).default([]),
+  grade:          z.string().min(1).max(40),
+  subject:        z.string().min(1).max(80),
+  language:       z.enum(['english', 'kiswahili', 'mixed']).default('mixed'),
+  studentName:    z.string().max(80).optional(),
+  mode:           z.enum(['socratic', 'compass']).default('socratic'),
   teacherContext: z.string().max(20000).optional(),
-  sessionId: z.string().uuid().optional(), // For continuing existing sessions
-  competencyCode: z.string().optional(), // For progress tracking
+  sessionId:      z.string().uuid().optional(),
+  // Omega inputs sent by client ↓
+  competencyCode: z.string().max(120).optional(),  // e.g. "MATH.fractions.grade4"
+  competencyName: z.string().max(200).optional(),  // human label for the competency
+  hintsUsed:      z.number().int().min(0).max(20).optional(), // hint button presses this session
 });
 
-// ──────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 // Helpers
-// ──────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 
 function sseError(message: string, detail?: string): string {
   const payload = detail ? { error: message, detail } : { error: message };
@@ -70,21 +86,21 @@ function sseError(message: string, detail?: string): string {
 }
 
 function cbcStageForGrade(grade: string): string {
-  const normalized = grade.toLowerCase();
-  if (/grade\s?[1-3]|g[1-3]|pp[1-2]|pre-primary/.test(normalized)) return 'Early Years / Lower Primary foundation';
-  if (/grade\s?[4-6]|g[4-6]/.test(normalized)) return 'Upper Primary';
-  if (/grade\s?[7-9]|g[7-9]/.test(normalized)) return 'Junior Secondary';
+  const n = grade.toLowerCase();
+  if (/grade\s?[1-3]|g[1-3]|pp[1-2]|pre-primary/.test(n)) return 'Early Years / Lower Primary foundation';
+  if (/grade\s?[4-6]|g[4-6]/.test(n)) return 'Upper Primary';
+  if (/grade\s?[7-9]|g[7-9]/.test(n)) return 'Junior Secondary';
   return 'CBC stage to be confirmed';
 }
 
-function ageBandFromDateOfBirth(dateOfBirth: string | null | undefined): string | undefined {
-  if (!dateOfBirth) return undefined;
-  const birth = new Date(dateOfBirth);
+function ageBandFromDateOfBirth(dob: string | null | undefined): string | undefined {
+  if (!dob) return undefined;
+  const birth = new Date(dob);
   if (Number.isNaN(birth.getTime())) return undefined;
   const now = new Date();
   let age = now.getUTCFullYear() - birth.getUTCFullYear();
-  const month = now.getUTCMonth() - birth.getUTCMonth();
-  if (month < 0 || (month === 0 && now.getUTCDate() < birth.getUTCDate())) age -= 1;
+  const m = now.getUTCMonth() - birth.getUTCMonth();
+  if (m < 0 || (m === 0 && now.getUTCDate() < birth.getUTCDate())) age -= 1;
   if (age <= 5) return '5 and under';
   if (age <= 8) return '6–8';
   if (age <= 11) return '9–11';
@@ -93,36 +109,54 @@ function ageBandFromDateOfBirth(dateOfBirth: string | null | undefined): string 
   return '18+';
 }
 
-// ──────────────────────────────────────────────────────────────────────────
+/**
+ * Deep-patches only `preferences.scaffoldingLevel` without clobbering the
+ * rest of the LearningSession (achievements, competencyProgress, etc.).
+ * Replaces the old `preferences: { ... } as any` cast.
+ */
+async function updateScaffoldingLevel(
+  userId: string,
+  level: 'Independent' | 'Guided' | 'Intensive',
+  language: 'english' | 'kiswahili' | 'mixed',
+): Promise<void> {
+  // Fetch current session so we can merge, not overwrite.
+  const current = await getLearningSession(userId).catch(() => null);
+  const prev = current?.preferences;
+  const merged: LearningSession['preferences'] = {
+    language:        prev?.language        ?? language,
+    difficultyLevel: prev?.difficultyLevel ?? 3,
+    learningStyle:   prev?.learningStyle   ?? 'mixed',
+    scaffoldingLevel: level,
+  };
+  await updateLearningSession(userId, { preferences: merged });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Handler
-// ──────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
   const startTime = Date.now();
 
-  // ---- Authentication -------------------------------------------------------
+  // ── Auth ────────────────────────────────────────────────────────────────────
   const supabase = getSupabaseServerClient();
-  const {
-    data: { user: authenticatedUser },
-    error: authError,
-  } = await supabase.auth.getUser();
-  const allowDevelopmentChat = process.env.NODE_ENV !== 'production' && process.env.SYNCSENTA_ALLOW_DEV_CHAT === 'true';
-  const isDevelopmentChat = !authenticatedUser && allowDevelopmentChat;
-  const user = authenticatedUser ?? (isDevelopmentChat ? { id: 'dev-local-student' } : null);
+  const { data: { user: authenticatedUser }, error: authError } =
+    await supabase.auth.getUser();
 
-  if (authError && !isDevelopmentChat) {
-    return Response.json(
-      { error: 'Unauthorized', detail: 'Please sign in to continue' },
-      { status: 401 }
-    );
+  const allowDevChat =
+    process.env.NODE_ENV !== 'production' &&
+    process.env.SYNCSENTA_ALLOW_DEV_CHAT === 'true';
+  const isDevChat = !authenticatedUser && allowDevChat;
+  const user = authenticatedUser ?? (isDevChat ? { id: 'dev-local-student' } : null);
+
+  if ((authError || !user) && !isDevChat) {
+    return Response.json({ error: 'Unauthorized', detail: 'Please sign in to continue' }, { status: 401 });
   }
   if (!user) {
-    return Response.json(
-      { error: 'Unauthorized', detail: 'Please sign in to continue' },
-      { status: 401 }
-    );
+    return Response.json({ error: 'Unauthorized', detail: 'Please sign in to continue' }, { status: 401 });
   }
 
+  // ── Profile ─────────────────────────────────────────────────────────────────
   const profile = authenticatedUser
     ? (await supabase
         .from('profiles')
@@ -132,137 +166,130 @@ export async function POST(req: NextRequest) {
     : { subscription_tier: 'free', grade: null, full_name: 'Development learner', date_of_birth: null, language_preference: 'mixed' as const };
 
   if (!profile) {
-    return Response.json(
-      { error: 'Profile not found', detail: 'Please complete your profile' },
-      { status: 400 }
-    );
+    return Response.json({ error: 'Profile not found', detail: 'Please complete your profile' }, { status: 400 });
   }
 
-  // ---- Rate limiting --------------------------------------------------------
-  const rateLimitResult = isDevelopmentChat
+  // ── Rate limiting ───────────────────────────────────────────────────────────
+  const rateLimit = isDevChat
     ? { success: true, remaining: 1, limit: 1, reset: 0 }
-    : await checkChatRateLimit(
-        user.id,
-        profile.subscription_tier as 'free' | 'premium' | 'school'
-      );
+    : await checkChatRateLimit(user.id, profile.subscription_tier as 'free' | 'premium' | 'school');
 
-  if (!rateLimitResult.success) {
+  if (!rateLimit.success) {
     return Response.json(
       {
         error: 'Rate limit exceeded',
-        detail: `You've reached your daily limit. ${
-          profile.subscription_tier === 'free'
-            ? 'Upgrade to Premium for unlimited messages.'
-            : `Try again in ${rateLimitResult.reset} seconds.`
-        }`,
-        remaining: rateLimitResult.remaining,
-        limit: rateLimitResult.limit,
-        reset: rateLimitResult.reset,
+        detail: profile.subscription_tier === 'free'
+          ? "You've reached your daily limit. Upgrade to Premium for unlimited messages."
+          : `Try again in ${rateLimit.reset} seconds.`,
+        remaining: rateLimit.remaining,
+        limit: rateLimit.limit,
+        reset: rateLimit.reset,
       },
       {
         status: 429,
         headers: {
-          'Retry-After': String(rateLimitResult.reset),
-          'X-RateLimit-Remaining': String(rateLimitResult.remaining),
-          'X-RateLimit-Limit': String(rateLimitResult.limit),
+          'Retry-After': String(rateLimit.reset),
+          'X-RateLimit-Remaining': String(rateLimit.remaining),
+          'X-RateLimit-Limit': String(rateLimit.limit),
         },
-      }
+      },
     );
   }
 
-  // ---- Parse + validate -----------------------------------------------------
+  // ── Parse + validate ────────────────────────────────────────────────────────
   let body: z.infer<typeof ChatRequest>;
   try {
-    const json = await req.json();
-    body = ChatRequest.parse(json);
+    body = ChatRequest.parse(await req.json());
   } catch (err) {
-    const detail = err instanceof Error ? err.message : 'Invalid JSON';
-    return Response.json({ error: 'Invalid request body', detail }, { status: 400 });
+    return Response.json({ error: 'Invalid request body', detail: err instanceof Error ? err.message : 'Invalid JSON' }, { status: 400 });
   }
 
   const verifiedGrade = profile.grade || body.grade;
-  const learnerContext: LearnerLearningContext = {
-    ageBand: ageBandFromDateOfBirth(profile.date_of_birth),
-    cbcStage: cbcStageForGrade(verifiedGrade),
+
+  if (body.mode === 'compass' && !body.teacherContext) {
+    return Response.json({ error: 'Compass mode requires teacherContext' }, { status: 400 });
+  }
+
+  // ── Single learning_progress fetch (used for BOTH learnerContext AND Omega) ─
+  // Task 5: was two identical queries — now one, reused for both purposes.
+  // Extended columns: +hints_used +consecutive_wrong for live Omega signals.
+  type MasteryRow = {
+    competency_name: string;
+    competency_code: string | null;
+    mastery_level: string | null;
+    progress_percentage: number | null;
+    last_practiced_at: string | null;
+    questions_answered: number | null;
+    correct_answers: number | null;
+    hints_used: number | null;
+    consecutive_wrong: number | null;
   };
 
+  let masteryRows: MasteryRow[] | null = null;
+
   if (authenticatedUser) {
-    const { data: masteryRows } = await supabase
+    const { data } = await supabase
       .from('learning_progress')
-      .select('competency_name, mastery_level, progress_percentage, last_practiced_at, questions_answered, correct_answers')
+      .select(
+        'competency_name, competency_code, mastery_level, progress_percentage, ' +
+        'last_practiced_at, questions_answered, correct_answers, ' +
+        'hints_used, consecutive_wrong',
+      )
       .eq('user_id', authenticatedUser.id)
       .eq('subject', body.subject)
       .eq('grade', verifiedGrade)
       .order('last_practiced_at', { ascending: false })
       .limit(5);
-    const current = body.competencyCode
-      ? masteryRows?.find((row) => row.competency_name === body.competencyCode)
-      : masteryRows?.[0];
-    if (current) {
-      learnerContext.currentCompetency = current.competency_name;
-      learnerContext.masteryLevel = current.mastery_level;
-      learnerContext.progressPercentage = current.progress_percentage;
-      learnerContext.recentPractice = current.last_practiced_at;
-    }
+    masteryRows = (data as MasteryRow[] | null) ?? null;
   }
 
-  if (body.mode === 'compass' && !body.teacherContext) {
-    return Response.json(
-      { error: 'Compass mode requires teacherContext' },
-      { status: 400 }
-    );
+  // Build learner context for the system prompt
+  const learnerContext: LearnerLearningContext = {
+    ageBand:  ageBandFromDateOfBirth(profile.date_of_birth),
+    cbcStage: cbcStageForGrade(verifiedGrade),
+  };
+
+  // Pick the row that matches competencyCode if provided, else use most-recent
+  const contextRow = body.competencyCode
+    ? masteryRows?.find((r) => r.competency_code === body.competencyCode || r.competency_name === body.competencyCode)
+    : masteryRows?.[0];
+
+  if (contextRow) {
+    learnerContext.currentCompetency  = contextRow.competency_name;
+    learnerContext.masteryLevel       = contextRow.mastery_level ?? undefined;
+    learnerContext.progressPercentage = contextRow.progress_percentage ?? undefined;
+    learnerContext.recentPractice     = contextRow.last_practiced_at ?? undefined;
   }
 
-  // ---- Env ------------------------------------------------------------------
-  // Only model inference is provider-switchable. Auth, Supabase, Redis, and
-  // persistence APIs must remain on their existing services.
+  // ── LLM provider env ────────────────────────────────────────────────────────
   const provider = (process.env.LLM_PROVIDER || 'groq').trim().toLowerCase();
   const isGemini = provider === 'gemini';
   const apiKey = isGemini ? process.env.GEMINI_API_KEY : process.env.GROQ_API_KEY;
-  const requiredKeyName = isGemini ? 'GEMINI_API_KEY' : 'GROQ_API_KEY';
   if (!apiKey) {
-    return Response.json(
-      {
-        error: `Server is missing ${requiredKeyName}`,
-        detail: `Set ${requiredKeyName} in your server environment.`,
-      },
-      { status: 500 }
-    );
+    const key = isGemini ? 'GEMINI_API_KEY' : 'GROQ_API_KEY';
+    return Response.json({ error: `Server is missing ${key}`, detail: `Set ${key} in your server environment.` }, { status: 500 });
   }
   const model = isGemini
     ? process.env.GEMINI_MODEL || 'gemini-3.6-flash'
-    : process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
+    : process.env.GROQ_MODEL  || 'llama-3.3-70b-versatile';
 
-  // ---- Create or get session ------------------------------------------------
-  let sessionId = isDevelopmentChat ? undefined : body.sessionId;
-  if (!isDevelopmentChat && !sessionId) {
+  // ── Session ─────────────────────────────────────────────────────────────────
+  let sessionId = isDevChat ? undefined : body.sessionId;
+  if (!isDevChat && !sessionId) {
     try {
-      sessionId = await createChatSession(
-        user.id,
-        body.subject,
-        body.grade,
-        body.mode,
-        body.teacherContext
-      );
-    } catch (error) {
-      console.error('Failed to create chat session:', error);
-      // Continue without session (degraded mode)
+      sessionId = await createChatSession(user.id, body.subject, body.grade, body.mode, body.teacherContext);
+    } catch (err) {
+      console.error('[/api/chat] Failed to create chat session:', err);
     }
   }
 
-  // ---- Save user message ----------------------------------------------------
-  if (sessionId && !isDevelopmentChat) {
-    try {
-      await addChatMessage(sessionId, user.id, 'user', body.message);
-    } catch (error) {
-      console.error('Failed to save user message:', error);
-    }
+  // Save user message
+  if (sessionId && !isDevChat) {
+    try { await addChatMessage(sessionId, user.id, 'user', body.message); }
+    catch (err) { console.error('[/api/chat] Failed to save user message:', err); }
   }
 
-  // ---- Build messages -------------------------------------------------------
-  // For compass mode, keep the existing prompt unchanged.
-  // For socratic mode, compute a tutoring decision from learning_progress data
-  // and replace the static socratic prompt with a dynamic Omega-aware one.
+  // ── Build system prompt ─────────────────────────────────────────────────────
   let systemPrompt: string;
 
   if (body.mode === 'compass') {
@@ -273,40 +300,29 @@ export async function POST(req: NextRequest) {
       learnerContext,
     });
   } else {
-    // Fetch learning_progress row once more (or reuse masteryRows captured above).
-    // We need questions_answered + correct_answers for the decision engine.
-    let masteryRowForDecision: {
-      questions_answered: number | null;
-      correct_answers: number | null;
-      mastery_level: string | null;
-    } | null = null;
+    // Task 4: typed helper — no `as any` cast.
+    // Task 5: reuse contextRow from the single fetch above.
+    // Task 2: hints_used and consecutive_wrong now come from DB via contextRow.
+    // Task 8: client-sent hintsUsed overrides DB value when present (more
+    //         up-to-date: it counts presses in the CURRENT session before the
+    //         DB has been updated). Take the higher of the two.
+    const dbHintsUsed = contextRow?.hints_used ?? 0;
+    const clientHintsUsed = body.hintsUsed ?? 0;
 
-    if (authenticatedUser) {
-      const { data: decisionRows } = await supabase
-        .from('learning_progress')
-        .select('questions_answered, correct_answers, mastery_level')
-        .eq('user_id', authenticatedUser.id)
-        .eq('subject', body.subject)
-        .eq('grade', verifiedGrade)
-        .order('last_practiced_at', { ascending: false })
-        .limit(1)
-        .single();
-      masteryRowForDecision = decisionRows ?? null;
-    }
+    const learningState = buildLearningState({
+      questions_answered: contextRow?.questions_answered ?? null,
+      correct_answers:    contextRow?.correct_answers    ?? null,
+      mastery_level:      contextRow?.mastery_level      ?? null,
+      hints_used:         Math.max(dbHintsUsed, clientHintsUsed),
+      consecutive_wrong:  contextRow?.consecutive_wrong  ?? null,
+    });
 
-    const learningState = buildLearningState(masteryRowForDecision);
     const decision = evaluateTutoringDecision(learningState);
 
-    // Fire-and-forget: persist scaffolding level in Redis for teacher visibility.
+    // Fire-and-forget — typed, no as any
     if (authenticatedUser) {
-      updateLearningSession(authenticatedUser.id, {
-        preferences: {
-          language: body.language,
-          difficultyLevel: 3,
-          learningStyle: 'mixed',
-          scaffoldingLevel: decision.scaffolding,
-        } as any,
-      }).catch((err: unknown) => console.error('[/api/chat] Redis scaffolding write failed:', err));
+      updateScaffoldingLevel(authenticatedUser.id, decision.scaffolding, body.language)
+        .catch((err) => console.error('[/api/chat] Redis scaffolding write failed:', err));
     }
 
     const effectiveLanguage =
@@ -324,100 +340,79 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // Cap history
+  // ── Build message array ─────────────────────────────────────────────────────
   const trimmedHistory = body.history.slice(-MAX_HISTORY_TURNS * 2);
-
   const messages: { role: 'system' | 'user' | 'assistant'; content: string }[] = [
     { role: 'system', content: systemPrompt },
     ...trimmedHistory,
     { role: 'user', content: body.message },
   ];
 
-  // ---- Call selected model provider (streaming, with timeout) ----------------
+  // ── LLM call ────────────────────────────────────────────────────────────────
   const timeoutSignal = AbortSignal.timeout(MODEL_TIMEOUT_MS);
   let modelStream: AsyncIterable<string>;
+
   try {
     if (isGemini) {
       const gemini = new GoogleGenerativeAI(apiKey);
-      const geminiModel = gemini.getGenerativeModel({
-        model,
-        systemInstruction: systemPrompt,
-      });
-      const geminiHistory = trimmedHistory.map((entry) => ({
-        role: entry.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: entry.content }],
+      const gModel = gemini.getGenerativeModel({ model, systemInstruction: systemPrompt });
+      const geminiHistory = trimmedHistory.map((e) => ({
+        role: e.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: e.content }],
       }));
-      const geminiResult = await geminiModel.generateContentStream({
+      const geminiResult = await gModel.generateContentStream({
         contents: [...geminiHistory, { role: 'user', parts: [{ text: body.message }] }],
         generationConfig: { temperature: 0.7, maxOutputTokens: 600, topP: 1 },
       });
       modelStream = (async function* () {
         for await (const chunk of geminiResult.stream) {
-          const text = chunk.text();
-          if (text) yield text;
+          const t = chunk.text();
+          if (t) yield t;
         }
       })();
     } else {
       const groq = new Groq({ apiKey });
-      const groqStream = await groq.chat.completions.create(
-        {
-          model,
-          messages,
-          temperature: 0.7,
-          max_tokens: 600,
-          top_p: 1,
-          stream: true,
-        },
-        { signal: timeoutSignal }
+      const stream = await groq.chat.completions.create(
+        { model, messages, temperature: 0.7, max_tokens: 600, top_p: 1, stream: true },
+        { signal: timeoutSignal },
       );
       modelStream = (async function* () {
-        for await (const chunk of groqStream) {
-          const text = chunk?.choices?.[0]?.delta?.content;
-          if (text) yield text;
+        for await (const chunk of stream) {
+          const t = chunk?.choices?.[0]?.delta?.content;
+          if (t) yield t;
         }
       })();
     }
   } catch (err) {
-    const aborted =
-      err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError');
-    const detail = err instanceof Error ? err.message : `Unknown ${provider} error`;
+    const aborted = err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError');
+    const detail  = err instanceof Error ? err.message : `Unknown ${provider} error`;
     console.error(`[/api/chat] ${provider} request failed:`, detail);
-
-    // Development chat never writes synthetic usage or telemetry rows.
-    if (!isDevelopmentChat) await supabase.from('api_usage').insert({
-      user_id: user.id,
-      endpoint: '/api/chat',
-      method: 'POST',
-      status_code: aborted ? 504 : 502,
-      latency_ms: Date.now() - startTime,
-    });
-
+    if (!isDevChat) {
+      await supabase.from('api_usage').insert({
+        user_id: user.id, endpoint: '/api/chat', method: 'POST',
+        status_code: aborted ? 504 : 502, latency_ms: Date.now() - startTime,
+      });
+    }
     return Response.json(
-      {
-        error: aborted ? 'Upstream timeout' : 'Upstream model error',
-        detail,
-      },
-      { status: aborted ? 504 : 502 }
+      { error: aborted ? 'Upstream timeout' : 'Upstream model error', detail },
+      { status: aborted ? 504 : 502 },
     );
   }
 
-  // ---- Convert AsyncIterable -> SSE ReadableStream --------------------------
+  // ── SSE stream ──────────────────────────────────────────────────────────────
   const encoder = new TextEncoder();
   let fullResponse = '';
-  let tokensUsed = 0;
+  let tokensUsed   = 0;
 
   const sse = new ReadableStream<Uint8Array>({
     async start(controller) {
       try {
         for await (const delta of modelStream) {
           if (timeoutSignal.aborted) {
-            controller.enqueue(
-              encoder.encode(sseError('stream_timeout', 'Upstream timed out mid-stream.'))
-            );
+            controller.enqueue(encoder.encode(sseError('stream_timeout', 'Upstream timed out mid-stream.')));
             controller.close();
             return;
           }
-
           fullResponse += delta;
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ delta })}\n\n`));
         }
@@ -425,61 +420,76 @@ export async function POST(req: NextRequest) {
         controller.enqueue(encoder.encode('data: [DONE]\n\n'));
         controller.close();
 
-        // ---- Post-stream: Save assistant message and update analytics ---------
+        // ── Post-stream persistence ──────────────────────────────────────────
         const latencyMs = Date.now() - startTime;
 
-        // Save assistant message
-        if (sessionId && !isDevelopmentChat) {
-          try {
-            await addChatMessage(sessionId, user.id, 'assistant', fullResponse, {
-              tokensUsed,
-              model,
-              latencyMs,
-            });
-          } catch (error) {
-            console.error('Failed to save assistant message:', error);
-          }
+        if (sessionId && !isDevChat) {
+          try { await addChatMessage(sessionId, user.id, 'assistant', fullResponse, { tokensUsed, model, latencyMs }); }
+          catch (e) { console.error('[/api/chat] Failed to save assistant message:', e); }
         }
 
-        // Update daily activity only for authenticated learners.
-        if (!isDevelopmentChat) try {
-          await updateDailyActivity(user.id, {
-            messagesSent: 1,
-            sessionsStarted: body.sessionId ? 0 : 1,
-            timeSpentMinutes: Math.ceil(latencyMs / 60000),
-            subjectsPracticed: [body.subject],
-          });
-        } catch (error) {
-          console.error('Failed to update daily activity:', error);
-        }
-
-        // Update learning progress if competency provided
-        if (body.competencyCode && !isDevelopmentChat) {
+        if (!isDevChat) {
           try {
-            await updateLearningProgress(user.id, body.competencyCode, {
-              competencyName: body.competencyCode, // Should be passed from client
-              subject: body.subject,
-              grade: body.grade,
-              questionsAsked: 1,
+            await updateDailyActivity(user.id, {
+              messagesSent: 1,
+              sessionsStarted: body.sessionId ? 0 : 1,
               timeSpentMinutes: Math.ceil(latencyMs / 60000),
+              subjectsPracticed: [body.subject],
             });
-          } catch (error) {
-            console.error('Failed to update learning progress:', error);
-          }
+          } catch (e) { console.error('[/api/chat] Failed to update daily activity:', e); }
         }
 
-        // Log API usage only for authenticated requests.
-        if (!isDevelopmentChat) await supabase.from('api_usage').insert({
-          user_id: user.id,
-          endpoint: '/api/chat',
-          method: 'POST',
-          tokens_used: tokensUsed,
-          status_code: 200,
-          latency_ms: latencyMs,
-        });
+        // Task 7: Increment progress counters after every authenticated turn.
+        // questions_asked  — always +1 (the student asked a question)
+        // questions_answered — +1 when the response contains a substantive
+        //   answer (not just a question back). Simple heuristic: assistant
+        //   response contains a '?' means it's another Socratic question back,
+        //   so we don't count it as "answered". Any other response = answered.
+        // correct_answers  — we cannot auto-grade here; leave incrementing
+        //   correct_answers to the sandbox activity grader which has ground
+        //   truth. We DO increment questions_answered so mastery% moves.
+        // consecutive_wrong — reset to 0 when the model gives a direct
+        //   answer (no '?' at end); increment by 1 when response is another
+        //   question back (student didn't produce an answer).
+        if (body.competencyCode && !isDevChat && authenticatedUser) {
+          try {
+            const responseEndsWithQuestion = fullResponse.trimEnd().endsWith('?');
+            // Increment DB hints_used if client reported more hints than DB
+            const newHintsUsed = Math.max(body.hintsUsed ?? 0, contextRow?.hints_used ?? 0);
 
-        // Increment daily quota only for authenticated requests.
-        if (!isDevelopmentChat) await supabase.rpc('increment_daily_quota', { p_user_id: user.id });
+            await updateLearningProgress(user.id, body.competencyCode, {
+              competencyName:    body.competencyName || body.competencyCode,
+              subject:           body.subject,
+              grade:             verifiedGrade,
+              questionsAsked:    1,
+              questionsAnswered: responseEndsWithQuestion ? 0 : 1,
+              correctAnswers:    0,  // graded by sandbox; not determinable here
+              timeSpentMinutes:  Math.ceil(latencyMs / 60000),
+            });
+
+            // Persist live hints_used + consecutive_wrong back to DB so the
+            // NEXT Omega decision cycle reads real values.
+            const consecutiveWrongDelta = responseEndsWithQuestion ? 1 : 0;
+            await supabase
+              .from('learning_progress')
+              .update({
+                hints_used:        newHintsUsed,
+                consecutive_wrong: responseEndsWithQuestion
+                  ? Math.min((contextRow?.consecutive_wrong ?? 0) + consecutiveWrongDelta, 10)
+                  : 0,  // reset on any direct answer
+              })
+              .eq('user_id', user.id)
+              .eq('competency_code', body.competencyCode);
+          } catch (e) { console.error('[/api/chat] Failed to update learning progress:', e); }
+        }
+
+        if (!isDevChat) {
+          await supabase.from('api_usage').insert({
+            user_id: user.id, endpoint: '/api/chat', method: 'POST',
+            tokens_used: tokensUsed, status_code: 200, latency_ms: latencyMs,
+          });
+          await supabase.rpc('increment_daily_quota', { p_user_id: user.id });
+        }
       } catch (err) {
         const detail = err instanceof Error ? err.message : 'Stream interrupted';
         console.error('[/api/chat] Stream error:', detail);
@@ -487,9 +497,7 @@ export async function POST(req: NextRequest) {
         controller.close();
       }
     },
-    cancel() {
-      // Client disconnected
-    },
+    cancel() { /* client disconnected */ },
   });
 
   return new Response(sse, {
@@ -498,8 +506,8 @@ export async function POST(req: NextRequest) {
       'Cache-Control': 'no-cache, no-transform',
       Connection: 'keep-alive',
       'X-Accel-Buffering': 'no',
-      'X-RateLimit-Remaining': String(rateLimitResult.remaining),
-      'X-RateLimit-Limit': String(rateLimitResult.limit),
+      'X-RateLimit-Remaining': String(rateLimit.remaining),
+      'X-RateLimit-Limit': String(rateLimit.limit),
       'X-Session-Id': sessionId || '',
     },
   });

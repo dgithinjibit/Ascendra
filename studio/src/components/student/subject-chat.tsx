@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Brain, Send, Square } from 'lucide-react';
+import { Brain, HelpCircle, Send, Square } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -27,6 +27,13 @@ export interface SubjectChatProps {
   studentName: string;
   sessionId: string;
   initialHistory: { role: ChatRole; content: string }[];
+  /** Task 6: competency currently being practised.
+   *  Passed down from the subject page (e.g. "MATH.fractions.grade4").
+   *  Sent to /api/chat on every turn so the Omega engine has a real
+   *  learning_progress row to read and write. */
+  competencyCode?: string;
+  /** Human-readable label for the competency, e.g. "Fractions – Grade 4". */
+  competencyName?: string;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -40,11 +47,7 @@ function makeId() {
 function historyToMessages(
   history: { role: ChatRole; content: string }[],
 ): ChatMessage[] {
-  return history.map((h) => ({
-    id: makeId(),
-    role: h.role,
-    content: h.content,
-  }));
+  return history.map((h) => ({ id: makeId(), role: h.role, content: h.content }));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -53,8 +56,16 @@ function historyToMessages(
 
 /**
  * Full-height embedded chat panel for the subject page.
- * Unlike FloatingConceptChat, this is always visible — no toggle button.
- * It streams SSE from POST /api/chat exactly the same way.
+ *
+ * Omega wiring (Sept 2, 2026):
+ *   Task 6 — sends competencyCode + competencyName on every /api/chat call
+ *             so the route can read/write the correct learning_progress row.
+ *   Task 8 — tracks hint button presses in local state and sends hintsUsed
+ *             count on every turn so evaluateTutoringDecision gets a live
+ *             value instead of always 0.
+ *             Hint button injects "Can you give me a hint?" as the user turn
+ *             so the exchange is visible in the chat history.
+ *             hintsUsed resets to 0 when a new subject chat session opens.
  */
 export function SubjectChat({
   subjectSlug,
@@ -64,6 +75,8 @@ export function SubjectChat({
   studentName,
   sessionId,
   initialHistory,
+  competencyCode,
+  competencyName,
 }: SubjectChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>(() =>
     initialHistory.length > 0
@@ -80,37 +93,39 @@ export function SubjectChat({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const abortRef = useRef<AbortController | null>(null);
-  const scrollRef = useRef<HTMLDivElement | null>(null);
+  // Task 8: track hint presses for this session
+  const [hintsUsed, setHintsUsed] = useState(0);
+
+  const abortRef   = useRef<AbortController | null>(null);
+  const scrollRef  = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
-  // Auto-scroll on new content.
+  // Auto-scroll on new content
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
 
-  // Cleanup on unmount.
+  // Cleanup on unmount
   useEffect(() => () => abortRef.current?.abort(), []);
 
-  // ── Send ──────────────────────────────────────────────────────────────────
+  // ── Core send ─────────────────────────────────────────────────────────────
 
   const sendMessage = async (rawMessage: string) => {
     const message = rawMessage.trim();
     if (!message || busy) return;
 
-    const userMsgId = makeId();
+    const userMsgId   = makeId();
     const assistantId = makeId();
 
-    // Build history from current visible messages (exclude the static welcome).
     const priorTurns = messages
       .filter((m) => m.id !== 'welcome' && m.content.trim())
       .map(({ role, content }) => ({ role, content }));
 
     setMessages((prev) => [
       ...prev.filter((m) => m.id !== 'welcome'),
-      { id: userMsgId, role: 'user', content: message },
+      { id: userMsgId,   role: 'user',      content: message },
       { id: assistantId, role: 'assistant', content: '', streaming: true },
     ]);
     setInput('');
@@ -134,19 +149,24 @@ export function SubjectChat({
           studentName,
           mode: 'socratic',
           sessionId,
+          // Task 6: competency wiring
+          ...(competencyCode && { competencyCode }),
+          ...(competencyName && { competencyName }),
+          // Task 8: hint count wiring
+          hintsUsed,
         }),
       });
 
       if (!res.ok || !res.body) {
         let detail = `syncsenta could not answer right now (${res.status}).`;
         try {
-          const body = await res.json();
-          detail = body.detail || body.error || detail;
+          const b = await res.json();
+          detail = b.detail || b.error || detail;
         } catch { /* keep HTTP fallback */ }
         throw new Error(detail);
       }
 
-      const reader = res.body.getReader();
+      const reader  = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
       let answer = '';
@@ -176,9 +196,7 @@ export function SubjectChat({
 
           answer += event.delta;
           setMessages((prev) =>
-            prev.map((m) =>
-              m.id === assistantId ? { ...m, content: answer } : m,
-            ),
+            prev.map((m) => m.id === assistantId ? { ...m, content: answer } : m),
           );
         }
       }
@@ -188,9 +206,7 @@ export function SubjectChat({
           m.id === assistantId
             ? {
                 ...m,
-                content:
-                  answer ||
-                  'Samahani — I need a moment. Please try that question again.',
+                content: answer || 'Samahani — I need a moment. Please try that question again.',
                 streaming: false,
               }
             : m,
@@ -200,18 +216,12 @@ export function SubjectChat({
       if (controller.signal.aborted) {
         setMessages((prev) => prev.filter((m) => m.id !== assistantId));
       } else {
-        const detail =
-          caught instanceof Error ? caught.message : 'Connection failed.';
+        const detail = caught instanceof Error ? caught.message : 'Connection failed.';
         setError(detail);
         setMessages((prev) =>
           prev.map((m) =>
             m.id === assistantId
-              ? {
-                  ...m,
-                  content:
-                    'I could not connect just now. Please try again in a moment.',
-                  streaming: false,
-                }
+              ? { ...m, content: 'I could not connect just now. Please try again in a moment.', streaming: false }
               : m,
           ),
         );
@@ -220,6 +230,16 @@ export function SubjectChat({
       setBusy(false);
       abortRef.current = null;
     }
+  };
+
+  // ── Hint button handler ───────────────────────────────────────────────────
+  // Task 8: increments the local counter BEFORE sending so the route receives
+  // the updated value in this very turn, not the next one.
+  const handleHint = () => {
+    if (busy) return;
+    const next = hintsUsed + 1;
+    setHintsUsed(next);
+    sendMessage('Can you give me a hint?');
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -249,9 +269,7 @@ export function SubjectChat({
         {messages.map((msg) => (
           <div
             key={msg.id}
-            className={`flex gap-3 ${
-              msg.role === 'user' ? 'justify-end' : 'justify-start'
-            }`}
+            className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
           >
             {msg.role === 'assistant' && (
               <Avatar className="h-8 w-8 shrink-0 border border-teal-200 bg-teal-50 mt-0.5">
@@ -260,7 +278,6 @@ export function SubjectChat({
                 </AvatarFallback>
               </Avatar>
             )}
-
             <div
               className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${
                 msg.role === 'user'
@@ -290,6 +307,25 @@ export function SubjectChat({
       {/* Input row */}
       <div className="border-t border-teal-100 bg-white px-4 py-3 sm:px-6">
         <div className="flex items-end gap-2">
+          {/* Task 8: hint button with live counter badge */}
+          <Button
+            type="button"
+            onClick={handleHint}
+            disabled={busy}
+            variant="outline"
+            size="icon"
+            className="shrink-0 relative border-teal-200 text-teal-600 hover:bg-teal-50"
+            aria-label="Ask for a hint"
+            title="Get a hint"
+          >
+            <HelpCircle className="h-4 w-4" />
+            {hintsUsed > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-amber-400 text-[9px] font-bold text-white leading-none">
+                {hintsUsed}
+              </span>
+            )}
+          </Button>
+
           <Textarea
             ref={textareaRef}
             value={input}
@@ -301,6 +337,7 @@ export function SubjectChat({
             className="flex-1 resize-none rounded-2xl border-teal-200 bg-teal-50 text-sm focus-visible:ring-teal-400 min-h-[2.5rem] max-h-32"
             aria-label="Type your message"
           />
+
           {busy ? (
             <Button
               type="button"
@@ -326,7 +363,7 @@ export function SubjectChat({
           )}
         </div>
         <p className="mt-1.5 text-center text-[10px] text-teal-400">
-          Enter to send · Shift+Enter for new line
+          Enter to send · Shift+Enter for new line · 💡 for a hint
         </p>
       </div>
     </section>
