@@ -24,7 +24,7 @@ import { SocraticChat } from '@/components/student/socratic-chat';
 import { AdaptiveDifficultyDisplay } from '@/components/student/adaptive-difficulty-display';
 import { ChatModeSelector, type ChatMode } from '@/components/student/chat-mode-selector';
 import { LearningPathProgress } from '@/components/student/learning-path-progress';
-import { getStudentId } from '@/lib/auth/student-id';
+import { useAuth } from '@/hooks/use-auth';
 import { tutorLabelFor } from '@/lib/grade-greetings';
 import { Card } from '@/components/ui/card';
 import { WellbeingCheckIn } from '@/components/student/wellbeing-checkin';
@@ -42,13 +42,17 @@ function StudentChatContent({ params }: PageProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { subject: subjectParam } = use(params);
+  const { user, profile } = useAuth();
 
   const subject = decodeURIComponent(subjectParam);
   const routeGrade = searchParams.get('grade')?.trim();
   const [grade, setGrade] = useState<string>(routeGrade || DEFAULT_GRADE);
   const effectiveGrade = routeGrade || grade;
-  const [studentId, setStudentId] = useState<string>('user1');
-  const [studentName, setStudentName] = useState<string>('Mwanafunzi');
+  
+  // Use authenticated user ID, fallback to 'anonymous' for unauthenticated sessions
+  const studentId = user?.id || 'anonymous-student';
+  const studentName = profile?.full_name || 'Mwanafunzi';
+  
   const [language, setLanguage] = useState<'english' | 'kiswahili' | 'mixed'>('english');
   const [chatMode, setChatMode] = useState<ChatMode>('socratic');
   const [showAdaptiveDifficulty, setShowAdaptiveDifficulty] = useState(true);
@@ -67,14 +71,7 @@ function StudentChatContent({ params }: PageProps) {
       if (stored) setGrade(stored);
     }
 
-    setStudentId(getStudentId());
-
     if (typeof window !== 'undefined') {
-      const name =
-        window.localStorage.getItem('studentName') ||
-        window.localStorage.getItem('userName');
-      if (name) setStudentName(name);
-
       const savedLanguage = window.localStorage.getItem('preferredLanguage');
       if (savedLanguage === 'english' || savedLanguage === 'kiswahili' || savedLanguage === 'mixed') {
         setLanguage(resolveTeachingLanguage({ subject, grade: routeGrade || grade, requestedLanguage: savedLanguage }));
@@ -87,7 +84,7 @@ function StudentChatContent({ params }: PageProps) {
         setChatMode(savedMode as ChatMode);
       }
     }
-  }, [searchParams, subject]);
+  }, [searchParams, subject, grade, routeGrade]);
 
   return (
     <div className="education-shell flex flex-col">

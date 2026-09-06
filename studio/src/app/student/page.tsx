@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import {
   BookOpen, MessageCircle, Brain, Zap, ArrowRight,
-  TrendingUp, Target, Trophy, Map, Sparkles, Clock,
+  TrendingUp, Target, Trophy, Map, Sparkles,
   ChevronRight, Flame,
 } from 'lucide-react';
 import { StudentHeader } from '@/components/layout/student-header';
@@ -16,13 +16,16 @@ import { LeaderboardPanel } from '@/components/gamification/leaderboard-panel';
 import { tutorTaglineFor } from '@/lib/grade-greetings';
 import type { GamificationMode } from '@/components/student/gamification-panel';
 import { loadGamificationMode } from '@/components/student/gamification-mode-switcher';
-import { getStudentId } from '@/lib/auth/student-id';
+import { supabase } from '@/lib/supabase/client';
 import { CompetencyMap } from '@/components/student/competency-map';
 import { FloatingConceptChat } from '@/components/student/floating-concept-chat';
 import { getActivitiesForGradeSubject } from '@/lib/sandbox-activities';
 import { gradeNameToId } from '@/lib/grade-id';
 import type { GradeId, SubjectId } from '@/lib/sandbox-types';
 import { useAgeTheme } from '@/lib/theme/age-theme-context';
+import { ErrorState, classifyError } from '@/components/student/error-boundary';
+import { StatCardSkeleton, SubjectCardSkeleton } from '@/components/ui/skeleton';
+import { perfMonitor, measureAsync } from '@/lib/performance-monitor';
 
 interface StudentProfile {
   id: string;
@@ -86,27 +89,67 @@ export default function StudentDashboardPage() {
   };
 
   const loadPersonalizedLearningData = async () => {
+    perfMonitor.start('dashboard.load');
+    
     try {
       setIsLoading(true);
       setLoadError(null);
-      const profileRes = await fetchWithTimeout('/api/test-personalization?action=profile&userId=user1');
-      if (!profileRes.ok) throw new Error('profile unavailable');
-      const profileData = await profileRes.json();
-      if (!profileData.success || !profileData.profile) throw new Error('profile unavailable');
+      
+      // Get authenticated user ID
+      perfMonitor.start('dashboard.auth');
+      const { data: { user } } = await supabase.auth.getUser();
+      const userId = user?.id || 'anonymous';
+      perfMonitor.end('dashboard.auth');
+      
+      // Load profile
+      const profileData = await measureAsync('dashboard.profile', async () => {
+        const profileRes = await fetchWithTimeout(`/api/test-personalization?action=profile&userId=${userId}`);
+        if (!profileRes.ok) {
+          throw new Error(`HTTP ${profileRes.status}: Failed to load profile`);
+        }
+        const data = await profileRes.json();
+        if (!data.success || !data.profile) {
+          throw new Error('Profile data unavailable');
+        }
+        return data;
+      });
+      
       setProfile(profileData.profile);
       setStudentName(profileData.profile.name);
       if (profileData.profile.grade) setThemeGrade(profileData.profile.grade);
 
+      // Load progress for all subjects in parallel
       const subjects = ['Mathematics', 'English', 'Science'];
-      const results = await Promise.all(subjects.map(async (subject) => {
-        const res = await fetchWithTimeout(`/api/test-personalization?action=progress&userId=user1&subject=${subject}`);
-        if (!res.ok) return null;
-        const d = await res.json();
-        return d.success && d.progress ? { subject, ...d.progress } : null;
-      }));
+      const results = await measureAsync('dashboard.progress.all', async () => {
+        return Promise.all(subjects.map(async (subject) => {
+          try {
+            const res = await fetchWithTimeout(`/api/test-personalization?action=progress&userId=${userId}&subject=${subject}`);
+            if (!res.ok) return null;
+            const d = await res.json();
+            return d.success && d.progress ? { subject, ...d.progress } : null;
+          } catch (err) {
+            console.warn(`Failed to load ${subject} progress:`, err);
+            return null;
+          }
+        }));
+      });
+      
       setLearningProgress(results.filter(Boolean) as LearningProgress[]);
-    } catch {
-      setLoadError('We could not load your learning path right now. Your progress is safe.');
+      
+      perfMonitor.end('dashboard.load');
+      const summary = perfMonitor.getSummary();
+      console.log('📊 Dashboard load metrics:', {
+        totalTime: `${summary.totalTime.toFixed(0)}ms`,
+        avgTime: `${summary.avgTime.toFixed(0)}ms`,
+        p50: `${summary.p50.toFixed(0)}ms`,
+        p95: `${summary.p95.toFixed(0)}ms`,
+      });
+      
+    } catch (error) {
+      console.error('[StudentDashboard] loadPersonalizedLearningData error:', error);
+      const classified = classifyError(error);
+      setLoadError(classified.action || classified.message);
+      perfMonitor.end('dashboard.load');
     } finally {
       setIsLoading(false);
     }
@@ -143,10 +186,47 @@ export default function StudentDashboardPage() {
     return (
       <div className={`flex min-h-screen flex-col ${theme.pageBg}`}>
         <StudentHeader showBackButton={false} onBack={() => router.back()} />
-        <main className="flex flex-1 items-center justify-center p-6">
-          <div className="text-center">
-            <Brain className="h-10 w-10 animate-pulse mx-auto mb-3 text-teal-600" />
-            <p className="font-medium">{isYoung ? '🌟 Getting your learning ready…' : 'Preparing your learning path…'}</p>
+        <main className="flex-1 px-4 py-5 md:px-6 md:py-6">
+          <div className="max-w-6xl mx-auto space-y-5">
+            {/* Greeting skeleton */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="space-y-2">
+                <div className="h-8 w-64 bg-slate-200 rounded animate-pulse" />
+                <div className="h-4 w-48 bg-slate-200 rounded animate-pulse" />
+              </div>
+              <div className="flex gap-2">
+                <div className="h-9 w-32 bg-slate-200 rounded animate-pulse" />
+                <div className="h-9 w-24 bg-slate-200 rounded animate-pulse" />
+              </div>
+            </div>
+
+            {/* Stats skeleton */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <StatCardSkeleton />
+              <StatCardSkeleton />
+              <StatCardSkeleton />
+              <StatCardSkeleton />
+            </div>
+
+            {/* Tab bar skeleton */}
+            <div className="flex border-b border-border gap-4">
+              <div className="h-10 w-24 bg-slate-200 rounded-t animate-pulse" />
+              <div className="h-10 w-28 bg-slate-200 rounded-t animate-pulse" />
+              <div className="h-10 w-32 bg-slate-200 rounded-t animate-pulse" />
+            </div>
+
+            {/* Content skeleton */}
+            <div className="grid gap-5 lg:grid-cols-3">
+              <div className="lg:col-span-2 space-y-3">
+                <SubjectCardSkeleton />
+                <SubjectCardSkeleton />
+                <SubjectCardSkeleton />
+              </div>
+              <div className="space-y-3">
+                <div className="h-48 bg-slate-200 rounded-lg animate-pulse" />
+                <div className="h-64 bg-slate-200 rounded-lg animate-pulse" />
+              </div>
+            </div>
           </div>
         </main>
       </div>
@@ -158,15 +238,19 @@ export default function StudentDashboardPage() {
       <div className={`flex min-h-screen flex-col ${theme.pageBg}`}>
         <StudentHeader showBackButton={false} onBack={() => router.back()} />
         <main className="flex flex-1 items-center justify-center p-6">
-          <section className={`w-full max-w-sm ${theme.cardClass} border-amber-200 bg-white p-6 text-center`} role="alert">
-            <Clock className="h-8 w-8 mx-auto text-amber-500 mb-3" />
-            <h1 className="text-lg font-bold">Learning path unavailable</h1>
-            <p className="mt-1 text-sm text-muted-foreground">{loadError}</p>
-            <div className="mt-5 flex gap-2 justify-center">
-              <Button size="sm" onClick={() => void loadPersonalizedLearningData()}>Try again</Button>
-              <Button size="sm" variant="outline" onClick={() => router.push('/student/journey')}>Review setup</Button>
-            </div>
-          </section>
+          <ErrorState
+            error={{
+              type: 'network',
+              message: 'Learning path unavailable',
+              action: loadError,
+              canRetry: true,
+              showSupport: true,
+            }}
+            onRetry={() => void loadPersonalizedLearningData()}
+            onGoBack={() => router.push('/student/journey')}
+            onGoHome={() => router.push('/student')}
+            size="md"
+          />
         </main>
       </div>
     );

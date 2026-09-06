@@ -50,7 +50,9 @@ export async function middleware(request: NextRequest) {
   // Protect learner and teacher workspaces in production. Local demos can
   // explicitly opt out through an ignored `.env.local`; this flag is never a
   // production default.
-  const protectedRoute = request.nextUrl.pathname.startsWith('/teacher') || request.nextUrl.pathname.startsWith('/student') || request.nextUrl.pathname.startsWith('/parent') || request.nextUrl.pathname.startsWith('/head');
+  // Exception: /student/demo is a public preview route that uses mock data only
+  const isPublicDemo = request.nextUrl.pathname === '/student/demo';
+  const protectedRoute = (request.nextUrl.pathname.startsWith('/teacher') || request.nextUrl.pathname.startsWith('/student') || request.nextUrl.pathname.startsWith('/parent') || request.nextUrl.pathname.startsWith('/head')) && !isPublicDemo;
   const demoBypass = process.env.NODE_ENV !== 'production' && process.env.NEXT_PUBLIC_AUTH_DEMO_BYPASS === 'true';
   // Production role workspaces are protected by default. Local development
   // remains opt-in so contributors can run the UI without a Supabase session.

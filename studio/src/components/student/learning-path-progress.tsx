@@ -86,9 +86,29 @@ export function LearningPathProgress({
 
   if (!path) {
     return (
-      <Card className="p-4">
-        <div className="text-center text-gray-500">
-          No structured learning path available for this subject.
+      <Card className="p-4 border-2 border-dashed border-gray-300">
+        <div className="text-center space-y-3">
+          <BookOpen className="w-12 h-12 mx-auto text-gray-400" />
+          <div>
+            <h4 className="font-semibold text-gray-700">No Learning Path Available</h4>
+            <p className="text-sm text-gray-600 mt-2">
+              We're still building the structured learning path for <strong>{subject}</strong> in <strong>{grade}</strong>.
+            </p>
+            <p className="text-sm text-gray-600 mt-2">
+              You can still chat with SyncSenta to get help with any topic!
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              // Navigate back or suggest alternative
+              window.history.back();
+            }}
+            className="mt-2"
+          >
+            ← Choose Another Subject
+          </Button>
         </div>
       </Card>
     );

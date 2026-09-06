@@ -164,8 +164,8 @@ function HomePageContent() {
               that sync seamlessly across all devices. Built for Kenyan Grade 2 students with CBC curriculum alignment.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Button size="lg" onClick={() => router.push(DEMO_MODE ? "/api/auth/demo-login?role=student" : "/signup")} className="min-h-12 sm:w-auto">
-                {DEMO_MODE ? "Try the demo" : "Choose your role"}
+              <Button size="lg" onClick={() => router.push(DEMO_MODE ? "/api/auth/demo-login?role=student" : "/student/demo")} className="min-h-12 sm:w-auto">
+                {DEMO_MODE ? "Try the demo" : "Try Student Demo"}
                 <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
               </Button>
               <Button size="lg" variant="outline" asChild className="min-h-12 sm:w-auto">

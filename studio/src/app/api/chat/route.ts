@@ -25,6 +25,8 @@
  */
 
 import { NextRequest } from 'next/server';
+import { cookies } from 'next/headers';
+import { createServerClient } from '@supabase/ssr';
 import Groq from 'groq-sdk';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { z } from 'zod';
@@ -139,7 +141,29 @@ export async function POST(req: NextRequest) {
   const startTime = Date.now();
 
   // ── Auth ────────────────────────────────────────────────────────────────────
-  const supabase = getSupabaseServerClient();
+  // Create cookie-based Supabase client to read authenticated session
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return Response.json({ 
+      error: 'Server configuration error', 
+      detail: 'Supabase credentials not configured' 
+    }, { status: 500 });
+  }
+
+  const cookieStore = await cookies();
+  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+    cookies: {
+      getAll: () => cookieStore.getAll(),
+      setAll: (cookiesToSet) => {
+        cookiesToSet.forEach(({ name, value, options }) => {
+          cookieStore.set(name, value, options);
+        });
+      },
+    },
+  });
+
   const { data: { user: authenticatedUser }, error: authError } =
     await supabase.auth.getUser();
 
@@ -155,6 +179,9 @@ export async function POST(req: NextRequest) {
   if (!user) {
     return Response.json({ error: 'Unauthorized', detail: 'Please sign in to continue' }, { status: 401 });
   }
+
+  // For database operations that need service role (like RPC calls), create a separate client
+  const supabaseAdmin = getSupabaseServerClient();
 
   // ── Profile ─────────────────────────────────────────────────────────────────
   const profile = authenticatedUser
@@ -388,7 +415,7 @@ export async function POST(req: NextRequest) {
     const detail  = err instanceof Error ? err.message : `Unknown ${provider} error`;
     console.error(`[/api/chat] ${provider} request failed:`, detail);
     if (!isDevChat) {
-      await supabase.from('api_usage').insert({
+      await supabaseAdmin.from('api_usage').insert({
         user_id: user.id, endpoint: '/api/chat', method: 'POST',
         status_code: aborted ? 504 : 502, latency_ms: Date.now() - startTime,
       });
@@ -484,11 +511,11 @@ export async function POST(req: NextRequest) {
         }
 
         if (!isDevChat) {
-          await supabase.from('api_usage').insert({
+          await supabaseAdmin.from('api_usage').insert({
             user_id: user.id, endpoint: '/api/chat', method: 'POST',
             tokens_used: tokensUsed, status_code: 200, latency_ms: latencyMs,
           });
-          await supabase.rpc('increment_daily_quota', { p_user_id: user.id });
+          await supabaseAdmin.rpc('increment_daily_quota', { p_user_id: user.id });
         }
       } catch (err) {
         const detail = err instanceof Error ? err.message : 'Stream interrupted';
