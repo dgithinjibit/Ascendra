@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { DEMO_DESTINATIONS, getDemoDestination } from '@/lib/auth/demo-destinations';
 
 /**
  * Demo login — signs in as a preset test user, sets the session cookie,
@@ -20,24 +21,24 @@ const DEMO_USERS: Record<string, {
   student: {
     email: 'student01@syncsenta.dev',
     password: 'Demo@Student01',
-    redirect: '/student',
+    redirect: DEMO_DESTINATIONS.student,
     grade: 'Grade 2',  // Changed to Grade 2 for our implementation
     level: 'lower-primary',
   },
   teacher: {
     email: 'teacher01@syncsenta.dev',
     password: 'Demo@Teacher01',
-    redirect: '/teacher/dashboard',
+    redirect: DEMO_DESTINATIONS.teacher,
   },
   head: {
     email: 'head01@syncsenta.dev',
     password: 'Demo@Head01',
-    redirect: '/teacher/dashboard',
+    redirect: DEMO_DESTINATIONS.head,
   },
   parent: {
     email: 'parent01@syncsenta.dev',
     password: 'Demo@Parent01',
-    redirect: '/dashboard',
+    redirect: DEMO_DESTINATIONS.parent,
   },
 };
 
@@ -70,8 +71,9 @@ async function handler(request: NextRequest) {
   }
   role = role.toLowerCase();
 
+  const destination = getDemoDestination(role);
   const demo = DEMO_USERS[role];
-  if (!demo) {
+  if (!demo || !destination) {
     return NextResponse.redirect(new URL('/auth/signup', safeOrigin(request)));
   }
 
@@ -83,7 +85,7 @@ async function handler(request: NextRequest) {
   }
 
   // Build a response we can write cookies onto
-  const redirectUrl = new URL(demo.redirect, safeOrigin(request));
+  const redirectUrl = new URL(destination, safeOrigin(request));
 
   // Attach grade context as query params so the student page can pick them up
   if (demo.grade) {
