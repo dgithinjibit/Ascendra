@@ -97,6 +97,16 @@ class PolicyVerdict:
     review_reason: Optional[str] = None
     evaluator_used: str = "unknown"
 
+    @property
+    def evaluator_type(self) -> str:
+        """Compatibility alias used by telemetry/API consumers."""
+        return self.evaluator_used
+
+    @property
+    def reasoning(self) -> str:
+        """Human-readable policy explanation for API and telemetry consumers."""
+        return self.review_reason or self.verdict
+
     @classmethod
     def from_atom(cls, atom: str, evaluator_used: str = "unknown") -> "PolicyVerdict":
         atom = atom.strip()

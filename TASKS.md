@@ -145,3 +145,11 @@ Every future change must update this file with the implementation summary, test 
 [2]: https://supabase.com/docs/guides/database/postgres/row-level-security "Supabase Row Level Security documentation"
 [3]: https://www.typescriptlang.org/docs/handbook/2/narrowing.html "TypeScript narrowing documentation"
 [4]: https://docs.stripe.com/api/versioning "Stripe API versioning documentation"
+
+## Render backend diagnosis and scoped fix — 2026-09-06
+
+The attached Render log showed the Python AI service building stale commit `9f67d31` with Python 3.14.3. The build failed before startup because `hyperon>=0.1.0` has no CPython 3.14 wheel, while the backend declares Python `^3.11` and contains `ai-agents/runtime.txt` with Python 3.11.9. No `.kiro/skills` directory exists in the checked repository history or working trees.
+
+A canonical root `render.yaml` was added so the Render Blueprint explicitly sets `rootDir: ai-agents`, `PYTHON_VERSION=3.11.9`, the AI-agent build/start commands, and the `/healthz` health check. The existing AI-agent and Rust service definitions were not otherwise changed. The runtime test also exposed a duplicated telemetry dictionary indentation error, a duration-before-assignment error, and a PolicyRequest call using unsupported fields; these were corrected without changing teacher or other role UI. PolicyVerdict compatibility aliases were added for existing telemetry consumers.
+
+Verification: Python compilation passed; FastAPI application import passed with non-secret placeholder provider/database variables. The full Python test run reached 364 passed and 3 failures. The remaining failures are telemetry behavior/contract issues: dwell analysis does not interpret the fixture durations, the fallback evaluator reports `python-fallback` while the legacy test expects `fallback`, and the fallback approval reasoning is only `Approved` rather than a longer explanation. These are documented as residual backend quality issues, not Render dependency installation failures, and require a separate approval before broader behavioral changes.

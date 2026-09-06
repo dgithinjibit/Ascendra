@@ -1,0 +1,40 @@
+services:
+  - type: web
+    name: syncsenta-ai-backend
+    runtime: python
+    rootDir: ai-agents
+    buildCommand: pip install -r requirements.txt
+    startCommand: PYTHONPATH=src uvicorn syncsenta_agents.api.server:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /healthz
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: GROQ_API_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: FRONTEND_URL
+        value: https://sentastudio.vercel.app
+      - key: GROQ_MODEL
+        value: llama-3.3-70b-versatile
+
+  - type: cron
+    name: rule-learning-job
+    runtime: python
+    rootDir: ai-agents
+    schedule: "0 2 * * *"
+    buildCommand: pip install -e .
+    startCommand: python -m syncsenta_agents.jobs.rule_learning_job
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: GROQ_API_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: GROQ_MODEL
+        value: llama-3.3-70b-versatile

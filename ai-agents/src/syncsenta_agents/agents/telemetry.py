@@ -239,8 +239,6 @@ class BehavioralProfile:
                 "evaluator_type": self.policy_verdict.evaluator_type,
             } if self.policy_verdict else None,
         }
-            "intervention_urgency": self.intervention_urgency,
-        }
 
 
 class TelemetryAgent:
@@ -309,6 +307,11 @@ class TelemetryAgent:
             primary_pattern, secondary_patterns, mastery_indicator, pathing
         )
         
+        # Calculate session duration before policy evaluation and profile creation.
+        start_time = datetime.fromtimestamp(parsed_events[0].timestamp / 1000)
+        end_time = datetime.fromtimestamp(parsed_events[-1].timestamp / 1000)
+        duration = (end_time - start_time).total_seconds()
+
         # === MeTTa Policy Evaluation (Task 5) ===
         # Evaluate policy on the telemetry data before finalizing profile
         policy_evaluator = get_policy_evaluator()
@@ -325,17 +328,17 @@ class TelemetryAgent:
         }
         
         policy_request = PolicyRequest(
-            query_type="session_telemetry",
-            context={
-                "student_id": student_id,
-                "session_id": session_id,
-                "activity_type": activity_type,
-                "duration_seconds": duration,
-                "telemetry": telemetry_data,
-            }
+            role="student",
+            age_band="unknown",
+            intent="socratic-tutor",
+            goal="inclusive-learning",
+            connectivity="online",
+            consent="unknown",
+            safety_signal="clear",
+            accessibility="default",
         )
-        
-        policy_verdict = policy_evaluator.evaluate(policy_request)
+
+        policy_verdict = policy_evaluator.evaluate_session(policy_request)
         
         self.logger.info(
             f"Policy evaluation for session {session_id}",
@@ -345,10 +348,6 @@ class TelemetryAgent:
         )
         
         # Build profile
-        start_time = datetime.fromtimestamp(parsed_events[0].timestamp / 1000)
-        end_time = datetime.fromtimestamp(parsed_events[-1].timestamp / 1000)
-        duration = (end_time - start_time).total_seconds()
-        
         profile = BehavioralProfile(
             session_id=session_id,
             student_id=student_id,
