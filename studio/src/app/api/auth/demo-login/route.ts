@@ -58,10 +58,11 @@ export async function POST(request: NextRequest) {
 }
 
 async function handler(request: NextRequest) {
-  // Always allow demo mode for easy access to Grade 2 system
-  // if (process.env.DEMO_MODE !== 'true') {
-  //   return NextResponse.redirect(new URL('/auth/signup', safeOrigin(request)));
-  // }
+  // Demo credentials are available only when explicitly enabled for a
+  // non-production preview/local environment. Production must use real auth.
+  if (process.env.DEMO_MODE !== 'true') {
+    return NextResponse.redirect(new URL('/auth/signup', safeOrigin(request)));
+  }
 
   // Role comes from query string (?role=student) or POST body
   let role = request.nextUrl.searchParams.get('role') ?? '';
